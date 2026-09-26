@@ -56,8 +56,12 @@ export function Hero() {
   return (
     <div className="relative pt-24 pb-16 px-4 max-w-4xl mx-auto text-center">
       {/* Brand Header */}
-      <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 rounded-full border border-zinc-200 bg-zinc-50/80 text-xs font-mono text-zinc-600">
-        <span className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse" />
+      <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 mb-8 rounded-full border border-zinc-200 bg-zinc-50/90 text-xs font-mono text-zinc-700 shadow-2xs">
+        <img
+          src="/domoscope.png"
+          alt="DomoScope Detective Mascot"
+          className="w-5 h-5 rounded-full object-cover border border-zinc-300 shadow-xs"
+        />
         <span>Free and open source repository visualizer</span>
       </div>
 

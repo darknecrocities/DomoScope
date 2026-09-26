@@ -4,8 +4,12 @@ import { GitHubIcon } from '../components/common/Icons';
 import { Hero } from '../components/landing/Hero';
 import { TechBelt } from '../components/landing/TechBelt';
 import { InteractiveDemo } from '../components/landing/InteractiveDemo';
+import { ScrapingSimulator } from '../components/landing/ScrapingSimulator';
+import { VerticalCarousel } from '../components/landing/VerticalCarousel';
+import { ArchitectureLens } from '../components/landing/ArchitectureLens';
 import { HowItWorks } from '../components/landing/HowItWorks';
 import { FeaturesGrid } from '../components/landing/FeaturesGrid';
+import { ComparisonAndFAQ } from '../components/landing/ComparisonAndFAQ';
 import { FinalCTA } from '../components/landing/FinalCTA';
 import { Footer } from '../components/landing/Footer';
 import { Spotlight } from '../components/common/Spotlight';
@@ -22,9 +26,11 @@ export function LandingPage() {
       <header className="sticky top-0 z-40 w-full border-b border-zinc-200/80 bg-white/90 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-md bg-zinc-900 flex items-center justify-center text-white font-bold text-xs">
-              D
-            </div>
+            <img
+              src="/domoscope.png"
+              alt="DomoScope"
+              className="w-7 h-7 rounded-lg object-contain bg-zinc-950 p-0.5 border border-zinc-200 shadow-2xs"
+            />
             <span className="font-semibold text-sm tracking-tight text-zinc-900">DomoScope</span>
           </div>
 
@@ -53,15 +59,36 @@ export function LandingPage() {
 
       {/* Main Content Sections */}
       <main className="flex-1">
+        {/* 1. Hero */}
         <Hero />
 
+        {/* 2. Interactive Workspace Demo */}
         <div className="px-4 pb-20 max-w-6xl mx-auto">
           <InteractiveDemo />
         </div>
 
+        {/* 3. Real-Time Scraping & Ingestion Simulator with Progress Bar */}
+        <ScrapingSimulator />
+
+        {/* 4. Continuous Technology Belt */}
         <TechBelt />
+
+        {/* 5. Dual-Direction Vertical Alternating Carousel */}
+        <VerticalCarousel />
+
+        {/* 6. Interactive Code vs Visual Architecture Split Lens */}
+        <ArchitectureLens />
+
+        {/* 7. How It Works Pipeline */}
         <HowItWorks />
+
+        {/* 8. Core Features Grid */}
         <FeaturesGrid />
+
+        {/* 9. Comparison Matrix & Developer FAQ */}
+        <ComparisonAndFAQ />
+
+        {/* 10. Final Call to Action */}
         <FinalCTA />
       </main>
 

@@ -14,10 +14,12 @@ export function Navbar({ metadata, onOpenSearch, onOpenSettings }: NavbarProps) 
     <header className="sticky top-0 z-30 w-full h-13 border-b border-zinc-200 bg-white flex items-center justify-between px-4 select-none">
       {/* Left Logo */}
       <div className="flex items-center gap-3">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-6 h-6 rounded-md bg-zinc-900 flex items-center justify-center text-white font-bold text-xs group-hover:bg-zinc-800 transition-colors">
-            D
-          </div>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <img
+            src="/domoscope.png"
+            alt="DomoScope"
+            className="w-7 h-7 rounded-lg object-contain bg-zinc-950 p-0.5 border border-zinc-200 group-hover:scale-105 transition-transform"
+          />
           <span className="font-semibold text-sm tracking-tight text-zinc-900">DomoScope</span>
         </Link>
       </div>

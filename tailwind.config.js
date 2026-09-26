@@ -29,9 +29,19 @@ export default {
           '0%': { transform: 'translateX(0%)' },
           '100%': { transform: 'translateX(-50%)' },
         },
+        'marquee-up': {
+          '0%': { transform: 'translateY(0%)' },
+          '100%': { transform: 'translateY(-50%)' },
+        },
+        'marquee-down': {
+          '0%': { transform: 'translateY(-50%)' },
+          '100%': { transform: 'translateY(0%)' },
+        },
       },
       animation: {
         marquee: 'marquee 35s linear infinite',
+        'marquee-up': 'marquee-up 28s linear infinite',
+        'marquee-down': 'marquee-down 28s linear infinite',
       },
     },
   },
