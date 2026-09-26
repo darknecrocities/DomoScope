@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, Zap, UserCheck } from 'lucide-react';
 import { GitHubIcon } from '../components/common/Icons';
 import { Hero } from '../components/landing/Hero';
 import { TechBelt } from '../components/landing/TechBelt';
@@ -14,40 +14,84 @@ import { FinalCTA } from '../components/landing/FinalCTA';
 import { Footer } from '../components/landing/Footer';
 import { Spotlight } from '../components/common/Spotlight';
 import { SettingsModal } from '../components/common/SettingsModal';
+import { BackgroundCanvas } from '../components/common/BackgroundCanvas';
+import { GitHubAuthService, GitHubUserProfile } from '../services/githubAuth';
+import { GitHubAuthModal } from '../components/common/GitHubAuthModal';
 
 export function LandingPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<GitHubUserProfile | null>(null);
+
+  useEffect(() => {
+    GitHubAuthService.getUserProfile().then(setUserProfile);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 flex flex-col selection:bg-zinc-800 selection:text-white">
+    <div className="min-h-screen bg-white text-zinc-900 flex flex-col selection:bg-zinc-800 selection:text-white relative overflow-hidden font-sans">
+      <BackgroundCanvas />
       <Spotlight />
 
       {/* Top Landing Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-zinc-200/80 bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img
               src="/domoscope.png"
               alt="DomoScope"
-              className="w-7 h-7 rounded-lg object-contain bg-zinc-950 p-0.5 border border-zinc-200 shadow-2xs"
+              className="w-8 h-8 rounded-xl object-contain bg-slate-950 p-0.5 border border-slate-200 shadow-xs"
             />
-            <span className="font-semibold text-sm tracking-tight text-zinc-900">DomoScope</span>
+            <span className="font-extrabold text-base tracking-tight text-slate-900">DomoScope</span>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* GitHub Sign In / User Profile Badge */}
+            {userProfile ? (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all cursor-pointer shadow-xs"
+                title="GitHub Authenticated (5,000 req/hr Active)"
+              >
+                <img
+                  src={userProfile.avatarUrl}
+                  alt={userProfile.login}
+                  className="w-5 h-5 rounded-full border border-emerald-300"
+                />
+                <span className="text-xs font-mono font-bold text-emerald-900">
+                  @{userProfile.login}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-white bg-emerald-600 px-1.5 py-0.2 rounded">
+                  5k Limit
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs"
+                title="Sign in with GitHub to increase rate limit to 5,000 requests/hour"
+              >
+                <GitHubIcon className="w-4 h-4" />
+                <span>Sign in with GitHub</span>
+                <span className="text-[10px] font-mono bg-blue-600 text-white px-1.5 py-0.2 rounded font-bold">
+                  5k Limit
+                </span>
+              </button>
+            )}
+
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-1.5 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               title="Settings"
               aria-label="Settings"
             >
               <Settings className="w-4 h-4" />
             </button>
+
             <a
               href="https://github.com/darknecrocities/DomoScope"
               target="_blank"
               rel="noreferrer"
-              className="p-1.5 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
               title="GitHub Repository"
               aria-label="GitHub Repository"
             >
@@ -95,6 +139,14 @@ export function LandingPage() {
       <Footer />
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      <GitHubAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={() => {
+          GitHubAuthService.getUserProfile().then(setUserProfile);
+        }}
+      />
     </div>
   );
 }

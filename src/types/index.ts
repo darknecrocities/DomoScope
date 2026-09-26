@@ -40,7 +40,7 @@ export interface RepoFile {
   name: string;
   type: 'blob' | 'tree';
   size?: number;
-  sha: string;
+  sha?: string;
   extension: string;
   category: FileCategory;
   content?: string;
@@ -68,11 +68,14 @@ export interface ArchitectureNodeData {
   size?: number;
   isEntryPoint?: boolean;
   isDatabase?: boolean;
+  complexityScore?: number;
+  couplingScore?: number;
+  healthColor?: 'green' | 'yellow' | 'red';
   [key: string]: unknown;
 }
 
 export interface ArchitectureEdgeData {
-  type: 'direct' | 'inferred';
+  type: 'direct' | 'inferred' | 'call' | 'hierarchy';
   [key: string]: unknown;
 }
 
@@ -102,7 +105,7 @@ export interface DatabaseTable {
   name: string;
   columns: TableColumn[];
   sourceFile: string;
-  schemaType: 'prisma' | 'sql' | 'drizzle' | 'typeorm' | 'sqlalchemy' | 'django';
+  schemaType: 'prisma' | 'sql' | 'drizzle' | 'typeorm' | 'sqlalchemy' | 'django' | 'drift' | 'room' | 'typescript' | 'domain' | string;
 }
 
 export interface DatabaseSchema {
@@ -194,4 +197,45 @@ export interface AIProviderConfig {
   openaiKey?: string;
   anthropicKey?: string;
   geminiKey?: string;
+}
+
+export interface ApiEndpoint {
+  id: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'QUERY' | 'MUTATION';
+  path: string;
+  file: string;
+  line: number;
+  framework: 'express' | 'fastapi' | 'flask' | 'spring' | 'gin' | 'dio' | 'http' | 'graphql';
+  summary?: string;
+}
+
+export interface CallGraphNode {
+  id: string;
+  name: string;
+  file: string;
+  line: number;
+  calls: string[]; // IDs or names of called functions
+  calledBy: string[];
+}
+
+export interface SecurityPatch {
+  findingId: string;
+  file: string;
+  originalCode: string;
+  patchedCode: string;
+  description: string;
+}
+
+export interface AuditReportData {
+  repoName: string;
+  generatedAt: string;
+  healthScore: number;
+  totalFiles: number;
+  totalLines: number;
+  architectureSummary: string;
+  complexityDistribution: { green: number; yellow: number; red: number };
+  securityIssuesCount: { critical: number; high: number; medium: number; low: number };
+  detectedFrameworks: string[];
+  databaseTablesCount: number;
+  apiEndpointsCount: number;
 }

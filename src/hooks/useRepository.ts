@@ -8,7 +8,8 @@ import {
   BranchInfo,
   SecurityFinding,
 } from '../types';
-import { GitHubService, GitHubError } from '../services/github';
+import { GitHubService, GitHubError, getAuthHeaders } from '../services/github';
+import { fetchViaZipball, fetchViaRawProbe } from '../services/githubFallback';
 import { StorageService } from '../services/storage';
 import { analyzeRepository } from '../services/analysis';
 import { parseDatabaseFiles } from '../services/databaseParser';
@@ -29,6 +30,7 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
   const [loadingStep, setLoadingStep] = useState<LoadingStep>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRateLimited, setIsRateLimited] = useState<boolean>(false);
+  const [isFallbackMode, setIsFallbackMode] = useState<boolean>(false);
 
   const [metadata, setMetadata] = useState<RepoMetadata | null>(null);
   const [currentBranch, setCurrentBranch] = useState<string>(initialBranch || '');
@@ -59,13 +61,22 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
       setStatus('loading');
       setErrorMessage(null);
       setIsRateLimited(false);
+      setIsFallbackMode(false);
       setLoadingStep('Checking repository');
 
       try {
         // Step 1: Check cache unless forceRefresh
         if (!forceRefresh) {
           const cachedAnalysis = await StorageService.getAnalysis(ownerName, repoName);
-          if (cachedAnalysis && isMounted.current) {
+          const { hasToken } = await getAuthHeaders();
+
+          // Check if cache was a fallback 2-file probe
+          const isFallbackCache =
+            cachedAnalysis?.metadata.description?.includes('Stream') ||
+            (cachedAnalysis?.files && cachedAnalysis.files.length <= 2);
+
+          // If authenticated with token, ignore stale fallback cache and fetch live API!
+          if (cachedAnalysis && (!hasToken || !isFallbackCache) && isMounted.current) {
             setMetadata(cachedAnalysis.metadata);
             setAnalysis(cachedAnalysis);
             setFiles(cachedAnalysis.files);
@@ -82,7 +93,6 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
             const cachedSec = await StorageService.getSecurityFindings(ownerName, repoName, activeBranch);
             if (cachedSec) setSecurityFindings(cachedSec);
 
-            // Set default selected file to entry point or first file
             if (cachedAnalysis.entryPoints.length > 0) {
               setSelectedFile(cachedAnalysis.entryPoints[0]);
             } else if (cachedAnalysis.files.length > 0) {
@@ -96,21 +106,42 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
           }
         }
 
-        // Step 2: Fetch fresh metadata from GitHub
-        const meta = await GitHubService.fetchRepoMetadata(ownerName, repoName);
+        let meta: RepoMetadata | null = null;
+        let repoFiles: RepoFile[] = [];
+        let isFallback = false;
+        let preloadedContents = new Map<string, string>();
+        let activeBranch = branchName || 'main';
+
+        // Step 2: Try fetching metadata & file tree via GitHub REST API
+        try {
+          meta = await GitHubService.fetchRepoMetadata(ownerName, repoName);
+          activeBranch = branchName || meta.defaultBranch;
+
+          setLoadingStep('Reading files');
+          repoFiles = await GitHubService.fetchRepoTree(ownerName, repoName, activeBranch);
+        } catch (err: any) {
+          // If GitHub REST API throws RateLimit, 403, 404 or network error -> engage Zero-Rate-Limit Fallback Engine!
+          console.warn('[DomoScope] REST API blocked/failed. Engaging High-Availability Direct Stream Engine...', err);
+          isFallback = true;
+          setIsFallbackMode(true);
+          setIsRateLimited(true);
+
+          setLoadingStep('Reading files');
+          const fallbackData = (await fetchViaZipball(ownerName, repoName, activeBranch)) ||
+                             (await fetchViaRawProbe(ownerName, repoName, activeBranch));
+
+          meta = meta || fallbackData.metadata;
+          repoFiles = fallbackData.files;
+          preloadedContents = fallbackData.fileContents;
+          activeBranch = fallbackData.branch;
+        }
+
         if (!isMounted.current) return;
         setMetadata(meta);
-
-        const activeBranch = branchName || meta.defaultBranch;
         setCurrentBranch(activeBranch);
-
-        // Step 3: Fetch file tree
-        setLoadingStep('Reading files');
-        const repoFiles = await GitHubService.fetchRepoTree(ownerName, repoName, activeBranch);
-        if (!isMounted.current) return;
         setFiles(repoFiles);
 
-        // Step 4: Fetch manifest and schema files for deep analysis
+        // Step 4: Fetch manifest, schema, and source files for deep analysis & polyglot graph
         setLoadingStep('Understanding structure');
         const criticalFiles = repoFiles.filter(
           (f) =>
@@ -120,17 +151,19 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
               f.name === 'pyproject.toml' ||
               f.name === 'go.mod' ||
               f.name === 'Cargo.toml' ||
+              f.name === 'pubspec.yaml' ||
               f.name === 'schema.prisma' ||
               f.path.includes('drizzle') ||
               f.path.includes('migrations/') ||
               f.name.endsWith('.sql') ||
-              f.name.toLowerCase().includes('readme.md'))
+              ['ts', 'tsx', 'js', 'jsx', 'dart', 'java', 'kt', 'py', 'go', 'rs', 'cs', 'cpp', 'h'].includes(f.extension))
         );
 
-        const contentsMap = new Map<string, string>();
+        const contentsMap = new Map<string, string>(preloadedContents);
 
-        // Load critical contents in parallel with concurrency limit
-        const fetchPromises = criticalFiles.slice(0, 15).map(async (file) => {
+        // Load missing critical contents in parallel
+        const missingCriticals = criticalFiles.filter((f) => !contentsMap.has(f.path));
+        const fetchPromises = missingCriticals.slice(0, 80).map(async (file) => {
           try {
             const content = await GitHubService.fetchFileContent(ownerName, repoName, activeBranch, file.path);
             contentsMap.set(file.path, content);
@@ -181,18 +214,22 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         await StorageService.saveSecurityFindings(ownerName, repoName, activeBranch, secFindings);
 
         // Step 9: Fetch branches in background
-        GitHubService.fetchBranches(ownerName, repoName)
-          .then((bList) => {
-            if (isMounted.current) {
-              const enriched = bList.map((b) => ({
-                ...b,
-                isDefault: b.name === meta.defaultBranch,
-              }));
-              setBranches(enriched);
-              StorageService.saveBranches(ownerName, repoName, enriched);
-            }
-          })
-          .catch(() => {});
+        if (!isFallback) {
+          GitHubService.fetchBranches(ownerName, repoName)
+            .then((bList) => {
+              if (isMounted.current) {
+                const enriched = bList.map((b) => ({
+                  ...b,
+                  isDefault: b.name === meta.defaultBranch,
+                }));
+                setBranches(enriched);
+                StorageService.saveBranches(ownerName, repoName, enriched);
+              }
+            })
+            .catch(() => {});
+        } else {
+          setBranches([{ name: activeBranch, sha: 'latest', isDefault: true }]);
+        }
 
         // Save analysis to IndexedDB
         await StorageService.saveAnalysis(ownerName, repoName, analyzed);
@@ -291,6 +328,7 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
     loadingStep,
     errorMessage,
     isRateLimited,
+    isFallbackMode,
     metadata,
     currentBranch,
     files,

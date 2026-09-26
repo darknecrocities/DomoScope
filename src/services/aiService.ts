@@ -1,89 +1,9 @@
 import { AIProvider, AIModelOption, AIProviderConfig, RepoAnalysis, RepoFile } from '../types';
 import { StorageService } from './storage';
 import { WebLLMService } from './webLLMService';
+import { DEFAULT_AI_MODELS, ModelFetcherService } from './modelFetcherService';
 
-export const AI_MODELS: AIModelOption[] = [
-  // Local Provider
-  {
-    id: 'local-grounded',
-    name: 'Local Grounded Engine',
-    provider: 'local',
-    description: '100% on-device deterministic code analysis. Zero token cost, instantaneous, and strictly private.',
-    isDefault: true,
-  },
-  {
-    id: 'local-qwen',
-    name: 'Qwen 2.5 0.5B (WebLLM)',
-    provider: 'local',
-    description: 'In-browser local LLM running directly on your GPU via WebGPU.',
-  },
-  {
-    id: 'local-smollm',
-    name: 'SmolLM2 135M (WebLLM)',
-    provider: 'local',
-    description: 'Ultra-compact on-device LLM with rapid inference.',
-  },
-
-  // Anthropic Claude — latest 2025 lineup (newest first)
-  {
-    id: 'claude-opus-4-5',
-    name: 'Claude Opus 4.5',
-    provider: 'anthropic',
-    description: 'Anthropic most powerful model (2025). Superior coding, research & multi-step reasoning.',
-  },
-  {
-    id: 'claude-sonnet-4-5',
-    name: 'Claude Sonnet 4.5',
-    provider: 'anthropic',
-    description: 'Anthropic flagship balanced model — state-of-the-art performance at practical speed.',
-  },
-  {
-    id: 'claude-haiku-4-5',
-    name: 'Claude Haiku 4.5',
-    provider: 'anthropic',
-    description: 'Anthropic fastest, most compact 2025 model optimized for instant responses.',
-  },
-
-  // Google Gemini — latest 2025 lineup (newest first)
-  {
-    id: 'gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro',
-    provider: 'gemini',
-    description: 'Google most capable 2025 model with 1M token context and deep reasoning.',
-  },
-  {
-    id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    provider: 'gemini',
-    description: 'High-throughput Gemini 2.5 model — fast, affordable, and highly accurate.',
-  },
-  {
-    id: 'gemini-2.0-flash-lite',
-    name: 'Gemini 2.0 Flash Lite',
-    provider: 'gemini',
-    description: 'Ultra-low-latency Gemini model for real-time code exploration.',
-  },
-
-  // OpenAI GPT — latest 2025 lineup (newest first)
-  {
-    id: 'gpt-4.1',
-    name: 'GPT-4.1',
-    provider: 'openai',
-    description: 'OpenAI latest flagship model (2025) with 1M token context and advanced coding.',
-  },
-  {
-    id: 'gpt-4.1-mini',
-    name: 'GPT-4.1 Mini',
-    provider: 'openai',
-    description: 'Fast, cost-efficient GPT-4.1 variant ideal for everyday code queries.',
-  },
-  {
-    id: 'o3',
-    name: 'o3',
-    provider: 'openai',
-    description: 'OpenAI most advanced 2025 reasoning model for deep algorithmic analysis.',
-  },
-];
+export const AI_MODELS: AIModelOption[] = DEFAULT_AI_MODELS;
 
 const DEFAULT_CONFIG: AIProviderConfig = {
   provider: 'local',
@@ -99,8 +19,12 @@ export const AIService = {
     await StorageService.setSetting('ai_config', config);
   },
 
-  getModelsForProvider(provider: AIProvider): AIModelOption[] {
-    return AI_MODELS.filter((m) => m.provider === provider);
+  async getModelsForProvider(provider: AIProvider): Promise<AIModelOption[]> {
+    const config = await this.getConfig();
+    return await ModelFetcherService.getModels(provider, {
+      openaiKey: config.openaiKey,
+      geminiKey: config.geminiKey,
+    });
   },
 
   getModelById(id: string): AIModelOption | undefined {

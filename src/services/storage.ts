@@ -223,6 +223,20 @@ export const StorageService = {
     }
   },
 
+  async clearAllRepoCaches(): Promise<void> {
+    try {
+      const db = await getDB();
+      await db.clear('repositories');
+      await db.clear('fileTrees');
+      await db.clear('fileContents');
+      await db.clear('databaseSchemas');
+      await db.clear('securityFindings');
+      await db.clear('branches');
+    } catch (e) {
+      console.warn('Storage clearAllRepoCaches error:', e);
+    }
+  },
+
   async getSetting<T>(key: string, defaultValue: T): Promise<T> {
     try {
       const db = await getDB();

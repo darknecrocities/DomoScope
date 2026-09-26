@@ -24,9 +24,15 @@ import { BranchesTab } from '../components/workspace/BranchesTab';
 import { SecurityTab } from '../components/workspace/SecurityTab';
 import { SuggestionsTab } from '../components/workspace/SuggestionsTab';
 import { AskPanel } from '../components/workspace/AskPanel';
+import { ApiCatalogTab } from '../components/workspace/ApiCatalogTab';
+import { AuditReportTab } from '../components/workspace/AuditReportTab';
+import { ReverseEngineerTab } from '../components/workspace/ReverseEngineerTab';
+import { generateAuditReportHtml } from '../services/auditReportGenerator';
 import { ResizableDivider } from '../components/common/ResizableDivider';
 import { SearchModal } from '../components/common/SearchModal';
 import { SettingsModal } from '../components/common/SettingsModal';
+import { TechStackModal } from '../components/common/TechStackModal';
+import { SpecGeneratorModal } from '../components/workspace/SpecGeneratorModal';
 
 export function WorkspacePage() {
   const { owner = '', repo = '', tab = 'overview' } = useParams<{
@@ -48,6 +54,8 @@ export function WorkspacePage() {
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTechStackOpen, setIsTechStackOpen] = useState(false);
+  const [isSpecGeneratorOpen, setIsSpecGeneratorOpen] = useState(false);
   const [explainPrompt, setExplainPrompt] = useState<string | null>(null);
 
   const {
@@ -55,6 +63,7 @@ export function WorkspacePage() {
     loadingStep,
     errorMessage,
     isRateLimited,
+    isFallbackMode,
     metadata,
     currentBranch,
     files,
@@ -230,7 +239,7 @@ export function WorkspacePage() {
 
   return (
     <div
-      className={`min-h-screen bg-white text-zinc-900 flex flex-col ${
+      className={`h-screen overflow-hidden bg-white text-zinc-900 flex flex-col ${
         isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''
       }`}
     >
@@ -239,6 +248,8 @@ export function WorkspacePage() {
         metadata={metadata}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenTechStack={() => setIsTechStackOpen(true)}
+        onOpenSpecGenerator={() => setIsSpecGeneratorOpen(true)}
       />
 
       {/* Contextual App Bar */}
@@ -248,6 +259,8 @@ export function WorkspacePage() {
         branch={currentBranch}
         activeTab={activeTab}
         branches={branches}
+        metadata={metadata}
+        isFallbackMode={isFallbackMode}
         onSelectBranch={(b) => loadRepository(owner, repo, b)}
         onRefresh={refresh}
         isFullscreen={isFullscreen}
@@ -275,8 +288,8 @@ export function WorkspacePage() {
           }}
         />
 
-        {/* Center Workspace Body */}
-        <main className="flex-1 flex flex-col overflow-hidden relative min-w-0 bg-white">
+        {/* Center Workspace Body (Independent vertical scroll for main area) */}
+        <main className="flex-1 flex flex-col overflow-y-auto relative min-w-0 bg-white">
           {activeTab === 'overview' && analysis && (
             <OverviewTab
               analysis={analysis}
@@ -365,6 +378,38 @@ export function WorkspacePage() {
             />
           )}
 
+          {activeTab === 'api_catalog' && (
+            <ApiCatalogTab
+              fileContents={fileContents}
+              onOpenFile={(path) => {
+                setSelectedFile(path);
+                setActiveTab('files');
+              }}
+            />
+          )}
+
+          {activeTab === 'audit_report' && (
+            <AuditReportTab
+              owner={owner}
+              repo={repo}
+              analysis={analysis}
+              files={files}
+              databaseSchema={databaseSchema}
+              securityFindings={securityFindings}
+            />
+          )}
+
+          {activeTab === 'reverse_engineer' && (
+            <ReverseEngineerTab
+              repoName={`${owner}/${repo}`}
+              analysis={analysis}
+              files={files}
+              fileContents={fileContents}
+              databaseSchema={databaseSchema}
+              dependencies={dependencies}
+            />
+          )}
+
           {activeTab === 'suggestions' && analysis && (
             <SuggestionsTab
               analysis={analysis}
@@ -444,6 +489,28 @@ export function WorkspacePage() {
         onClose={() => setIsSettingsOpen(false)}
         onClearCache={() => refresh()}
       />
+
+      {/* Tech Stack Inspector Modal */}
+      <TechStackModal
+        isOpen={isTechStackOpen}
+        onClose={() => setIsTechStackOpen(false)}
+        files={files}
+        fileContents={fileContents}
+      />
+
+      {/* Reverse Engineering Spec Generator (.md) Modal */}
+      {analysis && (
+        <SpecGeneratorModal
+          isOpen={isSpecGeneratorOpen}
+          onClose={() => setIsSpecGeneratorOpen(false)}
+          analysis={analysis}
+          files={files}
+          fileContents={fileContents}
+          databaseSchema={databaseSchema}
+          dependencies={dependencies}
+          securityFindings={securityFindings}
+        />
+      )}
     </div>
   );
 }

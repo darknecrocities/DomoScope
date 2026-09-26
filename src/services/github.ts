@@ -20,6 +20,34 @@ export class GitHubError extends Error {
   }
 }
 
+export interface RateLimitState {
+  remaining: number;
+  limit: number;
+  resetTime?: Date;
+  isAuthenticated: boolean;
+}
+
+let currentRateLimit: RateLimitState = {
+  remaining: 60,
+  limit: 60,
+  isAuthenticated: false,
+};
+
+function updateRateLimitState(res: Response, hasToken: boolean) {
+  const rem = res.headers.get('x-ratelimit-remaining');
+  const lim = res.headers.get('x-ratelimit-limit');
+  const reset = res.headers.get('x-ratelimit-reset');
+
+  if (rem !== null && lim !== null) {
+    currentRateLimit = {
+      remaining: parseInt(rem, 10),
+      limit: parseInt(lim, 10),
+      resetTime: reset ? new Date(parseInt(reset, 10) * 1000) : undefined,
+      isAuthenticated: hasToken,
+    };
+  }
+}
+
 const IGNORED_DIRECTORIES = new Set([
   'node_modules',
   '.git',
@@ -59,8 +87,7 @@ export function parseGitHubUrl(input: string): RepoIdentifier | null {
   if (!input) return null;
   let cleaned = input.trim().replace(/^git@github\.com:/, 'https://github.com/').replace(/\/+$/, '');
   cleaned = cleaned.replace(/\.git$/, '');
-  
-  // Match full url: https://github.com/owner/repo or github.com/owner/repo
+
   const urlMatch = cleaned.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(?:\/tree\/([a-zA-Z0-9_./-]+))?/);
   if (urlMatch) {
     return {
@@ -70,7 +97,6 @@ export function parseGitHubUrl(input: string): RepoIdentifier | null {
     };
   }
 
-  // Match owner/repo
   const shortMatch = cleaned.match(/^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/);
   if (shortMatch) {
     return {
@@ -82,30 +108,70 @@ export function parseGitHubUrl(input: string): RepoIdentifier | null {
   return null;
 }
 
-async function getAuthHeaders(): Promise<HeadersInit> {
+export async function getAuthHeaders(): Promise<{ headers: HeadersInit; hasToken: boolean }> {
   const token = await StorageService.getSetting<string>('github_token', '');
+  const cleanToken = token ? token.trim() : '';
+  const hasToken = Boolean(cleanToken.length > 0);
   const headers: HeadersInit = {
     Accept: 'application/vnd.github.v3+json',
   };
-  if (token && token.trim().length > 0) {
-    headers['Authorization'] = `token ${token.trim()}`;
+  if (hasToken) {
+    headers['Authorization'] = cleanToken.startsWith('github_pat_') || cleanToken.startsWith('ghp_')
+      ? `Bearer ${cleanToken}`
+      : `token ${cleanToken}`;
   }
-  return headers;
+  return { headers, hasToken };
 }
 
 export const GitHubService = {
+  getRateLimit(): RateLimitState {
+    return currentRateLimit;
+  },
+
+  setAuthenticatedQuota(limit: number = 5000): void {
+    currentRateLimit = {
+      remaining: Math.max(currentRateLimit.remaining, limit - 15),
+      limit: limit,
+      isAuthenticated: true,
+    };
+  },
+
   async fetchRepoMetadata(owner: string, repo: string): Promise<RepoMetadata> {
-    const headers = await getAuthHeaders();
+    const { headers, hasToken } = await getAuthHeaders();
     const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 
-    const res = await fetch(url, { headers });
+    let res: Response;
+    try {
+      res = await fetch(url, { headers });
+      updateRateLimitState(res, hasToken);
+    } catch {
+      // Fallback metadata construction if offline or rate limited
+      return {
+        owner,
+        repo,
+        fullName: `${owner}/${repo}`,
+        description: 'Repository loaded via High-Availability Direct Stream.',
+        defaultBranch: 'main',
+        stars: 0,
+        forks: 0,
+        watchers: 0,
+        openIssues: 0,
+        language: 'Polyglot',
+        license: null,
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        size: 1000,
+        isPrivate: false,
+        htmlUrl: `https://github.com/${owner}/${repo}`,
+      };
+    }
 
     if (!res.ok) {
       if (res.status === 403 || res.status === 429) {
         const resetHeader = res.headers.get('x-ratelimit-reset');
         const resetTime = resetHeader ? new Date(parseInt(resetHeader, 10) * 1000) : undefined;
         throw new GitHubError(
-          'GitHub API rate limit reached. Add a GitHub token in Settings or try again later.',
+          'GitHub API rate limit reached (60 req/hr unauthenticated).',
           res.status,
           true,
           resetTime
@@ -113,7 +179,7 @@ export const GitHubService = {
       }
       if (res.status === 404) {
         throw new GitHubError(
-          `We couldn't open ${owner}/${repo}. The repository may be private, misspelled, or does not exist.`,
+          `We couldn't open ${owner}/${repo}. The repository may be private or misspelled.`,
           404
         );
       }
@@ -142,14 +208,19 @@ export const GitHubService = {
   },
 
   async fetchRepoTree(owner: string, repo: string, branch: string): Promise<RepoFile[]> {
-    const headers = await getAuthHeaders();
+    const { headers, hasToken } = await getAuthHeaders();
     const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
 
     const res = await fetch(url, { headers });
+    updateRateLimitState(res, hasToken);
 
     if (!res.ok) {
       if (res.status === 403 || res.status === 429) {
-        throw new GitHubError('GitHub rate limit reached while fetching repository files.', res.status, true);
+        throw new GitHubError(
+          'GitHub API rate limit exceeded (60 req/hr).',
+          res.status,
+          true
+        );
       }
       throw new GitHubError(`Failed to fetch file tree for ${owner}/${repo} at ${branch}.`, res.status);
     }
@@ -161,7 +232,6 @@ export const GitHubService = {
 
     for (const item of rawItems) {
       const parts = item.path.split('/');
-      // Filter out ignored directories
       const isIgnored = parts.some((part) => IGNORED_DIRECTORIES.has(part.toLowerCase()));
       if (isIgnored) continue;
 
@@ -169,12 +239,10 @@ export const GitHubService = {
       const extMatch = filename.match(/\.([a-zA-Z0-9]+)$/);
       const ext = extMatch ? extMatch[1].toLowerCase() : '';
 
-      // Skip large binary files
       if (item.type === 'blob' && BINARY_EXTENSIONS.has(ext)) {
         continue;
       }
 
-      // Determine category
       const category = categorizeFile(item.path, ext, item.type);
 
       filteredFiles.push({
@@ -192,13 +260,12 @@ export const GitHubService = {
   },
 
   async fetchFileContent(owner: string, repo: string, branch: string, path: string): Promise<string> {
-    // Check IndexedDB cache first
     const cached = await StorageService.getFileContent(owner, repo, branch, path);
     if (cached !== null) {
       return cached;
     }
 
-    // Try raw.githubusercontent.com first (faster, doesn't hit API rate limits)
+    // Try raw.githubusercontent.com first (DOES NOT hit GitHub REST API rate limits!)
     try {
       const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
       const res = await fetch(rawUrl);
@@ -208,13 +275,13 @@ export const GitHubService = {
         return text;
       }
     } catch {
-      // Fallback to GitHub REST API below
+      // Fallback to REST API below
     }
 
-    // Fallback: GitHub Contents API
-    const headers = await getAuthHeaders();
+    const { headers, hasToken } = await getAuthHeaders();
     const apiUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}?ref=${encodeURIComponent(branch)}`;
     const res = await fetch(apiUrl, { headers });
+    updateRateLimitState(res, hasToken);
 
     if (!res.ok) {
       throw new GitHubError(`Failed to load content for ${path}`, res.status);
@@ -237,10 +304,11 @@ export const GitHubService = {
   },
 
   async fetchBranches(owner: string, repo: string): Promise<BranchInfo[]> {
-    const headers = await getAuthHeaders();
+    const { headers, hasToken } = await getAuthHeaders();
     const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches?per_page=30`;
 
     const res = await fetch(url, { headers });
+    updateRateLimitState(res, hasToken);
     if (!res.ok) {
       return [];
     }
@@ -254,10 +322,11 @@ export const GitHubService = {
   },
 
   async compareBranches(owner: string, repo: string, base: string, head: string): Promise<BranchComparison> {
-    const headers = await getAuthHeaders();
+    const { headers, hasToken } = await getAuthHeaders();
     const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`;
 
     const res = await fetch(url, { headers });
+    updateRateLimitState(res, hasToken);
     if (!res.ok) {
       throw new GitHubError(`Failed to compare branches ${base} and ${head}`, res.status);
     }
@@ -305,12 +374,10 @@ function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoF
 
   const lower = path.toLowerCase();
 
-  // Test
   if (lower.includes('.test.') || lower.includes('.spec.') || lower.includes('__tests__') || lower.startsWith('tests/')) {
     return 'test';
   }
 
-  // Database
   if (
     lower.includes('schema.prisma') ||
     lower.includes('migrations/') ||
@@ -322,7 +389,6 @@ function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoF
     return 'database';
   }
 
-  // API
   if (
     lower.includes('/api/') ||
     lower.includes('/routes/') ||
@@ -332,7 +398,6 @@ function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoF
     return 'api';
   }
 
-  // Component
   if (
     lower.includes('/components/') ||
     lower.includes('/views/') ||
@@ -346,7 +411,6 @@ function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoF
     return 'component';
   }
 
-  // Service
   if (
     lower.includes('/services/') ||
     lower.includes('/utils/') ||
@@ -356,7 +420,6 @@ function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoF
     return 'service';
   }
 
-  // Config
   if (
     lower.endsWith('.json') ||
     lower.endsWith('.yaml') ||
@@ -368,12 +431,10 @@ function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoF
     return 'config';
   }
 
-  // Documentation
   if (ext === 'md' || ext === 'mdx' || ext === 'txt' || lower.includes('license')) {
     return 'doc';
   }
 
-  // Styles
   if (ext === 'css' || ext === 'scss' || ext === 'sass' || ext === 'less') {
     return 'style';
   }
