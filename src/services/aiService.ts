@@ -24,64 +24,64 @@ export const AI_MODELS: AIModelOption[] = [
     description: 'Ultra-compact on-device LLM with rapid inference.',
   },
 
-  // Anthropic Claude
+  // Anthropic Claude — latest 2025 lineup (newest first)
   {
-    id: 'claude-3-5-sonnet-20241022',
-    name: 'Claude 3.5 Sonnet',
+    id: 'claude-opus-4-5',
+    name: 'Claude Opus 4.5',
     provider: 'anthropic',
-    description: 'Anthropic flagship model with state-of-the-art coding and architecture reasoning.',
+    description: 'Anthropic most powerful model (2025). Superior coding, research & multi-step reasoning.',
   },
   {
-    id: 'claude-3-5-haiku-20241022',
-    name: 'Claude 3.5 Haiku',
+    id: 'claude-sonnet-4-5',
+    name: 'Claude Sonnet 4.5',
     provider: 'anthropic',
-    description: 'Fast, lightweight Anthropic model optimized for swift answers.',
+    description: 'Anthropic flagship balanced model — state-of-the-art performance at practical speed.',
   },
   {
-    id: 'claude-3-opus-20240229',
-    name: 'Claude 3 Opus',
+    id: 'claude-haiku-4-5',
+    name: 'Claude Haiku 4.5',
     provider: 'anthropic',
-    description: 'Anthropic deep intelligence model for complex multi-step reasoning.',
+    description: 'Anthropic fastest, most compact 2025 model optimized for instant responses.',
   },
 
-  // Google Gemini
+  // Google Gemini — latest 2025 lineup (newest first)
   {
-    id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro',
+    id: 'gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
     provider: 'gemini',
-    description: 'Google multimodal reasoning model with massive context capabilities.',
+    description: 'Google most capable 2025 model with 1M token context and deep reasoning.',
   },
   {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash',
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
     provider: 'gemini',
-    description: 'High-speed, low-latency Google model designed for responsive code exploration.',
+    description: 'High-throughput Gemini 2.5 model — fast, affordable, and highly accurate.',
   },
   {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
+    id: 'gemini-2.0-flash-lite',
+    name: 'Gemini 2.0 Flash Lite',
     provider: 'gemini',
-    description: 'Next-generation Gemini flagship flash model.',
+    description: 'Ultra-low-latency Gemini model for real-time code exploration.',
   },
 
-  // OpenAI GPT
+  // OpenAI GPT — latest 2025 lineup (newest first)
   {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
+    id: 'gpt-4.1',
+    name: 'GPT-4.1',
     provider: 'openai',
-    description: 'OpenAI versatile flagship intelligence and code analysis model.',
+    description: 'OpenAI latest flagship model (2025) with 1M token context and advanced coding.',
   },
   {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o Mini',
+    id: 'gpt-4.1-mini',
+    name: 'GPT-4.1 Mini',
     provider: 'openai',
-    description: 'Fast, affordable OpenAI model suitable for everyday code queries.',
+    description: 'Fast, cost-efficient GPT-4.1 variant ideal for everyday code queries.',
   },
   {
-    id: 'o3-mini',
-    name: 'o3-mini',
+    id: 'o3',
+    name: 'o3',
     provider: 'openai',
-    description: 'OpenAI specialized reasoning model with deep algorithmic breakdown.',
+    description: 'OpenAI most advanced 2025 reasoning model for deep algorithmic analysis.',
   },
 ];
 
@@ -179,7 +179,7 @@ CRITICAL SAFETY & REASONING RULES:
             Authorization: `Bearer ${config.openaiKey.trim()}`,
           },
           body: JSON.stringify({
-            model: config.selectedModel || 'gpt-4o-mini',
+            model: config.selectedModel || 'gpt-4.1-mini',
             messages: [
               { role: 'system', content: this.buildSystemPrompt() },
               { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${question}` },
@@ -225,7 +225,7 @@ CRITICAL SAFETY & REASONING RULES:
             'anthropic-dangerous-direct-browser-access': 'true',
           },
           body: JSON.stringify({
-            model: config.selectedModel || 'claude-3-5-sonnet-20241022',
+            model: config.selectedModel || 'claude-sonnet-4-5',
             system: this.buildSystemPrompt(),
             messages: [
               { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${question}` },
@@ -261,7 +261,7 @@ CRITICAL SAFETY & REASONING RULES:
     if (config.provider === 'gemini' && config.geminiKey) {
       try {
         const context = this.buildContextPayload(question, analysis, files, fileContents, selectedFile);
-        const model = config.selectedModel || 'gemini-1.5-flash';
+        const model = config.selectedModel || 'gemini-2.5-flash';
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
           model
         )}:generateContent?key=${encodeURIComponent(config.geminiKey.trim())}`;
