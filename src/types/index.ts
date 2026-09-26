@@ -177,3 +177,21 @@ export interface SearchItem {
   path?: string;
   category?: FileCategory;
 }
+
+export type AIProvider = 'local' | 'anthropic' | 'gemini' | 'openai';
+
+export interface AIModelOption {
+  id: string;
+  name: string;
+  provider: AIProvider;
+  description: string;
+  isDefault?: boolean;
+}
+
+export interface AIProviderConfig {
+  provider: AIProvider;
+  selectedModel: string;
+  openaiKey?: string;
+  anthropicKey?: string;
+  geminiKey?: string;
+}

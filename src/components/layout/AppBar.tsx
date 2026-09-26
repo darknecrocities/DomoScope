@@ -1,4 +1,4 @@
-import { RefreshCw, Maximize2, Minimize2, GitBranch, Menu } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, GitBranch, Menu, ArrowUpDown } from 'lucide-react';
 import { WorkspaceTab } from './Sidebar';
 
 interface AppBarProps {
@@ -31,30 +31,30 @@ export function AppBar({
   onToggleGraphDirection,
 }: AppBarProps) {
   return (
-    <div className="w-full h-11 border-b border-zinc-200 bg-zinc-50/70 px-4 flex items-center justify-between text-xs select-none">
+    <div className="w-full h-12 border-b border-zinc-200 bg-zinc-50/80 px-4 flex items-center justify-between text-xs select-none">
       {/* Left Breadcrumb & Mobile Menu */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0">
         <button
           onClick={onToggleMobileMenu}
-          className="p-1 md:hidden text-zinc-600 hover:text-zinc-900 rounded-md hover:bg-zinc-200"
+          className="p-1.5 md:hidden text-zinc-700 hover:text-zinc-950 rounded-lg hover:bg-zinc-200 transition-colors"
           aria-label="Open navigation menu"
         >
-          <Menu className="w-4 h-4" />
+          <Menu className="w-5 h-5 stroke-[2]" />
         </button>
 
-        <div className="flex items-center gap-1.5 font-mono text-zinc-500 truncate">
+        <div className="flex items-center gap-2 font-mono text-zinc-500 truncate">
           <span className="hidden sm:inline text-zinc-400">{owner}</span>
           <span className="hidden sm:inline text-zinc-300">/</span>
-          <span className="font-medium text-zinc-800 truncate">{repo}</span>
+          <span className="font-semibold text-zinc-900 truncate">{repo}</span>
           <span className="text-zinc-300">/</span>
 
           {/* Branch Dropdown */}
-          <div className="relative inline-flex items-center gap-1 bg-white border border-zinc-200 px-2 py-0.5 rounded text-zinc-700 hover:border-zinc-300 transition-colors">
-            <GitBranch className="w-3 h-3 text-zinc-400" />
+          <div className="relative inline-flex items-center gap-1.5 bg-white border border-zinc-200 px-2.5 py-1 rounded-lg text-zinc-700 hover:border-zinc-300 transition-colors shadow-2xs">
+            <GitBranch className="w-4 h-4 text-zinc-600 shrink-0 stroke-[2]" />
             <select
               value={branch}
               onChange={(e) => onSelectBranch(e.target.value)}
-              className="bg-transparent outline-none cursor-pointer text-zinc-900 pr-1 text-xs font-mono"
+              className="bg-transparent outline-none cursor-pointer text-zinc-900 pr-1 text-xs font-mono font-medium"
             >
               {branches.length > 0 ? (
                 branches.map((b) => (
@@ -79,31 +79,38 @@ export function AppBar({
         {activeTab === 'architecture' && onToggleGraphDirection && (
           <button
             onClick={onToggleGraphDirection}
-            className="px-2 py-1 bg-white hover:bg-zinc-100 border border-zinc-200 rounded text-[11px] font-mono text-zinc-700 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-mono text-zinc-700 transition-colors cursor-pointer shadow-2xs"
             title="Toggle Layout Direction (Top-Bottom / Left-Right)"
           >
-            {graphDirection === 'TB' ? 'Vertical Layout' : 'Horizontal Layout'}
+            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500 stroke-[2]" />
+            <span className="hidden md:inline">
+              {graphDirection === 'TB' ? 'Vertical Layout' : 'Horizontal Layout'}
+            </span>
           </button>
         )}
 
         {/* Refresh Repository Analysis */}
         <button
           onClick={onRefresh}
-          className="p-1.5 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 rounded-md transition-colors cursor-pointer"
+          className="p-2 text-zinc-700 hover:text-zinc-950 hover:bg-zinc-200/80 rounded-lg transition-colors cursor-pointer"
           title="Refresh repository analysis"
           aria-label="Refresh repository analysis"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className="w-4.5 h-4.5 stroke-[2]" />
         </button>
 
         {/* Fullscreen Toggle */}
         <button
           onClick={onToggleFullscreen}
-          className="p-1.5 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 rounded-md transition-colors cursor-pointer"
+          className="p-2 text-zinc-700 hover:text-zinc-950 hover:bg-zinc-200/80 rounded-lg transition-colors cursor-pointer"
           title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
         >
-          {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          {isFullscreen ? (
+            <Minimize2 className="w-4.5 h-4.5 stroke-[2]" />
+          ) : (
+            <Maximize2 className="w-4.5 h-4.5 stroke-[2]" />
+          )}
         </button>
       </div>
     </div>

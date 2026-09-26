@@ -388,6 +388,7 @@ export function WorkspacePage() {
                     setActiveTab('files');
                   }}
                   onClose={() => setActiveTab('overview')}
+                  onOpenSettings={() => setIsSettingsOpen(true)}
                   initialPrompt={explainPrompt}
                   onClearInitialPrompt={() => setExplainPrompt(null)}
                 />
@@ -414,6 +415,7 @@ export function WorkspacePage() {
                   setActiveTab('files');
                 }}
                 onClose={() => setIsAskPanelOpen(false)}
+                onOpenSettings={() => setIsSettingsOpen(true)}
                 initialPrompt={explainPrompt}
                 onClearInitialPrompt={() => setExplainPrompt(null)}
               />
