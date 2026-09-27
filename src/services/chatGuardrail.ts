@@ -235,8 +235,8 @@ export function validateQuestionScope(question: string): GuardrailValidationResu
 }
 
 /**
- * Generates a warm, professional greeting response introducing DomoScope Assistant
- * and offering concrete repository exploration topics.
+ * Generates a warm, dynamic, contextual response for conversational questions,
+ * greetings, and check-ins (e.g. "how are you?", "hello", "who are you?").
  */
 export function generateGreetingResponse(
   question: string,
@@ -244,33 +244,42 @@ export function generateGreetingResponse(
 ): { text: string; thoughtProcess: string; referencedFiles: string[] } {
   const repoName = analysis?.metadata?.fullName || 'this repository';
   const entryPoint = analysis?.entryPoints?.[0];
+  const totalFiles = analysis?.totalFiles;
+  const lang = analysis?.metadata?.language;
+  const tools = analysis?.detectedTools || [];
+  const toolsStr = tools.slice(0, 3).join(', ');
 
-  const greetingHeaders = [
-    'Hello! 👋 Welcome to DomoScope',
-    'Hi there! 👋 Glad to help you with this codebase',
-    'Greetings! 👋 DomoScope Assistant at your service',
-  ];
-  const header = greetingHeaders[Math.abs(question.length) % greetingHeaders.length];
+  const statsSentence = totalFiles
+    ? `I have indexed all **${totalFiles} files** across this ${lang ? `${lang} ` : ''}codebase${toolsStr ? ` (utilizing ${toolsStr})` : ''}.`
+    : `I have analyzed the repository architecture and structural modules.`;
 
-  const text = `## ${header}
+  const qLower = (question || '').toLowerCase().trim();
 
-I'm your **DomoScope AI Assistant**, specialized in analyzing **${repoName}**.
+  let body = '';
 
-### What I Can Help You Explore:
-- 🏗️ **Architecture & Design:** Ask *"How is this repository structured?"* or *"Explain the high-level architecture."*
-- 🔌 **API Routes & Endpoints:** Ask *"What API routes are declared?"* or *"Where are the HTTP controllers?"*
-- 🗄️ **Database & Models:** Ask *"What database schema or ORM is used?"* or *"Show me the database tables."*
-- 🛡️ **Security & Audits:** Ask *"Are there any security vulnerabilities or token leaks?"*
-- 📦 **Dependencies:** Ask *"What external libraries and packages are installed?"*
-${entryPoint ? `- 📄 **Code Deep Dives:** Ask *"Explain the role of \`${entryPoint}\`"* or select any file in the file explorer.\n` : ''}
-How can I assist you with this project today?`;
+  if (/how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|how\s+is\s+your\s+day/i.test(qLower)) {
+    body = `I'm doing great, thank you for asking! 😊 I'm fully primed and ready as your **DomoScope AI Assistant** for **${repoName}**.\n\n${statsSentence} Everything is ready for deep inspection—whether you want to trace system architecture, inspect database schemas, evaluate security findings${entryPoint ? `, or analyze entry points like \`${entryPoint}\`` : ''}, feel free to ask!`;
+  } else if (/who\s+are\s+you|what\s+is\s+your\s+name|what\s+are\s+you|introduce\s+yourself/i.test(qLower)) {
+    body = `I am **DomoScope AI Assistant**, an intelligent software architecture and code inspection assistant dedicated to **${repoName}**.\n\n${statsSentence} I can guide you through the components, API routes, database schemas, security posture, or any specific file${entryPoint ? ` such as \`${entryPoint}\`` : ''}. What would you like to investigate?`;
+  } else if (/what\s+can\s+you\s+do|help|how\s+can\s+you\s+help/i.test(qLower)) {
+    body = `As your **DomoScope AI Assistant** for **${repoName}**, I can inspect and reverse-engineer any layer of this codebase.\n\n${statsSentence}\n\nYou can ask me to:\n- 🏗️ Trace high-level architecture and component dependencies\n- 🔌 Map API endpoints and HTTP route handlers\n- 🗄️ Inspect database schemas and data persistence models\n- 🛡️ Audit security posture and token exposure\n${entryPoint ? `- 📄 Deep-dive into specific files like \`${entryPoint}\`\n` : ''}\nWhat area would you like to start with?`;
+  } else if (/good\s+morning/i.test(qLower)) {
+    body = `Good morning! ☀️ I'm your **DomoScope AI Assistant**, ready to inspect **${repoName}** with you.\n\n${statsSentence} What would you like to explore today?`;
+  } else if (/good\s+afternoon/i.test(qLower)) {
+    body = `Good afternoon! 🌤️ I'm your **DomoScope AI Assistant**, ready to dive into **${repoName}**.\n\n${statsSentence} How can I assist you with this codebase?`;
+  } else if (/good\s+evening/i.test(qLower)) {
+    body = `Good evening! 🌙 I'm your **DomoScope AI Assistant**, ready to analyze **${repoName}**.\n\n${statsSentence} What would you like to inspect tonight?`;
+  } else {
+    body = `Hello! 👋 Glad to connect. I'm your **DomoScope AI Assistant**, specialized in analyzing **${repoName}**.\n\n${statsSentence} I'm loaded with the full context of this project${entryPoint ? ` (including entry points like \`${entryPoint}\`)` : ''}. How can I help you today?`;
+  }
 
-  const thoughtProcess = `1. Intent Classification: Detected greeting / introductory inquiry ("${question}").
-2. Context Retrieval: Target repository is "${repoName}".
-3. Formulating response: Welcoming the developer, introducing DomoScope Assistant capabilities, and providing actionable exploration prompts.`;
+  const thoughtProcess = `1. Intent Recognition: Detected greeting / conversational inquiry ("${question}").
+2. Context Retrieval: Target repository is "${repoName}" (${totalFiles || 'multiple'} files indexed).
+3. Persona Alignment: DomoScope AI Assistant — conversational, helpful, and grounded in repository architecture.
+4. Cognitive Formulation: Synthesizing dynamic response tailored to the developer's specific query.`;
 
   return {
-    text,
+    text: body,
     thoughtProcess,
     referencedFiles: entryPoint ? [entryPoint] : [],
   };

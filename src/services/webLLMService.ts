@@ -206,17 +206,7 @@ export const WebLLMService = {
       };
     }
 
-    // ── Dedicated Warm Greeting Response ──────────────────────────────────────
-    if (guardrail.isGreeting) {
-      const greeting = generateGreetingResponse(question, analysis);
-      return {
-        text: greeting.text,
-        referencedFiles: greeting.referencedFiles,
-        thoughtProcess: greeting.thoughtProcess,
-      };
-    }
-
-    // If a WebLLM neural model is loaded, query it
+    // ── If a WebLLM neural model is loaded, query it directly ────────────────
     if (engine) {
       try {
         const context = buildContext(question, analysis, files, fileContents, selectedFile);
@@ -231,14 +221,14 @@ Break down:
 3. Control flow and architecture evaluation
 4. Verification against repository facts
 
-Then, provide your structured technical answer using ## headings, **bold** key terms, \`code\` blocks, and bullet points. Mention specific file paths.`;
+Then, provide your answer. If the user sent a greeting or asked how you are or who you are (e.g. "hi", "how are you", "who are you"), respond warmly, naturally, and concisely in 1-3 sentences as DomoScope Assistant for ${analysis.metadata.fullName}, ready to inspect this codebase. Otherwise, provide your structured technical answer using ## headings, **bold** key terms, \`code\` blocks, and bullet points. Mention specific file paths.`;
 
         const reply = await engine.chat.completions.create({
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nAnalyze and answer in detail: ${question}` },
+            { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nUser Question: ${question}` },
           ],
-          temperature: 0.3,
+          temperature: 0.4,
           max_tokens: 1200,
         });
 
@@ -249,6 +239,16 @@ Then, provide your structured technical answer using ## headings, **bold** key t
       } catch (e) {
         console.warn('WebLLM neural query failed, falling back to deep reasoning engine:', e);
       }
+    }
+
+    // ── Dedicated Dynamic Greeting Fallback (When no neural weights are active) ─
+    if (guardrail.isGreeting) {
+      const greeting = generateGreetingResponse(question, analysis);
+      return {
+        text: greeting.text,
+        referencedFiles: greeting.referencedFiles,
+        thoughtProcess: greeting.thoughtProcess,
+      };
     }
 
     // Deep semantic reasoning engine — produces structured reasoning and technical answers
@@ -364,6 +364,15 @@ function executeSemanticReasoningEngine(
   const isAuthOrSec = /auth|login|token|jwt|session|protect|security|vulnerabilit|attack|cors|csrf|secret/i.test(q);
   const isDatabase = /database|db|schema|table|sql|orm|prisma|drizzle|migration|model|store/i.test(q);
   const isApi = /api|route|endpoint|http|rest|url|controller|blueprint|post|get|request/i.test(q);
+  const isGreeting =
+    /^(hi|hello|hey|heya|howdy|sup|yo|hiya|aloha|hola|bonjour|greetings|good\s+(morning|afternoon|evening|day)|how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|introduce\s+yourself|help|how\s+can\s+you\s+help)/i.test(
+      q
+    );
+
+  if (isGreeting) {
+    return generateGreetingResponse(question, analysis);
+  }
+
   const isArch = /architecture|structure|how does (it|this) work|design|flow|pattern|framework|overview|what does this do/i.test(q);
   const isFileSpecific =
     selectedFile &&

@@ -567,11 +567,11 @@ export function AskPanel({
       {/* Header Bar */}
       <div
         ref={headerRef}
-        className="flex items-center justify-between px-3.5 py-2.5 border-b border-zinc-200 bg-zinc-50/90 relative shrink-0"
+        className="flex items-center justify-between px-3 py-2 border-b border-zinc-200 bg-zinc-50/95 relative shrink-0 min-w-0 gap-1.5"
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <MessageSquare className="w-4 h-4 text-zinc-700 shrink-0" />
-          <h3 className="text-xs font-semibold text-zinc-900 hidden sm:inline">Ask</h3>
+        {/* Left Section: Model Selector & Quick Actions (auto truncates, never pushes right controls) */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+          <MessageSquare className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
 
           {/* Model Switcher Button */}
           <button
@@ -579,11 +579,11 @@ export function AskPanel({
               setIsDownloadPopoverOpen(false);
               setIsModelDropdownOpen((prev) => !prev);
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-100 text-[11px] font-mono text-zinc-800 transition-all shadow-2xs cursor-pointer max-w-[190px]"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-100 text-[11px] font-mono text-zinc-800 transition-all shadow-2xs cursor-pointer min-w-0 flex-1 max-w-[145px] sm:max-w-[170px]"
             title="Change AI Model"
           >
             <Sparkles className="w-3 h-3 text-zinc-700 shrink-0" />
-            <span className="font-medium truncate">{activeModel.name}</span>
+            <span className="font-medium truncate text-left min-w-0 flex-1">{activeModel.name}</span>
             <ChevronDown className="w-3 h-3 text-zinc-400 shrink-0" />
           </button>
 
@@ -593,7 +593,7 @@ export function AskPanel({
               setIsModelDropdownOpen(false);
               setIsDownloadPopoverOpen((prev) => !prev);
             }}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-mono transition-all cursor-pointer ${
+            className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border text-[11px] font-mono transition-all cursor-pointer shrink-0 ${
               downloadingModelId
                 ? 'bg-zinc-900 text-white border-zinc-900 shadow-xs'
                 : isDownloadPopoverOpen
@@ -603,20 +603,20 @@ export function AskPanel({
             title="Download & Manage Local Models"
           >
             <Download className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden md:inline font-medium">
+            <span className="hidden lg:inline font-medium text-[10.5px]">
               {downloadingModelId ? `${percentDone}%` : 'Models'}
             </span>
             {downloadingModelId && (
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping ml-0.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping ml-0.5 shrink-0" />
             )}
           </button>
         </div>
 
-        {/* Right Controls */}
-        <div className="flex items-center gap-1">
+        {/* Right Controls: Pinned and Shrink-Proof */}
+        <div className="flex items-center gap-0.5 shrink-0 ml-1">
           <button
             onClick={handleResetChat}
-            className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/50 rounded transition-colors cursor-pointer"
+            className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 rounded transition-colors cursor-pointer shrink-0"
             title="Reset conversation for this repository"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -624,7 +624,7 @@ export function AskPanel({
 
           <button
             onClick={() => setIsMinimized(true)}
-            className="p-1 text-zinc-400 hover:text-zinc-700 rounded transition-colors cursor-pointer"
+            className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 rounded transition-colors cursor-pointer shrink-0"
             title="Minimize chat panel"
           >
             <PanelRightClose className="w-3.5 h-3.5" />
@@ -632,7 +632,7 @@ export function AskPanel({
 
           <button
             onClick={() => setIsMaximized((prev) => !prev)}
-            className="p-1 text-zinc-400 hover:text-zinc-700 rounded transition-colors cursor-pointer"
+            className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 rounded transition-colors cursor-pointer shrink-0"
             title={isMaximized ? 'Restore size' : 'Maximize panel'}
           >
             {isMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -640,7 +640,7 @@ export function AskPanel({
 
           <button
             onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-zinc-700 rounded transition-colors cursor-pointer"
+            className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 rounded transition-colors cursor-pointer shrink-0"
             title="Close Ask Panel"
           >
             <X className="w-3.5 h-3.5" />

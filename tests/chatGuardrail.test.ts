@@ -63,6 +63,18 @@ describe('Chat Guardrail Service', () => {
     expect(greetingResponse.text).toContain('darknecrocities/Agentdeck');
     expect(greetingResponse.text).toContain('lib/main.dart');
     expect(greetingResponse.thoughtProcess).toContain('Detected greeting');
+
+    const howAreYouResponse = generateGreetingResponse('how are you?', {
+      metadata: { fullName: 'darknecrocities/Agentdeck' } as any,
+      entryPoints: ['lib/main.dart'],
+    } as any);
+    expect(howAreYouResponse.text).toContain('doing great');
+    expect(howAreYouResponse.text).toContain('darknecrocities/Agentdeck');
+
+    const whoAreYouResponse = generateGreetingResponse('who are you', {
+      metadata: { fullName: 'darknecrocities/Agentdeck' } as any,
+    } as any);
+    expect(whoAreYouResponse.text).toContain('I am **DomoScope AI Assistant**');
   });
 
   it('strictly blocks sexualized, erotic, and NSFW content', () => {

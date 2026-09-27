@@ -75,37 +75,30 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // ── 2. Greetings and Pleasantries Check ──────────────────────────────────
-    if (
+    // ── 2. Scope & Guardrail Filtering (Exclude friendly greetings) ───────────
+    const isGreetingQuery =
       /^(hi|hello|hey|heya|howdy|sup|yo|hiya|aloha|hola|bonjour|greetings)(\s+there|\s+assistant|\s+domoscope|\s+bot)?[\s!.,?]*$/i.test(trimmedQ) ||
       /^(good\s+(morning|afternoon|evening|day))(\s+there|\s+assistant|\s+domoscope)?[\s!.,?]*$/i.test(trimmedQ) ||
-      /^(how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|introduce\s+yourself|help(\s+me)?|how\s+can\s+you\s+help(\s+me)?)[\s!.,?]*$/i.test(trimmedQ)
-    ) {
-      res.status(200).json({
-        text: `## Hello! 👋 Welcome to DomoScope\n\nI'm your **DomoScope AI Assistant**, ready to help you analyze and understand this repository.\n\n### What I Can Help You Explore:\n- 🏗️ **Architecture & Design:** Ask *"How is this repository structured?"* or *"Explain the high-level architecture."*\n- 🔌 **API Routes & Endpoints:** Ask *"What API routes are declared?"* or *"Where are the HTTP controllers?"*\n- 🗄️ **Database & Models:** Ask *"What database schema or ORM is used?"* or *"Show me the database tables."*\n- 🛡️ **Security & Audits:** Ask *"Are there any security vulnerabilities or token leaks?"*\n- 📦 **Dependencies:** Ask *"What external libraries and packages are installed?"*\n\nHow can I assist you with this codebase today?`,
-        modelUsed: 'DomoScope Assistant',
-        provider: 'greeting',
-      });
-      return;
-    }
+      /^(how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|introduce\s+yourself|help(\s+me)?|how\s+can\s+you\s+help(\s+me)?)[\s!.,?]*$/i.test(trimmedQ);
 
-    // ── 3. Fast heuristic scope check ───────────────────────────────────────
-    if (
-      trimmedQ.length < 2 ||
-      /^[^\w\s]+$/.test(trimmedQ) ||
-      /^(.)\1{4,}$/.test(trimmedQ) ||
-      /^(ha|he|xd|rofl){3,}$/i.test(noSpacesQ) ||
-      /^(lo|ol){3,}l?$/i.test(noSpacesQ) ||
-      /^l(ol){2,}$/i.test(noSpacesQ) ||
-      /^(asdf|qwerty|zxcv|ghjk)/i.test(trimmedQ) ||
-      /^(who is|who was|what is the capital of|what is the weather|tell me a joke|write a poem|write a song|write a story|recipe(s)? for|how to cook|how to bake|recommend a movie|how to lose weight|solve \d+)/i.test(trimmedQ)
-    ) {
-      res.status(200).json({
-        text: GUARDRAIL_REJECTION,
-        modelUsed: 'Repository Scope Guardrail',
-        provider: 'guardrail',
-      });
-      return;
+    if (!isGreetingQuery) {
+      if (
+        trimmedQ.length < 2 ||
+        /^[^\w\s]+$/.test(trimmedQ) ||
+        /^(.)\1{4,}$/.test(trimmedQ) ||
+        /^(ha|he|xd|rofl){3,}$/i.test(noSpacesQ) ||
+        /^(lo|ol){3,}l?$/i.test(noSpacesQ) ||
+        /^l(ol){2,}$/i.test(noSpacesQ) ||
+        /^(asdf|qwerty|zxcv|ghjk)/i.test(trimmedQ) ||
+        /^(who is|who was|what is the capital of|what is the weather|tell me a joke|write a poem|write a song|write a story|recipe(s)? for|how to cook|how to bake|recommend a movie|how to lose weight|solve \d+)/i.test(trimmedQ)
+      ) {
+        res.status(200).json({
+          text: GUARDRAIL_REJECTION,
+          modelUsed: 'Repository Scope Guardrail',
+          provider: 'guardrail',
+        });
+        return;
+      }
     }
 
     // ── 1. Google Gemini Provider (Default if server has GEMINI_API_KEY) ──────
@@ -285,11 +278,39 @@ export default async function handler(req: any, res: any) {
 
 function generateServerlessAnalysis(question: string, context?: string): string {
   const ctx = context || '';
-  const q = question.toLowerCase();
+  const q = question.toLowerCase().trim();
 
   // Extract project name or language if present in context
-  const projectMatch = ctx.match(/Project:\s*(.+)/i);
+  const projectMatch = ctx.match(/Project(?:\s*Name)?:\s*(.+)/i);
   const projectName = projectMatch ? projectMatch[1].trim() : 'Repository';
+
+  // ── Conversational Check-ins and Greetings ─────────────────────────────────
+  const isGreeting =
+    /^(hi|hello|hey|heya|howdy|sup|yo|hiya|aloha|hola|bonjour|greetings|good\s+(morning|afternoon|evening|day)|how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|introduce\s+yourself|help|how\s+can\s+you\s+help)/i.test(
+      q
+    );
+
+  if (isGreeting) {
+    let greetingText = '';
+    if (/how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do/i.test(q)) {
+      greetingText = `I'm doing great, thank you for asking! 😊 I'm fully primed and ready as your **DomoScope AI Assistant** for **${projectName}**.\n\nI have the full context of this repository loaded into my context. Feel free to ask about the high-level architecture, API routes, database schemas, or security posture!`;
+    } else if (/who\s+are\s+you|what\s+is\s+your\s+name|what\s+are\s+you|introduce\s+yourself/i.test(q)) {
+      greetingText = `I am **DomoScope AI Assistant**, an intelligent repository analyst and reverse-engineering assistant specialized for **${projectName}**.\n\nI can explain code architecture, map API endpoints, inspect database tables, and evaluate security vulnerabilities. What would you like to investigate?`;
+    } else if (/what\s+can\s+you\s+do|help|how\s+can\s+you\s+help/i.test(q)) {
+      greetingText = `As your **DomoScope AI Assistant** for **${projectName}**, I can inspect and explain any aspect of this codebase.\n\nYou can ask me to:\n- 🏗️ Trace system architecture and component patterns\n- 🔌 Catalog API endpoints and request lifecycles\n- 🗄️ Inspect database schemas and data models\n- 🛡️ Audit security vulnerabilities and token exposure\n\nWhat would you like to explore first?`;
+    } else {
+      greetingText = `Hello! 👋 Welcome to **${projectName}**. I'm your **DomoScope AI Assistant**, ready to help you analyze and understand this repository.\n\nHow can I help you explore this codebase today?`;
+    }
+
+    return `<think>
+1. User Intent: Conversational greeting / check-in ("${question}").
+2. Context Retrieval: Target repository is "${projectName}".
+3. Persona: DomoScope AI Assistant — friendly, responsive, grounded in repository analysis.
+4. Synthesizing dynamic conversational response.
+</think>
+
+${greetingText}`;
+  }
 
   const isChatbotOrML = /chat|bot|rag|nlp|emotion|predict|model|train|dataset/i.test(q);
   const isAuthOrSec = /auth|login|token|jwt|session|security|vulnerabilit|cors|csrf|secret/i.test(q);
