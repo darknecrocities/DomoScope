@@ -395,12 +395,10 @@ export function OverviewTab({
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold text-zinc-950 tracking-tight">
-                  {cloudResult.hasCloudServices
-                    ? `${cloudResult.services.map((s) => s.name.split(' ')[0]).join(' + ')} Cloud Stack`
-                    : 'Self-Contained / Local Client Architecture'}
+                  {cloudResult.architectureTitle}
                 </h2>
                 <span className="px-2.5 py-0.5 text-[11px] font-mono font-bold bg-zinc-900 text-white rounded-md whitespace-nowrap shadow-2xs">
-                  {cloudResult.hasCloudServices ? `${cloudResult.services.length} Services` : 'Zero-Cloud'}
+                  {cloudResult.architectureBadge}
                 </span>
                 <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-zinc-100 border border-zinc-200 text-zinc-700 rounded-md whitespace-nowrap">
                   {cloudResult.storageSystems.length} Storage System{cloudResult.storageSystems.length === 1 ? '' : 's'}
@@ -412,7 +410,9 @@ export function OverviewTab({
           <div className="flex items-center gap-2 text-xs font-mono text-zinc-700 bg-zinc-50 border border-zinc-200 px-3 py-1.5 rounded-xl whitespace-nowrap self-start sm:self-auto shrink-0 shadow-2xs">
             <HardDrive className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
             <span className="font-semibold text-zinc-900">
-              {cloudResult.hasCloudServices ? `${cloudResult.providers.join(', ').toUpperCase()}` : 'LOCAL SANDBOX'}
+              {cloudResult.architectureBadge === 'LOCAL-FIRST CLIENT' || !cloudResult.hasCloudServices
+                ? 'LOCAL SANDBOX'
+                : cloudResult.providers.join(', ').toUpperCase()}
             </span>
           </div>
         </div>
@@ -502,13 +502,15 @@ export function OverviewTab({
 
             {/* Serverless & Auth summary pills */}
             <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-mono">
-              {cloudResult.serverlessRuntimes.length > 0 && (
-                <div className="flex items-center gap-1.5 text-zinc-700">
-                  <Server className="w-3.5 h-3.5 text-zinc-900" />
-                  <span className="text-zinc-500">Compute:</span>
-                  <span className="font-bold text-zinc-900">{cloudResult.serverlessRuntimes.join(' · ')}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1.5 text-zinc-700">
+                <Server className="w-3.5 h-3.5 text-zinc-900" />
+                <span className="text-zinc-500">Compute:</span>
+                <span className="font-bold text-zinc-900">
+                  {cloudResult.serverlessRuntimes.length > 0
+                    ? cloudResult.serverlessRuntimes.join(' · ')
+                    : 'Client-Side Execution (Zero-Serverless)'}
+                </span>
+              </div>
               {cloudResult.authProviders.length > 0 && (
                 <div className="flex items-center gap-1.5 text-zinc-700">
                   <Key className="w-3.5 h-3.5 text-zinc-900" />

@@ -131,7 +131,7 @@ function generateFullStackBlueprint(
   lines.push(`> **Target System**: \`${repoName}\` | **Architecture Specification**: \`PRODUCTION MASTER BLUEPRINT\``);
   lines.push(`> **Specification Density**: \`1,000+ Lines Detailed Breakdown\` | **Date**: \`${dateStr}\``);
   lines.push(`> **Primary Runtime**: \`${primaryFramework.name}\` (${primaryFramework.category}) | **Ecosystem**: \`${primaryLang}\``);
-  lines.push(`> **Cloud & Infrastructure**: \`${cloud.hasCloudServices ? cloud.providers.join(', ').toUpperCase() : 'ZERO-CLOUD / LOCAL CLIENT RUNTIME'}\``);
+  lines.push(`> **Cloud & Infrastructure**: \`${cloud.hasCloudServices ? cloud.providers.join(', ').toUpperCase() : 'ZERO-CLOUD / LOCAL CLIENT RUNTIME'}\` (${cloud.architectureTitle})`);
   lines.push(`> *Use this blueprint to understand, rebuild, adapt, or autonomously generate this complete system with 100% architectural fidelity.*`);
   lines.push(``);
   lines.push(`---`);
