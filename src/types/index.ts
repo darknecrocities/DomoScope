@@ -173,6 +173,7 @@ export interface ChatMessage {
   timestamp: number;
   referencedFiles?: string[];
   modelName?: string;
+  thoughtProcess?: string;
 }
 
 export interface SearchItem {
@@ -192,6 +193,10 @@ export interface AIModelOption {
   provider: AIProvider;
   description: string;
   isDefault?: boolean;
+  size?: string;
+  badge?: string;
+  isDownloadable?: boolean;
+  isReasoning?: boolean;
 }
 
 export interface AIProviderConfig {

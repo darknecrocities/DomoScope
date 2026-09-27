@@ -1,6 +1,6 @@
 import { AIProvider, AIModelOption, AIProviderConfig, RepoAnalysis, RepoFile, RepoDependency, DatabaseSchema, SecurityFinding } from '../types';
 import { StorageService } from './storage';
-import { WebLLMService } from './webLLMService';
+import { WebLLMService, parseThoughtProcess } from './webLLMService';
 import { DEFAULT_AI_MODELS, ModelFetcherService } from './modelFetcherService';
 import { detectFrameworks } from './frameworkDetector';
 import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL } from './chatGuardrail';
@@ -177,7 +177,7 @@ CRITICAL SAFETY & REASONING RULES:
     dependencies: RepoDependency[] = [],
     databaseSchema?: DatabaseSchema | null,
     securityFindings: SecurityFinding[] = []
-  ): Promise<{ text: string; referencedFiles: string[]; modelUsed: string }> {
+  ): Promise<{ text: string; referencedFiles: string[]; modelUsed: string; thoughtProcess?: string }> {
     // ── Repository Scope Guardrail Check ──────────────────────────────────────
     const guardrail = validateQuestionScope(question);
     if (!guardrail.allowed) {
@@ -230,10 +230,12 @@ CRITICAL SAFETY & REASONING RULES:
         if (serverlessRes.ok) {
           const data = await serverlessRes.json();
           if (!data.fallbackToLocal && data.text) {
+            const { text, thoughtProcess } = parseThoughtProcess(data.text);
             return {
-              text: data.text,
-              referencedFiles: this.extractReferencedFiles(data.text, files),
+              text,
+              referencedFiles: this.extractReferencedFiles(text, files),
               modelUsed: `${data.modelUsed || 'Vercel Cloud AI'} (Serverless)`,
+              thoughtProcess,
             };
           }
         }
@@ -277,19 +279,22 @@ CRITICAL SAFETY & REASONING RULES:
         }
 
         const data = await res.json();
-        const text = data.choices[0]?.message?.content || 'No response generated.';
+        const rawText = data.choices[0]?.message?.content || 'No response generated.';
+        const { text, thoughtProcess } = parseThoughtProcess(rawText);
         return {
           text,
           referencedFiles: this.extractReferencedFiles(text, files),
           modelUsed: model,
+          thoughtProcess,
         };
       } catch (err: any) {
         console.warn('OpenAI query failed, falling back to local assistant:', err);
-        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile);
+        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile, config.selectedModel);
         return {
           text: `[OpenAI Note: ${err.message} — Switched to Local Engine]\n\n${fallback.text}`,
           referencedFiles: fallback.referencedFiles,
           modelUsed: 'Local Fallback',
+          thoughtProcess: fallback.thoughtProcess,
         };
       }
     }
@@ -323,19 +328,22 @@ CRITICAL SAFETY & REASONING RULES:
         }
 
         const data = await res.json();
-        const text = data.content?.[0]?.text || 'No response generated.';
+        const rawText = data.content?.[0]?.text || 'No response generated.';
+        const { text, thoughtProcess } = parseThoughtProcess(rawText);
         return {
           text,
           referencedFiles: this.extractReferencedFiles(text, files),
           modelUsed: model,
+          thoughtProcess,
         };
       } catch (err: any) {
         console.warn('Claude query failed, falling back to local assistant:', err);
-        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile);
+        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile, config.selectedModel);
         return {
           text: `[Claude Note: ${err.message} — Switched to Local Engine]\n\n${fallback.text}`,
           referencedFiles: fallback.referencedFiles,
           modelUsed: 'Local Fallback',
+          thoughtProcess: fallback.thoughtProcess,
         };
       }
     }
@@ -405,29 +413,40 @@ CRITICAL SAFETY & REASONING RULES:
         }
 
         const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
+        const { text, thoughtProcess } = parseThoughtProcess(rawText);
         return {
           text,
           referencedFiles: this.extractReferencedFiles(text, files),
           modelUsed: model,
+          thoughtProcess,
         };
       } catch (err: any) {
         console.warn('Gemini query failed, falling back to local assistant:', err);
-        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile);
+        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile, config.selectedModel);
         return {
           text: `[Gemini Note: ${err.message} — Switched to Local Engine]\n\n${fallback.text}`,
           referencedFiles: fallback.referencedFiles,
           modelUsed: 'Local Fallback',
+          thoughtProcess: fallback.thoughtProcess,
         };
       }
     }
 
     // ── 4. Direct Zero-Install Intelligent Engine (Client-Side) ────────────────
-    const localResult = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile);
+    const localResult = await WebLLMService.askQuestion(
+      question,
+      analysis,
+      files,
+      fileContents,
+      selectedFile,
+      config.selectedModel
+    );
     return {
       text: localResult.text,
       referencedFiles: localResult.referencedFiles,
       modelUsed: config.selectedModel || 'Direct Intelligent Engine (Zero-Install)',
+      thoughtProcess: localResult.thoughtProcess,
     };
   },
 
