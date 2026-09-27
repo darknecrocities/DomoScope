@@ -103,9 +103,24 @@ function buildContext(
 ): string {
   const parts: string[] = [];
   parts.push(`Project: ${analysis.metadata.fullName}`);
+  parts.push(`Language: ${analysis.metadata.language || 'Unknown'}`);
   parts.push(`Summary: ${analysis.summary}`);
   parts.push(`Tools: ${analysis.detectedTools.join(', ')}`);
   parts.push(`Entry Points: ${analysis.entryPoints.join(', ')}`);
+
+  // File structure breakdown
+  const components = files.filter((f) => f.category === 'component');
+  const services = files.filter((f) => f.category === 'service');
+  const apis = files.filter((f) => f.category === 'api');
+  const tests = files.filter((f) => f.category === 'test');
+  parts.push(`Files: ${analysis.totalFiles} total — Components: ${components.length}, Services: ${services.length}, APIs: ${apis.length}, Tests: ${tests.length}`);
+
+  if (components.length > 0) {
+    parts.push(`Component Files: ${components.slice(0, 6).map((f) => f.path).join(', ')}`);
+  }
+  if (apis.length > 0) {
+    parts.push(`API Route Files: ${apis.slice(0, 6).map((f) => f.path).join(', ')}`);
+  }
 
   if (selectedFile) {
     const content = fileContents.get(selectedFile);
@@ -124,9 +139,11 @@ function buildContext(
       if (qLower.includes('database') && (p.includes('db') || p.includes('schema') || p.includes('prisma') || p.includes('models'))) return true;
       if (qLower.includes('start') && (p.includes('main') || p.includes('index') || p.includes('app'))) return true;
       if (qLower.includes('api') && (p.includes('api') || p.includes('routes') || p.includes('controllers'))) return true;
-      return false;
+      if (qLower.includes('test') && /test|spec/i.test(p)) return true;
+      const words = qLower.split(/\s+/).filter((w) => w.length > 4);
+      return words.some((w) => p.includes(w));
     })
-    .slice(0, 5)
+    .slice(0, 6)
     .map((f) => f.path);
 
   if (relevantFiles.length > 0) {
@@ -228,7 +245,7 @@ function groundedAnswer(
   if (q.includes('which files') || q.includes('read first') || q.includes('where to start') || q.includes('get started')) {
     const recommend: string[] = [];
     if (analysis.entryPoints.length > 0) recommend.push(analysis.entryPoints[0]);
-    const readme = files.find((f) => /readme\.md/i.test(f.path));
+    const readme = files.find((f) => /readme\\.md/i.test(f.path));
     if (readme) recommend.push(readme.path);
     const mainPkg = files.find((f) => f.path === 'package.json' || f.path === 'pyproject.toml' || f.path === 'go.mod');
     if (mainPkg) recommend.push(mainPkg.path);
@@ -240,15 +257,58 @@ function groundedAnswer(
     };
   }
 
-  // Selected file specific question
+  // Question 6: What framework is used?
+  if (q.includes('framework') || q.includes('library') || q.includes('stack') || q.includes('technology') || q.includes('tech')) {
+    const tools = analysis.detectedTools.slice(0, 6).join(', ');
+    const lang = analysis.metadata.language || 'multiple languages';
+    return {
+      text: `This project is built using ${lang} with the following tools and libraries: ${tools || 'no specific frameworks detected'}. Check the Framework card in Overview for more details.`,
+      referencedFiles: analysis.entryPoints.slice(0, 1),
+    };
+  }
+
+  // Question 7: What type of app is this?
+  if (q.includes('type of app') || q.includes('what kind') || q.includes('what is this') || q.includes('mobile') || q.includes('web app') || q.includes('desktop')) {
+    const lang = analysis.metadata.language || 'Unknown';
+    const hasReact = analysis.detectedTools.some((t) => /react/i.test(t));
+    const hasFlutter = analysis.detectedTools.some((t) => /flutter/i.test(t));
+    const hasPython = lang.toLowerCase().includes('python');
+    const type = hasFlutter
+      ? 'Mobile Application (Flutter)'
+      : hasReact
+      ? 'Web Application (React)'
+      : hasPython
+      ? 'Python Application'
+      : `${lang} Application`;
+    return {
+      text: `Based on repository analysis, this appears to be a ${type}. See the App Type card in the Overview tab for the full breakdown including detected signals and target platforms.`,
+      referencedFiles: analysis.entryPoints.slice(0, 1),
+    };
+  }
+
+  // Question 8: How many components / files?
+  if (q.includes('how many') || q.includes('component') || q.includes('count') || q.includes('file')) {
+    const components = files.filter((f) => f.category === 'component');
+    const services = files.filter((f) => f.category === 'service');
+    const apis = files.filter((f) => f.category === 'api');
+    const tests = files.filter((f) => f.category === 'test');
+    return {
+      text: `This repository contains ${analysis.totalFiles} files total: ${components.length} UI components, ${services.length} service modules, ${apis.length} API route files, and ${tests.length} test suites spread across ${analysis.totalDirs} directories.`,
+      referencedFiles: analysis.entryPoints.slice(0, 1),
+    };
+  }
+
+  // Question 9: What does a specific file do?
   if (selectedFile) {
     referencedFiles.push(selectedFile);
     const content = fileContents.get(selectedFile);
     const filename = selectedFile.split('/').pop() || selectedFile;
     if (content) {
       const lineCount = content.split('\n').length;
+      const importMatches = content.match(/^import .+ from ['"][^'"]+['"]/gm) || [];
+      const importSummary = importMatches.slice(0, 4).join('; ');
       return {
-        text: `${filename} contains ${lineCount} lines. It imports external dependencies and helper modules to implement core logic for this subsystem.`,
+        text: `${filename} contains ${lineCount} lines. ${importSummary ? `It imports: ${importSummary.replace(/import .+ from /g, '').replace(/['"]/g, '')}. ` : ''}This file implements core logic for its subsystem.`,
         referencedFiles,
       };
     }
@@ -281,3 +341,4 @@ function groundedAnswer(
     referencedFiles: analysis.entryPoints.slice(0, 2),
   };
 }
+

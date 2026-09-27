@@ -12,7 +12,7 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react';
-import { RepoAnalysis, RepoFile, ChatMessage, AIProviderConfig } from '../../types';
+import { RepoAnalysis, RepoFile, ChatMessage, AIProviderConfig, RepoDependency, DatabaseSchema, SecurityFinding } from '../../types';
 import { AIService, AI_MODELS } from '../../services/aiService';
 import { WebLLMService, LLMProgress } from '../../services/webLLMService';
 
@@ -26,6 +26,9 @@ interface AskPanelProps {
   onOpenSettings?: () => void;
   initialPrompt?: string | null;
   onClearInitialPrompt?: () => void;
+  dependencies?: RepoDependency[];
+  databaseSchema?: DatabaseSchema | null;
+  securityFindings?: SecurityFinding[];
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -46,6 +49,9 @@ export function AskPanel({
   onOpenSettings,
   initialPrompt,
   onClearInitialPrompt,
+  dependencies = [],
+  databaseSchema,
+  securityFindings = [],
 }: AskPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -145,7 +151,10 @@ export function AskPanel({
         analysis,
         files,
         fileContents,
-        selectedFile || undefined
+        selectedFile || undefined,
+        dependencies,
+        databaseSchema,
+        securityFindings
       );
 
       const activeModelObj = AI_MODELS.find((m) => m.id === result.modelUsed);

@@ -19,10 +19,15 @@ import {
   Activity,
   Box,
   FileCode,
+  Bot,
+  Smartphone,
+  Monitor,
+  Server,
 } from 'lucide-react';
 import { RepoAnalysis, DatabaseSchema, RepoDependency, SecurityFinding, BranchInfo, RepoFile } from '../../types';
 import { WorkspaceTab } from '../layout/Sidebar';
 import { detectFrameworks } from '../../services/frameworkDetector';
+import { detectAppType } from '../../services/appTypeDetector';
 
 interface OverviewTabProps {
   analysis: RepoAnalysis;
@@ -56,6 +61,11 @@ export function OverviewTab({
   }, [files, analysis.files, fileContents, dependencies]);
 
   const { primary: primaryFramework, secondary: secondaryFrameworks, ecosystem } = frameworkResult;
+
+  // Detect app type / archetype (Web App, ML, Mobile, Desktop, CLI, etc.)
+  const appTypeResult = useMemo(() => {
+    return detectAppType(files || analysis.files, fileContents, dependencies);
+  }, [files, analysis.files, fileContents, dependencies]);
 
   // Architectural Readiness Scorecard & Metrics
   const readinessMetrics = useMemo(() => {
@@ -240,6 +250,125 @@ export function OverviewTab({
           </div>
         )}
       </div>
+
+      {/* ===================================================================== */}
+      {/* 1b. APP TYPE CARD                                                      */}
+      {/* ===================================================================== */}
+      {(() => {
+        const { primary, secondary, isHybrid } = appTypeResult;
+        // Pick an icon based on the primary category
+        const AppIcon =
+          primary.category === 'Model Training & AI / ML' ? Bot
+          : primary.category === 'Mobile Application' ? Smartphone
+          : primary.category === 'Desktop Software & GUI' ? Monitor
+          : primary.category === 'Backend API & Microservice' ? Server
+          : primary.category === 'CLI & Developer Tool' ? Terminal
+          : primary.category === 'Web3 & Smart Contracts' ? Globe
+          : primary.category === 'Game & Interactive Graphics' ? Layers
+          : Globe;
+
+        return (
+          <div className="p-6 rounded-2xl border border-zinc-200 bg-white shadow-xs space-y-4">
+            {/* Header row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-100">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center shadow-xs shrink-0 mt-0.5 sm:mt-0">
+                  <AppIcon className="w-5 h-5 stroke-[2]" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                    App Type
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-bold text-zinc-950 tracking-tight">{primary.name}</h2>
+                    <span className="px-2.5 py-0.5 text-[11px] font-mono font-bold bg-zinc-900 text-white rounded-md whitespace-nowrap shadow-2xs">
+                      {primary.badge}
+                    </span>
+                    <span className={`px-2 py-0.5 text-[10px] font-mono font-semibold rounded-md whitespace-nowrap border ${
+                      primary.confidence === 'High'
+                        ? 'bg-zinc-900 text-white border-zinc-900'
+                        : primary.confidence === 'Medium'
+                        ? 'bg-zinc-100 text-zinc-700 border-zinc-200'
+                        : 'bg-zinc-50 text-zinc-500 border-zinc-200'
+                    }`}>
+                      {primary.confidence} Confidence
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono text-zinc-700 bg-zinc-50 border border-zinc-200 px-3 py-1.5 rounded-xl whitespace-nowrap self-start sm:self-auto shrink-0 shadow-2xs">
+                <Cpu className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
+                <span className="font-semibold text-zinc-900">{primary.executionPattern.split('&')[0].trim()}</span>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-sans">
+              {primary.description}
+            </p>
+
+            {/* Target Platforms */}
+            <div>
+              <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-400 block mb-2">
+                Runs On
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {primary.targetPlatforms.map((platform) => (
+                  <span
+                    key={platform}
+                    className="px-2.5 py-1 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-medium text-zinc-800 whitespace-nowrap"
+                  >
+                    {platform}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Detected Indicators */}
+            {primary.detectedIndicators.length > 0 && (
+              <div>
+                <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-400 block mb-2">
+                  Detected Signals
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {primary.detectedIndicators.map((indicator) => (
+                    <span
+                      key={indicator}
+                      className="px-2.5 py-1 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-medium text-zinc-800 flex items-center gap-1.5 whitespace-nowrap"
+                    >
+                      <CheckCircle2 className="w-3 h-3 text-zinc-900" />
+                      <span>{indicator}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Secondary / Hybrid types */}
+            {isHybrid && secondary.length > 0 && (
+              <div className="pt-3 border-t border-zinc-100">
+                <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-400 block mb-2">
+                  Also Detected
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {secondary.map((sec) => (
+                    <div
+                      key={sec.id}
+                      className="px-3 py-1.5 rounded-xl border border-zinc-200 bg-zinc-50/80 flex items-center gap-2 whitespace-nowrap"
+                    >
+                      <Box className="w-3.5 h-3.5 text-zinc-700" />
+                      <span className="text-xs font-bold text-zinc-900">{sec.name}</span>
+                      <span className="text-[10px] font-mono text-zinc-600 bg-white border border-zinc-200 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                        {sec.badge}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ===================================================================== */}
       {/* 2. REPOSITORY HEALTH & QUALITY SCORE                                  */}

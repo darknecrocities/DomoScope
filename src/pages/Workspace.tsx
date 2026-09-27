@@ -500,6 +500,9 @@ export function WorkspacePage() {
                   onOpenSettings={() => setIsSettingsOpen(true)}
                   initialPrompt={explainPrompt}
                   onClearInitialPrompt={() => setExplainPrompt(null)}
+                  dependencies={dependencies}
+                  databaseSchema={databaseSchema}
+                  securityFindings={securityFindings}
                 />
               </div>
             </div>
@@ -527,6 +530,9 @@ export function WorkspacePage() {
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 initialPrompt={explainPrompt}
                 onClearInitialPrompt={() => setExplainPrompt(null)}
+                dependencies={dependencies}
+                databaseSchema={databaseSchema}
+                securityFindings={securityFindings}
               />
             </div>
           </>
