@@ -50,7 +50,15 @@ export function WorkspacePage() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(
     (tab as WorkspaceTab) || 'overview'
   );
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('domoscope_sidebar_collapsed');
+      if (saved !== null) return saved === 'true';
+      return typeof window !== 'undefined' && window.innerWidth < 1100;
+    } catch {
+      return false;
+    }
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAskPanelOpen, setIsAskPanelOpen] = useState(true);
   const [askPanelWidth, setAskPanelWidth] = useState(360);
@@ -334,7 +342,15 @@ export function WorkspacePage() {
           activeTab={activeTab}
           onTabChange={handleTabChange}
           isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+          onToggleCollapse={() => {
+            setIsSidebarCollapsed((prev) => {
+              const next = !prev;
+              try {
+                localStorage.setItem('domoscope_sidebar_collapsed', String(next));
+              } catch {}
+              return next;
+            });
+          }}
           isMobileOpen={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
           onOpenSettings={() => setIsSettingsOpen(true)}
@@ -485,8 +501,8 @@ export function WorkspacePage() {
           )}
 
           {activeTab === 'ask' && analysis && (
-            <div className="flex-1 p-4 bg-zinc-50 flex items-center justify-center">
-              <div className="w-full max-w-2xl h-full bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs">
+            <div className="flex-1 p-3 sm:p-5 bg-zinc-50 flex items-center justify-center overflow-hidden">
+              <div className="w-full max-w-5xl h-full bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
                 <AskPanel
                   analysis={analysis}
                   files={files}
