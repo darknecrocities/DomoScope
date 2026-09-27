@@ -645,9 +645,9 @@ export function AskPanel({
           </button>
 
           <button
-            onClick={() => setIsMinimized(true)}
+            onClick={onClose}
             className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 rounded transition-colors cursor-pointer shrink-0"
-            title="Minimize chat panel"
+            title="Minimize chat panel (drag left from edge to reopen)"
           >
             <PanelRightClose className="w-3.5 h-3.5" />
           </button>

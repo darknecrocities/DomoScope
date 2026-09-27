@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -9,6 +9,9 @@ import {
   CheckCircle,
   Maximize2,
   Minimize2,
+  ChevronLeft,
+  MessageSquare,
+  PanelRightOpen,
 } from 'lucide-react';
 import { useRepository } from '../hooks/useRepository';
 import { Navbar } from '../components/layout/Navbar';
@@ -166,7 +169,62 @@ export function WorkspacePage() {
 
   // Handle panel resizing
   const handleResizeAsk = useCallback((deltaX: number) => {
-    setAskPanelWidth((prev) => Math.min(600, Math.max(280, prev - deltaX)));
+    setAskPanelWidth((prev) => {
+      const next = prev - deltaX;
+      if (next < 160) {
+        setIsAskPanelOpen(false);
+        return 360;
+      }
+      const maxW = Math.min(800, Math.round(window.innerWidth * 0.75));
+      return Math.min(maxW, Math.max(260, next));
+    });
+  }, []);
+
+  // Drag to open / pull out chat sidebar from right edge when closed
+  const isDraggingChatEdge = useRef(false);
+
+  const startDragChatEdge = useCallback((clientX: number) => {
+    isDraggingChatEdge.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+      if (!isDraggingChatEdge.current) return;
+      const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const widthFromRight = window.innerWidth - x;
+
+      if (widthFromRight > 30) {
+        setIsAskPanelOpen(true);
+        const maxW = Math.min(800, Math.round(window.innerWidth * 0.75));
+        const clamped = Math.min(maxW, Math.max(260, widthFromRight));
+        setAskPanelWidth(clamped);
+      }
+    };
+
+    const handlePointerUp = (e: MouseEvent | TouchEvent) => {
+      if (!isDraggingChatEdge.current) return;
+      isDraggingChatEdge.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('mouseup', handlePointerUp);
+      window.removeEventListener('touchmove', handlePointerMove);
+      window.removeEventListener('touchend', handlePointerUp);
+
+      const x = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as MouseEvent).clientX;
+      const widthFromRight = window.innerWidth - x;
+      if (widthFromRight < 160) {
+        setIsAskPanelOpen(false);
+      } else {
+        setIsAskPanelOpen(true);
+      }
+    };
+
+    window.addEventListener('mousemove', handlePointerMove, { passive: false });
+    window.addEventListener('mouseup', handlePointerUp);
+    window.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
   }, []);
 
   // Handle "Explain this file"
@@ -633,33 +691,73 @@ export function WorkspacePage() {
         </main>
 
         {/* Resizable Divider & Ask Panel (when active tab is not already fullscreen ask) */}
-        {activeTab !== 'ask' && isAskPanelOpen && analysis && (
-          <>
-            <ResizableDivider onResize={handleResizeAsk} />
+        {activeTab !== 'ask' && analysis && (
+          isAskPanelOpen ? (
+            <>
+              <ResizableDivider onResize={handleResizeAsk} />
+              <div
+                style={{ width: `${askPanelWidth}px`, minWidth: '44px' }}
+                className="hidden lg:flex h-full shrink-0 overflow-hidden transition-all duration-75"
+              >
+                <AskPanel
+                  key={analysis.metadata.fullName}
+                  analysis={analysis}
+                  files={files}
+                  fileContents={fileContents}
+                  selectedFile={selectedFile}
+                  onOpenFile={(path) => {
+                    setSelectedFile(path);
+                    setActiveTab('files');
+                  }}
+                  onClose={() => setIsAskPanelOpen(false)}
+                  onOpenSettings={() => setIsSettingsOpen(true)}
+                  initialPrompt={explainPrompt}
+                  onClearInitialPrompt={() => setExplainPrompt(null)}
+                  dependencies={dependencies}
+                  databaseSchema={databaseSchema}
+                  securityFindings={securityFindings}
+                />
+              </div>
+            </>
+          ) : (
+            /* Closed State: Sleek, draggable vertical rail to pull chat open from the right */
             <div
-              style={{ width: `${askPanelWidth}px`, minWidth: '44px' }}
-              className="hidden lg:flex h-full shrink-0 overflow-hidden transition-all duration-200"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                startDragChatEdge(e.clientX);
+              }}
+              onTouchStart={(e) => {
+                if (e.touches[0]) startDragChatEdge(e.touches[0].clientX);
+              }}
+              className="group relative h-full w-4 hover:w-6 bg-white hover:bg-zinc-50 border-l border-zinc-200 cursor-col-resize select-none shrink-0 transition-all flex flex-col items-center justify-center z-20"
+              title="Drag left or click to open Ask DomoScope Chat"
             >
-              <AskPanel
-                key={analysis.metadata.fullName}
-                analysis={analysis}
-                files={files}
-                fileContents={fileContents}
-                selectedFile={selectedFile}
-                onOpenFile={(path) => {
-                  setSelectedFile(path);
-                  setActiveTab('files');
+              {/* Grab Bar Indicator */}
+              <div className="w-1 h-14 rounded-full bg-zinc-300 group-hover:bg-zinc-900 group-hover:h-20 transition-all" />
+
+              {/* Floating Tab Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAskPanelOpen(true);
                 }}
-                onClose={() => setIsAskPanelOpen(false)}
-                onOpenSettings={() => setIsSettingsOpen(true)}
-                initialPrompt={explainPrompt}
-                onClearInitialPrompt={() => setExplainPrompt(null)}
-                dependencies={dependencies}
-                databaseSchema={databaseSchema}
-                securityFindings={securityFindings}
-              />
+                className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center py-2.5 px-1.5 rounded-l-xl bg-zinc-900 text-white shadow-md border border-r-0 border-zinc-800 transition-transform group-hover:-translate-x-1 cursor-pointer"
+                title="Click or drag left to open Chat"
+              >
+                <div className="flex flex-col items-center gap-1.5">
+                  <ChevronLeft className="w-3.5 h-3.5 text-zinc-300 group-hover:text-white animate-pulse" />
+                  <MessageSquare className="w-3.5 h-3.5 text-zinc-300" />
+                  <span
+                    className="text-[9.5px] font-mono tracking-wider text-zinc-300 uppercase select-none mt-1"
+                    style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                  >
+                    Chat
+                  </span>
+                </div>
+              </button>
             </div>
-          </>
+          )
         )}
       </div>
 
