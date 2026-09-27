@@ -30,6 +30,17 @@
   }
 }
 
+/* Polka dot gray texture */
+.bg-polka-pattern {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.12) 1.25px, transparent 1.25px);
+  background-size: 16px 16px;
+}
+
+.bg-polka-pattern-dark {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1.25px, transparent 1.25px);
+  background-size: 16px 16px;
+}
+
 /* Custom Grayscale Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

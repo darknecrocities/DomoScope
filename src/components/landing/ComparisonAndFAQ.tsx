@@ -80,9 +80,9 @@ export function ComparisonAndFAQ() {
         </p>
       </div>
 
-      {/* Comparison Table */}
-      <div className="bg-white border border-zinc-200 rounded-xl shadow-xs overflow-hidden mb-20">
-        <table className="w-full text-left border-collapse">
+      {/* Comparison Table (Scrollable on small mobile devices) */}
+      <div className="bg-white border border-zinc-200 rounded-xl shadow-xs overflow-x-auto mb-20">
+        <table className="w-full min-w-[540px] text-left border-collapse">
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50 text-[11px] font-mono text-zinc-500 uppercase tracking-wider">
               <th className="py-3 px-5">Capability</th>

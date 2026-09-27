@@ -189,9 +189,9 @@ export function VerticalCarousel() {
         </p>
       </div>
 
-      {/* 4-Column Alternating Vertical Marquee Stage */}
-      <div className="relative h-[540px] w-full overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_90%,transparent)]">
-        <div className="grid grid-cols-4 gap-2 sm:gap-3 xl:gap-4 h-full">
+      {/* 4-Column Alternating Vertical Marquee Stage (Responsive: 2 on mobile, 3 on sm, 4 on md+) */}
+      <div className="relative h-[480px] sm:h-[540px] w-full overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_90%,transparent)]">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 xl:gap-4 h-full">
           {/* Column 1 - Scrolling UP */}
           <div className="flex flex-col gap-2.5 sm:gap-3.5 animate-marquee-up hover:[animation-play-state:paused]">
             {col1.map((card, idx) => {
@@ -264,8 +264,8 @@ export function VerticalCarousel() {
             })}
           </div>
 
-          {/* Column 3 - Scrolling UP (Alternating) */}
-          <div className="flex flex-col gap-2.5 sm:gap-3.5 animate-marquee-up hover:[animation-play-state:paused]">
+          {/* Column 3 - Scrolling UP (Alternating, hidden on xs) */}
+          <div className="hidden sm:flex flex-col gap-2.5 sm:gap-3.5 animate-marquee-up hover:[animation-play-state:paused]">
             {col3.map((card, idx) => {
               const Icon = card.icon;
               const isSelected = activeCard === `col3-${idx}`;
@@ -300,8 +300,8 @@ export function VerticalCarousel() {
             })}
           </div>
 
-          {/* Column 4 - Scrolling DOWN (Alternating) */}
-          <div className="flex flex-col gap-2.5 sm:gap-3.5 animate-marquee-down hover:[animation-play-state:paused]">
+          {/* Column 4 - Scrolling DOWN (Alternating, hidden on xs and sm) */}
+          <div className="hidden md:flex flex-col gap-2.5 sm:gap-3.5 animate-marquee-down hover:[animation-play-state:paused]">
             {col4.map((card, idx) => {
               const Icon = card.icon;
               const isSelected = activeCard === `col4-${idx}`;
