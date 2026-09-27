@@ -480,8 +480,8 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
       {/* Normal White & Black theme with Agree button               */}
       {/* ========================================================== */}
       {showPrivacyModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-white border border-zinc-300 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md font-sans animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-white border border-zinc-300 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10 relative">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 bg-zinc-50">
               <div className="flex items-center gap-2.5">
