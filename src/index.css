@@ -107,6 +107,20 @@
   transition: opacity 0.3s ease;
 }
 
+/* Generative AI Cursor Pulse & Blink */
+@keyframes cursor-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-cursor {
+  animation: cursor-blink 0.75s infinite ease-in-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -114,3 +128,4 @@
     transition-duration: 0.01ms !important;
   }
 }
+
