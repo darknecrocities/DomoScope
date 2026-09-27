@@ -85,6 +85,104 @@ export function parseApiEndpoints(files: { path: string; content?: string }[]): 
     }
 
     // =========================================================================
+    // 2b. Vercel Serverless Functions (api/**/*.ts, api/**/*.js)
+    // =========================================================================
+    const vercelMatch = normPath.match(/^(?:api)\/(.+?)\.[jt]sx?$/i);
+    if (vercelMatch && !nextAppMatch && !nextPagesMatch) {
+      const routePath = '/api/' + vercelMatch[1].replace(/\[([^\]]+)\]/g, ':$1');
+      addEndpoint({
+        method: 'ALL',
+        path: routePath,
+        file: normPath,
+        line: 1,
+        framework: 'vercel-serverless',
+        cloudService: 'Vercel',
+        summary: `Vercel Serverless Endpoint (${routePath})`,
+      });
+    }
+
+    // =========================================================================
+    // 2c. Supabase Edge Functions (supabase/functions/**/index.ts)
+    // =========================================================================
+    const supabaseMatch = normPath.match(/(?:^|\/)supabase\/functions\/([^/]+)(?:\/index)?\.[jt]sx?$/i);
+    if (supabaseMatch) {
+      const funcName = supabaseMatch[1];
+      addEndpoint({
+        method: 'POST',
+        path: `/functions/v1/${funcName}`,
+        file: normPath,
+        line: 1,
+        framework: 'supabase',
+        cloudService: 'Supabase',
+        summary: `Supabase Edge Function: ${funcName}`,
+      });
+    }
+
+    // =========================================================================
+    // 2d. Cloudflare Pages & Workers Functions (functions/api/**, _worker.js)
+    // =========================================================================
+    const cfPagesMatch = normPath.match(/(?:^|\/)functions\/(api\/.+?)\.[jt]sx?$/i);
+    if (cfPagesMatch) {
+      const routePath = '/' + cfPagesMatch[1].replace(/\[([^\]]+)\]/g, ':$1');
+      addEndpoint({
+        method: 'ALL',
+        path: routePath,
+        file: normPath,
+        line: 1,
+        framework: 'cloudflare-worker',
+        cloudService: 'Cloudflare',
+        summary: `Cloudflare Pages API Route (${routePath})`,
+      });
+    } else if (normPath === '_worker.js' || normPath === '_worker.ts' || (content.includes('export default') && content.includes('fetch(') && content.includes('env'))) {
+      addEndpoint({
+        method: 'ALL',
+        path: '/*',
+        file: normPath,
+        line: 1,
+        framework: 'cloudflare-worker',
+        cloudService: 'Cloudflare',
+        summary: 'Cloudflare Worker Catch-All Edge Dispatcher',
+      });
+    }
+
+    // =========================================================================
+    // 2e. AWS Lambda Handlers (exports.handler, export const handler)
+    // =========================================================================
+    if (
+      (content.includes('exports.handler =') || content.match(/export\s+const\s+handler\s*=/)) &&
+      !normPath.includes('test')
+    ) {
+      const cleanName = normPath.split('/').pop()?.split('.')[0] || 'handler';
+      addEndpoint({
+        method: 'ALL',
+        path: `/lambda/${cleanName}`,
+        file: normPath,
+        line: 1,
+        framework: 'aws-lambda',
+        cloudService: 'AWS Lambda',
+        summary: `AWS Lambda Serverless Function: ${cleanName}`,
+      });
+    }
+
+    // =========================================================================
+    // 2f. Firebase Cloud Functions (onRequest, onCall)
+    // =========================================================================
+    if (content.includes('functions.https') || content.includes('onRequest(') || content.includes('onCall(')) {
+      const fnMatches = content.matchAll(/(?:export\s+const\s+|exports\.)([a-zA-Z0-9_]+)\s*=\s*(?:functions\.(?:region\([^)]+\)\.)?https\.(?:onRequest|onCall)|onRequest|onCall)\(/g);
+      for (const m of fnMatches) {
+        addEndpoint({
+          method: 'POST',
+          path: `/api/${m[1]}`,
+          file: normPath,
+          line: 1,
+          framework: 'firebase',
+          cloudService: 'Firebase',
+          summary: `Firebase HTTPS Function: ${m[1]}`,
+        });
+      }
+    }
+
+    // =========================================================================
     // 3. NestJS Controllers (@Controller + @Get, @Post, etc.)
     // =========================================================================
     if (content.includes('@Controller')) {

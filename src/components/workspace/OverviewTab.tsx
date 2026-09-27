@@ -23,11 +23,16 @@ import {
   Smartphone,
   Monitor,
   Server,
+  Cloud,
+  HardDrive,
+  Key,
+  ShieldCheck,
 } from 'lucide-react';
 import { RepoAnalysis, DatabaseSchema, RepoDependency, SecurityFinding, BranchInfo, RepoFile } from '../../types';
 import { WorkspaceTab } from '../layout/Sidebar';
 import { detectFrameworks } from '../../services/frameworkDetector';
 import { detectAppType } from '../../services/appTypeDetector';
+import { detectCloudServices } from '../../services/cloudServicesDetector';
 
 interface OverviewTabProps {
   analysis: RepoAnalysis;
@@ -65,6 +70,11 @@ export function OverviewTab({
   // Detect app type / archetype (Web App, ML, Mobile, Desktop, CLI, etc.)
   const appTypeResult = useMemo(() => {
     return detectAppType(files || analysis.files, fileContents, dependencies);
+  }, [files, analysis.files, fileContents, dependencies]);
+
+  // Detect Cloud, BaaS, Infrastructure, and Storage Systems
+  const cloudResult = useMemo(() => {
+    return detectCloudServices(files || analysis.files, fileContents, dependencies);
   }, [files, analysis.files, fileContents, dependencies]);
 
   // Architectural Readiness Scorecard & Metrics
@@ -369,6 +379,176 @@ export function OverviewTab({
           </div>
         );
       })()}
+
+      {/* ===================================================================== */}
+      {/* 1c. CLOUD SERVICES, INFRASTRUCTURE & STORAGE ARCHITECTURE             */}
+      {/* ===================================================================== */}
+      <div className="p-6 rounded-2xl border border-zinc-200 bg-white shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-100">
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center shadow-xs shrink-0 mt-0.5 sm:mt-0">
+              <Cloud className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                Infrastructure & Cloud Services
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-zinc-950 tracking-tight">
+                  {cloudResult.hasCloudServices
+                    ? `${cloudResult.services.map((s) => s.name.split(' ')[0]).join(' + ')} Cloud Stack`
+                    : 'Self-Contained / Local Client Architecture'}
+                </h2>
+                <span className="px-2.5 py-0.5 text-[11px] font-mono font-bold bg-zinc-900 text-white rounded-md whitespace-nowrap shadow-2xs">
+                  {cloudResult.hasCloudServices ? `${cloudResult.services.length} Services` : 'Zero-Cloud'}
+                </span>
+                <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-zinc-100 border border-zinc-200 text-zinc-700 rounded-md whitespace-nowrap">
+                  {cloudResult.storageSystems.length} Storage System{cloudResult.storageSystems.length === 1 ? '' : 's'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-mono text-zinc-700 bg-zinc-50 border border-zinc-200 px-3 py-1.5 rounded-xl whitespace-nowrap self-start sm:self-auto shrink-0 shadow-2xs">
+            <HardDrive className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
+            <span className="font-semibold text-zinc-900">
+              {cloudResult.hasCloudServices ? `${cloudResult.providers.join(', ').toUpperCase()}` : 'LOCAL SANDBOX'}
+            </span>
+          </div>
+        </div>
+
+        {/* Cloud Services Grid if detected */}
+        {cloudResult.hasCloudServices ? (
+          <div className="space-y-4">
+            <div>
+              <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-400 block mb-2">
+                Detected Cloud & BaaS Platforms
+              </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {cloudResult.services.map((svc) => (
+                  <div
+                    key={svc.id}
+                    className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/70 hover:bg-zinc-50 transition-all space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 bg-zinc-900 text-white rounded-lg">
+                          <Cloud className="w-3.5 h-3.5" />
+                        </span>
+                        <h4 className="text-xs font-extrabold text-zinc-900">{svc.name}</h4>
+                      </div>
+                      <span className="text-[10px] font-mono font-semibold bg-white border border-zinc-200 px-2 py-0.5 rounded-md text-zinc-700">
+                        {svc.badge}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-zinc-600 leading-relaxed font-sans">{svc.description}</p>
+
+                    {/* Features list */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {svc.detectedFeatures.map((feat) => (
+                        <span
+                          key={feat}
+                          className="px-2 py-0.5 rounded-md bg-white border border-zinc-200 text-[11px] font-mono text-zinc-800 flex items-center gap-1 shadow-2xs"
+                        >
+                          <CheckCircle2 className="w-2.5 h-2.5 text-zinc-900" />
+                          <span>{feat}</span>
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Evidence */}
+                    {svc.evidence.length > 0 && (
+                      <div className="pt-2 border-t border-zinc-200/60 text-[10px] font-mono text-zinc-500 truncate">
+                        <span className="font-semibold text-zinc-700">Signal: </span>
+                        <span>{svc.evidence.join(' · ')}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Storage Systems & Buckets Section */}
+            {cloudResult.storageSystems.length > 0 && (
+              <div className="pt-2">
+                <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-400 block mb-2">
+                  Storage Systems, Buckets & Databases
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {cloudResult.storageSystems.map((st, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 bg-white border border-zinc-200 rounded-xl space-y-1 shadow-2xs hover:border-zinc-300 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                          <HardDrive className="w-3 h-3 text-zinc-700" />
+                          <span>{st.name}</span>
+                        </span>
+                        <span className="text-[9px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-700 border border-zinc-200">
+                          {st.type.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-600 line-clamp-2">{st.description}</p>
+                      <div className="text-[10px] font-mono text-zinc-400 pt-1">
+                        Provider: <span className="text-zinc-700 font-semibold">{st.provider}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Serverless & Auth summary pills */}
+            <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-mono">
+              {cloudResult.serverlessRuntimes.length > 0 && (
+                <div className="flex items-center gap-1.5 text-zinc-700">
+                  <Server className="w-3.5 h-3.5 text-zinc-900" />
+                  <span className="text-zinc-500">Compute:</span>
+                  <span className="font-bold text-zinc-900">{cloudResult.serverlessRuntimes.join(' · ')}</span>
+                </div>
+              )}
+              {cloudResult.authProviders.length > 0 && (
+                <div className="flex items-center gap-1.5 text-zinc-700">
+                  <Key className="w-3.5 h-3.5 text-zinc-900" />
+                  <span className="text-zinc-500">Auth:</span>
+                  <span className="font-bold text-zinc-900">{cloudResult.authProviders.join(' · ')}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Local / Zero-Cloud Runtime Details */
+          <div className="space-y-3">
+            <p className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-sans">
+              This codebase operates with a <strong>Zero-Cloud, client-first architecture</strong>. It requires no external cloud accounts (such as AWS, Google Cloud, Azure, Supabase, or Firebase) to run, ensuring complete data sovereignty, zero egress latency, and full local testability.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="p-3.5 rounded-xl border border-zinc-200 bg-zinc-50 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900">
+                  <HardDrive className="w-3.5 h-3.5 text-zinc-900" />
+                  <span>Client Storage & Caching</span>
+                </div>
+                <p className="text-[11px] text-zinc-600 leading-relaxed">
+                  Persistent data is cached locally within the browser sandbox (IndexedDB / LocalStorage) or local filesystem without sending proprietary code or user records to external cloud databases.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-zinc-200 bg-zinc-50 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900">
+                  <ShieldCheck className="w-3.5 h-3.5 text-zinc-900" />
+                  <span>Privacy & Zero Data Egress</span>
+                </div>
+                <p className="text-[11px] text-zinc-600 leading-relaxed">
+                  Repository inspection, AST parsing, and architectural graphs are computed entirely within the client machine without third-party cloud data exposure.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ===================================================================== */}
       {/* 2. REPOSITORY HEALTH & QUALITY SCORE                                  */}

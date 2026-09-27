@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Layers,
   Bot,
@@ -12,6 +12,10 @@ import {
   Printer,
   Sparkles,
   FileCode,
+  Maximize2,
+  Minimize2,
+  WrapText,
+  AlignLeft,
 } from 'lucide-react';
 import {
   RepoAnalysis,
@@ -46,17 +50,25 @@ export function ReverseEngineerTab({
   const [activeCategory, setActiveCategory] =
     useState<ReverseEngineerCategory>('fullstack');
   const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [wordWrap, setWordWrap] = useState(true);
 
   // Generate specification markdown for the current selection
-  const specMarkdown = generateReverseEngineerSpec(
-    activeCategory,
-    repoName,
-    analysis,
-    files,
-    fileContents,
-    databaseSchema,
-    dependencies
-  );
+  const specMarkdown = useMemo(() => {
+    return generateReverseEngineerSpec(
+      activeCategory,
+      repoName,
+      analysis,
+      files,
+      fileContents,
+      databaseSchema,
+      dependencies
+    );
+  }, [activeCategory, repoName, analysis, files, fileContents, databaseSchema, dependencies]);
+
+  const lineCount = useMemo(() => {
+    return specMarkdown.split('\n').length;
+  }, [specMarkdown]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(specMarkdown);
@@ -83,6 +95,7 @@ export function ReverseEngineerTab({
       repoName,
       analysis,
       files,
+      fileContents,
       databaseSchema,
       dependencies
     );
@@ -145,7 +158,7 @@ export function ReverseEngineerTab({
   };
 
   return (
-    <div className="h-full flex flex-col bg-zinc-50 overflow-y-auto p-4 md:p-6 space-y-6 font-sans select-none">
+    <div className="min-h-full flex flex-col bg-zinc-50 p-4 md:p-6 space-y-6 font-sans">
       {/* Top Banner Header */}
       <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -170,7 +183,7 @@ export function ReverseEngineerTab({
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleDownloadSkillPack}
-            className="flex items-center gap-2 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
             title="Download SKILL.md for AI agents"
           >
             <Bot className="w-4 h-4" />
@@ -179,7 +192,7 @@ export function ReverseEngineerTab({
 
           <button
             onClick={handleDownloadMd}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-300 hover:border-zinc-900 text-zinc-900 text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-zinc-300 hover:border-zinc-900 text-zinc-900 text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
             title="Download selected spec as .md"
           >
             <Download className="w-4 h-4" />
@@ -236,20 +249,47 @@ export function ReverseEngineerTab({
       </div>
 
       {/* Markdown Document Viewer & Controls */}
-      <div className="bg-white border border-zinc-200 rounded-2xl shadow-xs overflow-hidden flex flex-col flex-1">
+      <div className="bg-white border border-zinc-200 rounded-2xl shadow-xs overflow-hidden flex flex-col">
         {/* Toolbar Bar */}
         <div className="px-5 py-3.5 border-b border-zinc-200 bg-zinc-50 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <FileCode className="w-4 h-4 text-zinc-700" />
             <span className="text-xs font-bold text-zinc-900">
               {REVERSE_CATEGORIES.find((c) => c.id === activeCategory)?.title}
             </span>
-            <span className="text-[11px] font-mono text-zinc-500 bg-zinc-200 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-mono text-zinc-600 bg-zinc-200 px-2 py-0.5 rounded-md font-semibold">
               {activeCategory === 'agent_skill' ? 'SKILL.md' : `${activeCategory}_spec.md`}
+            </span>
+            <span className="text-[11px] font-mono text-zinc-500 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-md">
+              {lineCount.toLocaleString()} lines · Ultra-Detailed
             </span>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Word wrap toggle */}
+            <button
+              onClick={() => setWordWrap(!wordWrap)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer ${
+                wordWrap
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : 'bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400'
+              }`}
+              title={wordWrap ? 'Disable Word Wrap' : 'Enable Word Wrap'}
+            >
+              {wordWrap ? <WrapText className="w-3.5 h-3.5" /> : <AlignLeft className="w-3.5 h-3.5" />}
+              <span>{wordWrap ? 'Wrap On' : 'Wrap Off'}</span>
+            </button>
+
+            {/* Expand / Minimize toggle */}
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-zinc-300 hover:border-zinc-900 text-zinc-800 text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer"
+              title={isExpanded ? 'Normal View' : 'Expand Height'}
+            >
+              {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
+            </button>
+
             <button
               onClick={handleCopy}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-zinc-300 hover:border-zinc-900 text-zinc-800 text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer"
@@ -286,9 +326,15 @@ export function ReverseEngineerTab({
           </div>
         </div>
 
-        {/* Spec Code Container */}
-        <div className="p-6 overflow-x-auto bg-zinc-950 text-zinc-100 font-mono text-xs leading-relaxed flex-1 selection:bg-zinc-700 selection:text-white">
-          <pre className="whitespace-pre-wrap break-words">{specMarkdown}</pre>
+        {/* Scrollable Spec Code Container */}
+        <div
+          className={`p-6 overflow-y-auto overflow-x-auto bg-zinc-950 text-zinc-100 font-mono text-xs leading-relaxed selection:bg-zinc-700 selection:text-white transition-all duration-200 scrollbar-thin ${
+            isExpanded ? 'h-[85vh]' : 'h-[680px] lg:h-[780px]'
+          }`}
+        >
+          <pre className={wordWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre'}>
+            {specMarkdown}
+          </pre>
         </div>
       </div>
     </div>

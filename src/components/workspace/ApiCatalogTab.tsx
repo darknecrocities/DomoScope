@@ -12,6 +12,7 @@ interface ApiCatalogTabProps {
 export const ApiCatalogTab: React.FC<ApiCatalogTabProps> = ({ fileContents, files, onOpenFile }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
+  const [serviceFilter, setServiceFilter] = useState<string>('all');
 
   const filesArray = useMemo(() => {
     const entries = new Map<string, string>(fileContents);
@@ -29,16 +30,59 @@ export const ApiCatalogTab: React.FC<ApiCatalogTabProps> = ({ fileContents, file
     return parseApiEndpoints(filesArray);
   }, [filesArray]);
 
+  // Aggregate cloud breakdown
+  const cloudBreakdown = useMemo(() => {
+    let supabaseCount = 0;
+    let cloudflareCount = 0;
+    let awsCount = 0;
+    let firebaseCount = 0;
+    let vercelCount = 0;
+
+    for (const ep of endpoints) {
+      const prov = (ep.cloudService || ep.framework || '').toLowerCase();
+      if (prov.includes('supabase')) supabaseCount++;
+      else if (prov.includes('cloudflare')) cloudflareCount++;
+      else if (prov.includes('aws') || prov.includes('lambda')) awsCount++;
+      else if (prov.includes('firebase')) firebaseCount++;
+      else if (prov.includes('vercel')) vercelCount++;
+    }
+
+    return {
+      supabaseCount,
+      cloudflareCount,
+      awsCount,
+      firebaseCount,
+      vercelCount,
+      hasCloudEndpoints: supabaseCount + cloudflareCount + awsCount + firebaseCount + vercelCount > 0,
+    };
+  }, [endpoints]);
+
   const filteredEndpoints = useMemo(() => {
     return endpoints.filter((ep) => {
       const matchesSearch =
         ep.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ep.file.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (ep.summary && ep.summary.toLowerCase().includes(searchTerm.toLowerCase()));
+        (ep.summary && ep.summary.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (ep.cloudService && ep.cloudService.toLowerCase().includes(searchTerm.toLowerCase()));
+
       const matchesMethod = methodFilter === 'all' || ep.method === methodFilter;
-      return matchesSearch && matchesMethod;
+
+      let matchesService = true;
+      if (serviceFilter !== 'all') {
+        const prov = (ep.cloudService || ep.framework || '').toLowerCase();
+        if (serviceFilter === 'supabase') matchesService = prov.includes('supabase');
+        else if (serviceFilter === 'cloudflare') matchesService = prov.includes('cloudflare');
+        else if (serviceFilter === 'aws') matchesService = prov.includes('aws') || prov.includes('lambda');
+        else if (serviceFilter === 'firebase') matchesService = prov.includes('firebase');
+        else if (serviceFilter === 'vercel') matchesService = prov.includes('vercel');
+        else if (serviceFilter === 'standard') {
+          matchesService = !ep.cloudService && !['supabase', 'cloudflare-worker', 'aws-lambda', 'firebase', 'vercel-serverless'].includes(ep.framework);
+        }
+      }
+
+      return matchesSearch && matchesMethod && matchesService;
     });
-  }, [endpoints, searchTerm, methodFilter]);
+  }, [endpoints, searchTerm, methodFilter, serviceFilter]);
 
   const getMethodBadgeColor = (method: ApiEndpoint['method']) => {
     switch (method) {
@@ -106,8 +150,89 @@ export const ApiCatalogTab: React.FC<ApiCatalogTabProps> = ({ fileContents, file
             <option value="QUERY">QUERY (GraphQL)</option>
             <option value="ALL">ALL (Wildcard / Handler)</option>
           </select>
+
+          <select
+            value={serviceFilter}
+            onChange={(e) => setServiceFilter(e.target.value)}
+            className="px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs sm:text-sm font-medium text-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900 shadow-xs cursor-pointer font-mono"
+          >
+            <option value="all">All Services</option>
+            <option value="supabase">Supabase</option>
+            <option value="cloudflare">Cloudflare Workers</option>
+            <option value="aws">AWS Lambda</option>
+            <option value="firebase">Firebase Functions</option>
+            <option value="vercel">Vercel Serverless</option>
+            <option value="standard">Standard Web Routes</option>
+          </select>
         </div>
       </div>
+
+      {/* Cloud Services Summary Banner */}
+      {cloudBreakdown.hasCloudEndpoints && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs font-mono font-bold text-zinc-500 uppercase tracking-wider">Cloud Runtimes:</span>
+          {cloudBreakdown.supabaseCount > 0 && (
+            <button
+              onClick={() => setServiceFilter(serviceFilter === 'supabase' ? 'all' : 'supabase')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
+                serviceFilter === 'supabase'
+                  ? 'bg-zinc-900 text-white border-zinc-900 font-bold'
+                  : 'bg-white text-zinc-800 border-zinc-200 hover:border-zinc-400'
+              }`}
+            >
+              Supabase ({cloudBreakdown.supabaseCount})
+            </button>
+          )}
+          {cloudBreakdown.cloudflareCount > 0 && (
+            <button
+              onClick={() => setServiceFilter(serviceFilter === 'cloudflare' ? 'all' : 'cloudflare')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
+                serviceFilter === 'cloudflare'
+                  ? 'bg-zinc-900 text-white border-zinc-900 font-bold'
+                  : 'bg-white text-zinc-800 border-zinc-200 hover:border-zinc-400'
+              }`}
+            >
+              Cloudflare ({cloudBreakdown.cloudflareCount})
+            </button>
+          )}
+          {cloudBreakdown.awsCount > 0 && (
+            <button
+              onClick={() => setServiceFilter(serviceFilter === 'aws' ? 'all' : 'aws')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
+                serviceFilter === 'aws'
+                  ? 'bg-zinc-900 text-white border-zinc-900 font-bold'
+                  : 'bg-white text-zinc-800 border-zinc-200 hover:border-zinc-400'
+              }`}
+            >
+              AWS Lambda ({cloudBreakdown.awsCount})
+            </button>
+          )}
+          {cloudBreakdown.firebaseCount > 0 && (
+            <button
+              onClick={() => setServiceFilter(serviceFilter === 'firebase' ? 'all' : 'firebase')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
+                serviceFilter === 'firebase'
+                  ? 'bg-zinc-900 text-white border-zinc-900 font-bold'
+                  : 'bg-white text-zinc-800 border-zinc-200 hover:border-zinc-400'
+              }`}
+            >
+              Firebase ({cloudBreakdown.firebaseCount})
+            </button>
+          )}
+          {cloudBreakdown.vercelCount > 0 && (
+            <button
+              onClick={() => setServiceFilter(serviceFilter === 'vercel' ? 'all' : 'vercel')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
+                serviceFilter === 'vercel'
+                  ? 'bg-zinc-900 text-white border-zinc-900 font-bold'
+                  : 'bg-white text-zinc-800 border-zinc-200 hover:border-zinc-400'
+              }`}
+            >
+              Vercel ({cloudBreakdown.vercelCount})
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Endpoint Table */}
       <div className="flex-1 bg-white border border-zinc-200 rounded-2xl shadow-xs overflow-hidden flex flex-col">
@@ -116,7 +241,7 @@ export const ApiCatalogTab: React.FC<ApiCatalogTabProps> = ({ fileContents, file
             <Globe className="w-12 h-12 text-zinc-300 mb-3 stroke-[1.5]" />
             <p className="text-zinc-800 font-semibold text-sm">No matching API endpoints found</p>
             <p className="text-zinc-500 text-xs mt-1 max-w-sm">
-              DomoScope indexes REST routes, Next.js routes, FastAPI decorators, Express routers, and client HTTP calls.
+              DomoScope indexes REST routes, Next.js routes, FastAPI decorators, Express routers, Supabase, Cloudflare, and AWS handlers.
             </p>
           </div>
         ) : (
@@ -125,8 +250,8 @@ export const ApiCatalogTab: React.FC<ApiCatalogTabProps> = ({ fileContents, file
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-200 text-xs uppercase font-semibold text-zinc-600 tracking-wider font-mono">
                   <th className="py-3 px-6">Method</th>
-                  <th className="py-3 px-6">Endpoint Path</th>
-                  <th className="py-3 px-6">Framework / Type</th>
+                  <th className="py-3 px-6">Endpoint Path & Details</th>
+                  <th className="py-3 px-6">Service / Framework</th>
                   <th className="py-3 px-6">Source File Location</th>
                   <th className="py-3 px-6 text-right">Action</th>
                 </tr>
@@ -143,13 +268,23 @@ export const ApiCatalogTab: React.FC<ApiCatalogTabProps> = ({ fileContents, file
                         {ep.method}
                       </span>
                     </td>
-                    <td className="py-3 px-6 font-mono font-semibold text-zinc-900">
-                      {ep.path}
+                    <td className="py-3 px-6">
+                      <div className="font-mono font-semibold text-zinc-900">{ep.path}</div>
+                      {ep.summary && (
+                        <div className="text-[11px] text-zinc-500 font-sans mt-0.5">{ep.summary}</div>
+                      )}
                     </td>
                     <td className="py-3 px-6 capitalize text-zinc-600 font-medium">
-                      <span className="bg-zinc-100 border border-zinc-200 text-zinc-800 px-2 py-0.5 rounded text-xs font-mono">
-                        {ep.framework}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {ep.cloudService && (
+                          <span className="bg-zinc-900 text-white font-mono text-[11px] px-2 py-0.5 rounded font-bold shadow-2xs">
+                            {ep.cloudService}
+                          </span>
+                        )}
+                        <span className="bg-zinc-100 border border-zinc-200 text-zinc-800 px-2 py-0.5 rounded text-xs font-mono">
+                          {ep.framework}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3 px-6 text-zinc-500 font-mono text-xs">
                       <div className="flex items-center gap-1.5">

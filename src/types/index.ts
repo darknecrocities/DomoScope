@@ -222,10 +222,19 @@ export interface ApiEndpoint {
     | 'nestjs'
     | 'django'
     | 'laravel'
+    | 'supabase'
+    | 'firebase'
+    | 'aws-lambda'
+    | 'cloudflare-worker'
+    | 'azure-function'
+    | 'vercel-serverless'
     | 'client-http'
     | 'client-fetch'
-    | 'discovered-route';
+    | 'discovered-route'
+    | string;
   summary?: string;
+  cloudService?: string;
+  storageType?: string;
 }
 
 export interface CallGraphNode {

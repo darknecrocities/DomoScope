@@ -137,4 +137,32 @@ describe('API Route Catalog Service', () => {
     expect(endpoints.some((e) => e.file.includes('products'))).toBe(true);
     expect(endpoints.some((e) => e.file.includes('orders'))).toBe(true);
   });
+
+  it('extracts Cloud & Serverless endpoints (Supabase, Cloudflare, AWS Lambda, Vercel)', () => {
+    const files = [
+      {
+        path: 'supabase/functions/send-email/index.ts',
+        content: `Deno.serve(async (req) => { return new Response("ok"); });`,
+      },
+      {
+        path: 'functions/api/auth.ts',
+        content: `export const onRequest = async () => new Response("ok");`,
+      },
+      {
+        path: 'src/handlers/processPayment.ts',
+        content: `export const handler = async (event) => { return { statusCode: 200 }; };`,
+      },
+      {
+        path: 'api/chat.ts',
+        content: `export default async function handler(req, res) { res.status(200).json({}); }`,
+      },
+    ];
+
+    const endpoints = parseApiEndpoints(files);
+    expect(endpoints.some((e) => e.framework === 'supabase' && e.path === '/functions/v1/send-email')).toBe(true);
+    expect(endpoints.some((e) => e.framework === 'cloudflare-worker' && e.path === '/api/auth')).toBe(true);
+    expect(endpoints.some((e) => e.framework === 'aws-lambda' && e.path === '/lambda/processPayment')).toBe(true);
+    expect(endpoints.some((e) => e.framework === 'vercel-serverless' && e.path === '/api/chat')).toBe(true);
+  });
 });
+
