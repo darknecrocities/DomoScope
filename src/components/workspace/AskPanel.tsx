@@ -265,12 +265,34 @@ export function AskPanel({
     }
   }, [initialPrompt]);
 
-  // Only initialize optional WebLLM weights if user explicitly chose an MLC neural model
+  // Automatically install/load the local WebLLM model right away on mount for supported devices
+  useEffect(() => {
+    let isMounted = true;
+    if (WebLLMService.isWebGPUSupported()) {
+      WebLLMService.initModel((p) => {
+        if (isMounted) setInitProgress(p);
+      })
+        .then((success) => {
+          if (isMounted && success) {
+            setInitProgress({ text: 'Local neural model installed & ready', progress: 100 });
+            setTimeout(() => {
+              if (isMounted) setInitProgress(null);
+            }, 3500);
+          }
+        })
+        .catch(() => {
+          if (isMounted) setInitProgress(null);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Also trigger if user explicitly switches to an MLC neural model
   useEffect(() => {
     if (aiConfig.selectedModel.includes('MLC') && WebLLMService.isWebGPUSupported()) {
       WebLLMService.initModel((p) => setInitProgress(p)).catch(() => {});
-    } else {
-      setInitProgress(null);
     }
   }, [aiConfig.selectedModel]);
 

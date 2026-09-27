@@ -49,19 +49,13 @@ export const DEFAULT_AI_MODELS: AIModelOption[] = [
     provider: 'gemini',
     description: 'Ultra-fast, budget-friendly model for instant repository question answering.',
   },
-  {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
-    provider: 'gemini',
-    description: 'Fast multimodal general assistant for repository queries.',
-  },
 
-  // ── Anthropic Claude — Latest Roster ─────────────────────────────────────
+  // ── Anthropic Claude — Latest Flagship Roster ─────────────────────────────
   {
     id: 'claude-3-7-sonnet-20250219',
     name: 'Claude 3.7 Sonnet (Latest)',
     provider: 'anthropic',
-    description: 'Anthropic hybrid reasoning model with state-of-the-art coding abilities.',
+    description: 'Anthropic flagship hybrid reasoning model with state-of-the-art coding abilities.',
     isDefault: true,
   },
   {
@@ -69,12 +63,6 @@ export const DEFAULT_AI_MODELS: AIModelOption[] = [
     name: 'Claude 3.5 Sonnet',
     provider: 'anthropic',
     description: 'Balanced model for complex architecture analysis and code generation.',
-  },
-  {
-    id: 'claude-3-5-haiku-20241022',
-    name: 'Claude 3.5 Haiku',
-    provider: 'anthropic',
-    description: 'Ultra-fast compact model optimized for high-speed repository Q&A.',
   },
 
   // ── OpenAI GPT & Reasoning Roster ────────────────────────────────────────
@@ -144,7 +132,11 @@ export const ModelFetcherService = {
           ) {
             return false;
           }
-          return id.startsWith('gpt-4') || id.startsWith('gpt-3.5') || id.startsWith('o1') || id.startsWith('o3');
+          return (
+            (id.startsWith('gpt-4') && !id.includes('vision-preview')) ||
+            id.startsWith('o1') ||
+            id.startsWith('o3')
+          );
         });
 
       // Sort newest / reasoning models first
@@ -192,7 +184,7 @@ export const ModelFetcherService = {
       const data = await res.json();
       const rawList: Array<{ name: string; displayName?: string; description?: string }> = data.models || [];
 
-      // Filter only generative chat models; filter out deprecated 1.0/1.5 if newer models present
+      // Filter only generative chat models; filter out deprecated 1.0/1.5/2.0
       const geminiModels = rawList
         .filter((m) => m.name.includes('gemini') && !m.name.includes('embedding') && !m.name.includes('aqa'))
         .map((m) => {
@@ -204,7 +196,7 @@ export const ModelFetcherService = {
             description: m.description || `Google Gemini model (${cleanId})`,
           };
         })
-        .filter((m) => !m.id.includes('1.5') && !m.id.includes('1.0')); // exclude deprecated 1.5
+        .filter((m) => !m.id.includes('1.5') && !m.id.includes('1.0') && !m.id.includes('2.0')); // exclude deprecated 1.0, 1.5, 2.0
 
       // Sort Gemini 3.x and 2.5 models to the top
       geminiModels.sort((a, b) => {
@@ -255,11 +247,10 @@ function formatModelName(id: string): string {
   if (id === 'gemini-2.5-pro') return 'Gemini 2.5 Pro (Deep Reasoning)';
   if (id === 'gemini-2.5-flash') return 'Gemini 2.5 Flash';
   if (id === 'gemini-2.5-flash-lite') return 'Gemini 2.5 Flash-Lite';
-  if (id === 'gemini-2.0-flash') return 'Gemini 2.0 Flash';
-  if (id === 'gpt-4o') return 'GPT-4o';
+  if (id === 'gpt-4o') return 'GPT-4o (Omni)';
   if (id === 'gpt-4o-mini') return 'GPT-4o Mini';
   if (id === 'gpt-4.5-preview') return 'GPT-4.5 Preview';
-  if (id === 'o3-mini') return 'o3-mini';
+  if (id === 'o3-mini') return 'o3-mini (Reasoning)';
   if (id === 'o1') return 'o1 Reasoning';
   return id
     .replace(/-/g, ' ')

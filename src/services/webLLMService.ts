@@ -1,4 +1,5 @@
 import { RepoAnalysis, RepoFile } from '../types';
+import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL } from './chatGuardrail';
 
 export interface LLMProgress {
   text: string;
@@ -59,11 +60,21 @@ export const WebLLMService = {
     fileContents: Map<string, string>,
     selectedFile?: string
   ): Promise<{ text: string; referencedFiles: string[] }> {
+    // ── Repository Scope Guardrail Check ──────────────────────────────────────
+    const guardrail = validateQuestionScope(question);
+    if (!guardrail.allowed) {
+      return {
+        text: guardrail.message || GUARDRAIL_REJECTION_MESSAGE,
+        referencedFiles: [],
+      };
+    }
+
     // If WebLLM neural engine is active, use it with an enriched prompt
     if (engine) {
       try {
         const context = buildContext(question, analysis, files, fileContents, selectedFile);
         const systemPrompt = `You are DomoScope Assistant, an expert software architect and code analyst embedded in a GitHub repository explorer.
+${SYSTEM_PROMPT_GUARDRAIL}
 
 You perform deep, detailed technical analysis of codebases. When answering questions:
 - Structure your response with clear sections using ## headings
