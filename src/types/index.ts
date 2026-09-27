@@ -200,6 +200,7 @@ export interface AIProviderConfig {
   openaiKey?: string;
   anthropicKey?: string;
   geminiKey?: string;
+  reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 export interface ApiEndpoint {

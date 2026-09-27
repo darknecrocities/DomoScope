@@ -211,10 +211,10 @@ export function AskPanel({
     {
       id: 'welcome',
       sender: 'assistant',
-      text: `Welcome to DomoScope Assistant. I inspect **${analysis.metadata.fullName}** directly from your repository files. What would you like to explore?`,
+      text: `Welcome to DomoScope Assistant. I inspect **${analysis.metadata.fullName}** directly in your browser with zero model installation required. Ask me anything about architecture, APIs, database schemas, or security!`,
       timestamp: Date.now(),
       referencedFiles: analysis.entryPoints.slice(0, 2),
-      modelName: 'Local Grounded Engine',
+      modelName: 'Direct Intelligent Engine',
     },
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -227,6 +227,7 @@ export function AskPanel({
   const [aiConfig, setAiConfig] = useState<AIProviderConfig>({
     provider: 'local',
     selectedModel: 'local-grounded',
+    reasoningEffort: 'medium',
   });
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
 
@@ -264,12 +265,14 @@ export function AskPanel({
     }
   }, [initialPrompt]);
 
-  // Try optional WebLLM preload in background if WebGPU available
+  // Only initialize optional WebLLM weights if user explicitly chose an MLC neural model
   useEffect(() => {
-    if (WebLLMService.isWebGPUSupported()) {
+    if (aiConfig.selectedModel.includes('MLC') && WebLLMService.isWebGPUSupported()) {
       WebLLMService.initModel((p) => setInitProgress(p)).catch(() => {});
+    } else {
+      setInitProgress(null);
     }
-  }, []);
+  }, [aiConfig.selectedModel]);
 
   const handleSelectModel = async (modelId: string) => {
     const model = AI_MODELS.find((m) => m.id === modelId);
@@ -413,12 +416,12 @@ export function AskPanel({
                     const groupModels = AI_MODELS.filter((m) => m.provider === prov);
                     const providerLabel =
                       prov === 'local'
-                        ? 'Local Engine (Free)'
+                        ? 'Local & Vercel Cloud (Zero-Install)'
+                        : prov === 'gemini'
+                        ? 'Google Gemini (Gemini 3.5 / 2.5)'
                         : prov === 'anthropic'
                         ? 'Anthropic Claude'
-                        : prov === 'gemini'
-                        ? 'Google Gemini'
-                        : 'OpenAI GPT';
+                        : 'OpenAI GPT & Reasoning';
 
                     return (
                       <div key={prov} className="py-1">

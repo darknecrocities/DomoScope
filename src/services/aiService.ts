@@ -10,6 +10,7 @@ export const AI_MODELS: AIModelOption[] = DEFAULT_AI_MODELS;
 const DEFAULT_CONFIG: AIProviderConfig = {
   provider: 'local',
   selectedModel: 'local-grounded',
+  reasoningEffort: 'medium',
 };
 
 export const AIService = {
@@ -189,25 +190,72 @@ CRITICAL SAFETY & REASONING RULES:
         securityFindings
       );
 
-    // 1. OpenAI Provider
+    // ── Vercel Serverless Function Check ──────────────────────────────────────
+    // If user selected Vercel Serverless AI or doesn't have client keys for a cloud provider,
+    // query /api/chat so Vercel environment variables (e.g. GEMINI_API_KEY) can power the answer directly.
+    const isVercelTarget =
+      config.selectedModel === 'vercel-serverless' ||
+      (config.provider === 'gemini' && !config.geminiKey) ||
+      (config.provider === 'openai' && !config.openaiKey) ||
+      (config.provider === 'anthropic' && !config.anthropicKey);
+
+    if (isVercelTarget) {
+      try {
+        const context = buildCtx();
+        const serverlessRes = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question,
+            context,
+            provider: config.provider === 'local' ? 'gemini' : config.provider,
+            model: config.selectedModel === 'vercel-serverless' ? 'gemini-2.5-flash' : config.selectedModel,
+            reasoningEffort: config.reasoningEffort || 'medium',
+          }),
+        });
+
+        if (serverlessRes.ok) {
+          const data = await serverlessRes.json();
+          if (!data.fallbackToLocal && data.text) {
+            return {
+              text: data.text,
+              referencedFiles: this.extractReferencedFiles(data.text, files),
+              modelUsed: `${data.modelUsed || 'Vercel Cloud AI'} (Serverless)`,
+            };
+          }
+        }
+      } catch {
+        // If /api/chat not found or offline (e.g. local dev), seamlessly proceed
+      }
+    }
+
+    // ── 1. OpenAI Provider (Direct Browser Call with Client Key) ───────────────
     if (config.provider === 'openai' && config.openaiKey) {
       try {
         const context = buildCtx();
+        const model = config.selectedModel || 'gpt-4o';
+        const body: any = {
+          model,
+          messages: [
+            { role: 'system', content: this.buildSystemPrompt() },
+            { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${question}` },
+          ],
+          temperature: 0.2,
+          max_tokens: 1000,
+        };
+
+        if (model.startsWith('o1') || model.startsWith('o3')) {
+          body.reasoning_effort = config.reasoningEffort || 'medium';
+          delete body.temperature;
+        }
+
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${config.openaiKey.trim()}`,
           },
-          body: JSON.stringify({
-            model: config.selectedModel || 'gpt-4.1-mini',
-            messages: [
-              { role: 'system', content: this.buildSystemPrompt() },
-              { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${question}` },
-            ],
-            temperature: 0.2,
-            max_tokens: 500,
-          }),
+          body: JSON.stringify(body),
         });
 
         if (!res.ok) {
@@ -220,7 +268,7 @@ CRITICAL SAFETY & REASONING RULES:
         return {
           text,
           referencedFiles: this.extractReferencedFiles(text, files),
-          modelUsed: config.selectedModel,
+          modelUsed: model,
         };
       } catch (err: any) {
         console.warn('OpenAI query failed, falling back to local assistant:', err);
@@ -233,10 +281,11 @@ CRITICAL SAFETY & REASONING RULES:
       }
     }
 
-    // 2. Anthropic Claude Provider
+    // ── 2. Anthropic Claude Provider (Direct Browser Call with Client Key) ─────
     if (config.provider === 'anthropic' && config.anthropicKey) {
       try {
         const context = buildCtx();
+        const model = config.selectedModel || 'claude-3-7-sonnet-20250219';
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -246,12 +295,12 @@ CRITICAL SAFETY & REASONING RULES:
             'anthropic-dangerous-direct-browser-access': 'true',
           },
           body: JSON.stringify({
-            model: config.selectedModel || 'claude-sonnet-4-5',
+            model,
             system: this.buildSystemPrompt(),
             messages: [
               { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${question}` },
             ],
-            max_tokens: 500,
+            max_tokens: 1000,
           }),
         });
 
@@ -265,7 +314,7 @@ CRITICAL SAFETY & REASONING RULES:
         return {
           text,
           referencedFiles: this.extractReferencedFiles(text, files),
-          modelUsed: config.selectedModel,
+          modelUsed: model,
         };
       } catch (err: any) {
         console.warn('Claude query failed, falling back to local assistant:', err);
@@ -278,19 +327,31 @@ CRITICAL SAFETY & REASONING RULES:
       }
     }
 
-    // 3. Google Gemini Provider
+    // ── 3. Google Gemini Provider (Direct Browser Call with Client Key) ────────
     if (config.provider === 'gemini' && config.geminiKey) {
       try {
         const context = buildCtx();
-        const model = config.selectedModel || 'gemini-2.5-flash';
+        const model = config.selectedModel || 'gemini-3.5-flash';
+        const effort = config.reasoningEffort || 'medium';
+        const budgetMap: Record<string, number> = { low: 1024, medium: 4096, high: 8192 };
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
           model
         )}:generateContent?key=${encodeURIComponent(config.geminiKey.trim())}`;
 
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        const buildGeminiBody = (includeThinking = true) => {
+          const genConfig: any = {
+            temperature: 0.2,
+            maxOutputTokens: 1000,
+          };
+
+          if (includeThinking && (model.includes('2.5') || model.includes('3'))) {
+            genConfig.thinkingConfig = {
+              thinkingLevel: effort,
+              thinkingBudget: budgetMap[effort] || 4096,
+            };
+          }
+
+          return {
             systemInstruction: {
               parts: [{ text: this.buildSystemPrompt() }],
             },
@@ -301,16 +362,33 @@ CRITICAL SAFETY & REASONING RULES:
                 ],
               },
             ],
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 500,
-            },
-          }),
+            generationConfig: genConfig,
+          };
+        };
+
+        let res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildGeminiBody(true)),
         });
 
+        // If thinkingConfig rejected by legacy or unsupported model, retry without it
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData?.error?.message || `Gemini API returned status ${res.status}`);
+          const errText = await res.text();
+          if (errText.includes('thinkingConfig') || errText.includes('thinking_config')) {
+            res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(buildGeminiBody(false)),
+            });
+          } else {
+            try {
+              const parsedErr = JSON.parse(errText);
+              throw new Error(parsedErr?.error?.message || `Gemini API returned status ${res.status}`);
+            } catch {
+              throw new Error(`Gemini API returned status ${res.status}`);
+            }
+          }
         }
 
         const data = await res.json();
@@ -331,12 +409,12 @@ CRITICAL SAFETY & REASONING RULES:
       }
     }
 
-    // 4. Local WebLLM / Deterministic Grounded Engine
+    // ── 4. Direct Zero-Install Intelligent Engine (Client-Side) ────────────────
     const localResult = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile);
     return {
       text: localResult.text,
       referencedFiles: localResult.referencedFiles,
-      modelUsed: config.selectedModel || 'Local Grounded Engine',
+      modelUsed: config.selectedModel || 'Direct Intelligent Engine (Zero-Install)',
     };
   },
 

@@ -286,14 +286,135 @@ export function SettingsModal({ isOpen, onClose, onClearCache }: SettingsModalPr
               </select>
             </div>
 
+            {/* Gemini API Key */}
+            {aiConfig.provider === 'gemini' && (
+              <div className="space-y-1.5 animate-in fade-in">
+                <label className="text-xs font-bold text-zinc-900 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 font-mono">
+                    <Key className="w-3.5 h-3.5 text-zinc-900" />
+                    <span>Google Gemini API Key</span>
+                  </span>
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-zinc-900 font-semibold underline hover:text-black flex items-center gap-1"
+                  >
+                    <span>Get Free Key</span>
+                  </a>
+                </label>
+                <input
+                  type="password"
+                  value={aiConfig.geminiKey || ''}
+                  onChange={(e) => setAiConfig((prev) => ({ ...prev, geminiKey: e.target.value }))}
+                  placeholder="AIzaSy..."
+                  className="w-full px-3.5 py-2 text-xs font-mono bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-colors"
+                />
+                <p className="text-[11px] text-zinc-500 font-sans">
+                  Leave blank if you deployed DomoScope on Vercel with <code>GEMINI_API_KEY</code> set in Environment Variables.
+                </p>
+              </div>
+            )}
+
+            {/* OpenAI API Key */}
+            {aiConfig.provider === 'openai' && (
+              <div className="space-y-1.5 animate-in fade-in">
+                <label className="text-xs font-bold text-zinc-900 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 font-mono">
+                    <Key className="w-3.5 h-3.5 text-zinc-900" />
+                    <span>OpenAI API Key</span>
+                  </span>
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-zinc-900 font-semibold underline hover:text-black"
+                  >
+                    Get API Key
+                  </a>
+                </label>
+                <input
+                  type="password"
+                  value={aiConfig.openaiKey || ''}
+                  onChange={(e) => setAiConfig((prev) => ({ ...prev, openaiKey: e.target.value }))}
+                  placeholder="sk-proj-..."
+                  className="w-full px-3.5 py-2 text-xs font-mono bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-colors"
+                />
+              </div>
+            )}
+
+            {/* Anthropic Claude API Key */}
+            {aiConfig.provider === 'anthropic' && (
+              <div className="space-y-1.5 animate-in fade-in">
+                <label className="text-xs font-bold text-zinc-900 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 font-mono">
+                    <Key className="w-3.5 h-3.5 text-zinc-900" />
+                    <span>Anthropic API Key</span>
+                  </span>
+                  <a
+                    href="https://console.anthropic.com/settings/keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-zinc-900 font-semibold underline hover:text-black"
+                  >
+                    Get API Key
+                  </a>
+                </label>
+                <input
+                  type="password"
+                  value={aiConfig.anthropicKey || ''}
+                  onChange={(e) => setAiConfig((prev) => ({ ...prev, anthropicKey: e.target.value }))}
+                  placeholder="sk-ant-..."
+                  className="w-full px-3.5 py-2 text-xs font-mono bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-colors"
+                />
+              </div>
+            )}
+
+            {/* Reasoning Effort / Thinking Level */}
+            {(aiConfig.provider === 'gemini' || aiConfig.provider === 'openai') && (
+              <div className="space-y-1.5 pt-1 animate-in fade-in">
+                <label className="block text-xs font-bold text-zinc-900 uppercase tracking-wider font-mono">
+                  Reasoning Effort / Thinking Budget
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'low', label: 'Low', desc: 'Fastest' },
+                    { id: 'medium', label: 'Medium', desc: 'Balanced' },
+                    { id: 'high', label: 'High', desc: 'Deep' },
+                  ].map((eff) => (
+                    <button
+                      key={eff.id}
+                      type="button"
+                      onClick={() => setAiConfig((prev) => ({ ...prev, reasoningEffort: eff.id as any }))}
+                      className={`p-2 rounded-xl border text-xs font-mono text-center transition-all cursor-pointer ${
+                        (aiConfig.reasoningEffort || 'medium') === eff.id
+                          ? 'border-zinc-900 bg-zinc-900 text-white font-bold shadow-xs'
+                          : 'border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-white hover:border-zinc-300'
+                      }`}
+                    >
+                      <div>{eff.label}</div>
+                      <div className="text-[10px] opacity-75">{eff.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-zinc-500 font-sans">
+                  Sets reasoning tokens and thinking depth for Gemini 3.5 / 2.5 and OpenAI o3-mini / o1.
+                </p>
+              </div>
+            )}
+
+            {/* Local AI zero-install card */}
             {aiConfig.provider === 'local' && (
-              <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl text-xs space-y-1">
+              <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-2xl text-xs space-y-2 font-sans">
                 <div className="flex items-center gap-1.5 text-zinc-900 font-bold">
                   <ShieldCheck className="w-4 h-4 text-zinc-900" />
-                  <span>Local Grounded Model Active</span>
+                  <span>Zero-Install & Mobile-Ready</span>
                 </div>
-                <p className="text-zinc-500 text-xs leading-relaxed">
-                  Processes repository files directly inside your browser sandbox without network requests.
+                <p className="text-zinc-600 leading-relaxed text-xs">
+                  Runs directly in your browser on both mobile and desktop. <strong>No download or model installation required.</strong> Instant analysis for repository architecture, files, and schemas.
+                </p>
+                <p className="text-zinc-500 text-[11px] pt-1 border-t border-zinc-200">
+                  ☁️ <strong>Vercel Serverless:</strong> If your Vercel deployment has <code>GEMINI_API_KEY</code>, select <em>Vercel Serverless AI</em> to use cloud reasoning without entering a personal key on mobile.
                 </p>
               </div>
             )}
