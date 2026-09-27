@@ -54,34 +54,34 @@ export function Navbar({
 
       {/* Right Controls */}
       <div className="flex items-center gap-2">
-        {/* GitHub Sign In / User Profile Button (Monochrome) */}
+        {/* GitHub Sign In / User Profile Button (White & Black Glassmorphism) */}
         {userProfile ? (
           <button
             onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-2 px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded-xl transition-all cursor-pointer"
+            className="flex items-center gap-2 px-2.5 py-1 bg-white/80 hover:bg-white border border-black/10 backdrop-blur-md rounded-xl transition-all cursor-pointer shadow-xs"
             title="Authenticated GitHub Account (5,000 req/hr)"
           >
             <img
               src={userProfile.avatarUrl}
               alt={userProfile.login}
-              className="w-5 h-5 rounded-full border border-zinc-400 bg-white"
+              className="w-5 h-5 rounded-full border border-black/10 bg-white shadow-2xs"
             />
             <span className="text-xs font-mono font-bold text-zinc-900 hidden md:inline">
               @{userProfile.login}
             </span>
-            <span className="text-[10px] font-mono font-bold text-white bg-zinc-900 px-1.5 py-0.2 rounded">
+            <span className="text-[10px] font-mono font-bold text-white bg-black/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded-lg shadow-xs">
               5k Limit
             </span>
           </button>
         ) : (
           <button
             onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/80 hover:bg-white border border-black/10 backdrop-blur-md rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer text-zinc-900"
             title="Sign in with GitHub to unlock 5,000 requests/hour limit"
           >
-            <GitHubIcon className="w-3.5 h-3.5" />
+            <GitHubIcon className="w-3.5 h-3.5 text-zinc-900" />
             <span className="hidden sm:inline">Connect Token</span>
-            <span className="text-[10px] font-mono bg-zinc-700 text-white px-1.5 py-0.2 rounded font-bold">
+            <span className="text-[10px] font-mono bg-black/90 backdrop-blur-md border border-white/20 text-white px-2 py-0.5 rounded-lg font-bold shadow-xs">
               +5k Limit
             </span>
           </button>

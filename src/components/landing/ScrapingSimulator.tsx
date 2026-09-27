@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, RotateCcw, Check, Terminal, Cpu, Database, Network, Shield, FileCode } from 'lucide-react';
+import { RotateCcw, Check, Terminal, Cpu, Network, Shield, FileCode } from 'lucide-react';
 
 interface RepoPreset {
   name: string;
@@ -20,23 +20,21 @@ export function ScrapingSimulator() {
   const [selectedRepo, setSelectedRepo] = useState<RepoPreset>(PRESETS[0]);
   const [progress, setProgress] = useState(0);
   const [isRunning, setIsRunning] = useState(true);
-  const [currentStage, setCurrentStage] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const STAGES = [
-    { name: 'GitHub Tree Fetch', icon: Network, threshold: 25 },
-    { name: 'File Classification', icon: FileCode, threshold: 50 },
-    { name: 'AST Import Resolution', icon: Cpu, threshold: 75 },
-    { name: 'Schema & Security Audit', icon: Shield, threshold: 100 },
+    { name: '1. Loading Files', icon: Network, threshold: 25 },
+    { name: '2. Sorting Parts', icon: FileCode, threshold: 50 },
+    { name: '3. Linking Connections', icon: Cpu, threshold: 75 },
+    { name: '4. Ready to Explore', icon: Shield, threshold: 100 },
   ];
 
   const startSimulation = (repo: RepoPreset) => {
     if (timerRef.current) clearInterval(timerRef.current);
     setProgress(0);
-    setCurrentStage(0);
     setIsRunning(true);
-    setLogs([`[0.00s] Initializing tree extraction for ${repo.name}...`]);
+    setLogs([`[0.00s] Starting scan for ${repo.name}...`]);
 
     const startTime = Date.now();
 
@@ -53,30 +51,26 @@ export function ScrapingSimulator() {
 
         // Append log events based on milestones
         if (prev < 25 && next >= 25) {
-          setCurrentStage(1);
           setLogs((l) => [
             ...l,
-            `[${elapsed}s] Tree fetched: ${repo.totalFiles.toLocaleString()} files indexed from GitHub raw tree API`,
+            `[${elapsed}s] Found and cataloged all ${repo.totalFiles.toLocaleString()} files in the project`,
           ]);
         } else if (prev < 50 && next >= 50) {
-          setCurrentStage(2);
           setLogs((l) => [
             ...l,
-            `[${elapsed}s] Classified components, services, and configs. Entry point: ${repo.entry}`,
+            `[${elapsed}s] Sorted screens, data services, and settings. Main starting file: ${repo.entry}`,
           ]);
         } else if (prev < 75 && next >= 75) {
-          setCurrentStage(3);
           setLogs((l) => [
             ...l,
-            `[${elapsed}s] Resolved ES6/CommonJS/Python imports. Directed acyclic graph computed with Dagre layout`,
+            `[${elapsed}s] Discovered how files connect to each other and drew the visual layout`,
           ]);
         } else if (prev < 98 && next >= 98) {
-          setCurrentStage(4);
           setLogs((l) => [
             ...l,
             repo.tables > 0
-              ? `[${elapsed}s] Extracted ${repo.tables} database models & foreign key relationships`
-              : `[${elapsed}s] Security scan complete: clean repository structure`,
+              ? `[${elapsed}s] Mapped ${repo.tables} database tables and their relationships`
+              : `[${elapsed}s] Checked for potential security risks: all clear`,
             `[${elapsed}s] Workspace ready for interactive exploration & search`,
           ]);
         }
@@ -100,13 +94,13 @@ export function ScrapingSimulator() {
       <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 px-3 py-1 mb-3 rounded-full border border-zinc-200 bg-zinc-50 text-[11px] font-mono text-zinc-600">
           <Cpu className="w-3.5 h-3.5 text-zinc-700" />
-          <span>Real-time Ingestion Engine</span>
+          <span>Live Project Scanner</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-semibold text-zinc-900 tracking-tight">
-          How DomoScope scrapes and inspects an entire codebase
+          How DomoScope reads and organizes any project in seconds
         </h2>
         <p className="mt-2 text-xs sm:text-sm text-zinc-500 max-w-xl mx-auto">
-          Instead of cloning massive repositories locally, DomoScope streams recursive GitHub trees and parses relationships right in your browser.
+          No need to download massive files to your computer. DomoScope reads the project directly and builds your visual map right in your browser.
         </p>
       </div>
 
@@ -115,7 +109,7 @@ export function ScrapingSimulator() {
         {/* Top Control Bar & Repo Selector */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-zinc-50 border-b border-zinc-200">
           <div className="flex items-center gap-2 overflow-x-auto">
-            <span className="text-xs font-mono text-zinc-400 uppercase mr-1">Select Preset:</span>
+            <span className="text-xs font-mono text-zinc-400 uppercase mr-1">Select Sample:</span>
             {PRESETS.map((p) => (
               <button
                 key={p.name}
@@ -140,7 +134,7 @@ export function ScrapingSimulator() {
               className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-800 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5 text-zinc-500" />
-              <span>Re-run Scrape</span>
+              <span>Run Scan Again</span>
             </button>
           </div>
         </div>
@@ -153,8 +147,8 @@ export function ScrapingSimulator() {
                 <span className="w-2 h-2 rounded-full bg-zinc-900 animate-pulse" />
                 <span>
                   {progress < 100
-                    ? `Scraping & Analyzing: ${selectedRepo.name}...`
-                    : `Repository Ingestion Complete: ${selectedRepo.name}`}
+                    ? `Scanning & Organizing: ${selectedRepo.name}...`
+                    : `Project Map Ready: ${selectedRepo.name}`}
                 </span>
               </div>
               <span className="text-zinc-600 font-bold">{progress}%</span>
@@ -216,22 +210,22 @@ export function ScrapingSimulator() {
           {/* Metrics summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono">
             <div>
-              <span className="text-zinc-400 block text-[10px] uppercase">Files Scraped</span>
+              <span className="text-zinc-400 block text-[10px] uppercase">Files Scanned</span>
               <span className="text-sm font-bold text-zinc-900">
                 {currentScrapedFiles.toLocaleString()} / {selectedRepo.totalFiles.toLocaleString()}
               </span>
             </div>
             <div>
-              <span className="text-zinc-400 block text-[10px] uppercase">Primary Language</span>
+              <span className="text-zinc-400 block text-[10px] uppercase">Main Language</span>
               <span className="text-sm font-bold text-zinc-900">{selectedRepo.language}</span>
             </div>
             <div>
-              <span className="text-zinc-400 block text-[10px] uppercase">Memory Footprint</span>
-              <span className="text-sm font-bold text-zinc-900">IndexedDB Cached</span>
+              <span className="text-zinc-400 block text-[10px] uppercase">Storage Mode</span>
+              <span className="text-sm font-bold text-zinc-900">Fast Local Browser Memory</span>
             </div>
             <div>
-              <span className="text-zinc-400 block text-[10px] uppercase">Client Sandbox</span>
-              <span className="text-sm font-bold text-zinc-900">Zero Code Execution</span>
+              <span className="text-zinc-400 block text-[10px] uppercase">Safety Guarantee</span>
+              <span className="text-sm font-bold text-zinc-900">100% Safe (Read-only)</span>
             </div>
           </div>
 
@@ -240,9 +234,9 @@ export function ScrapingSimulator() {
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-zinc-800/80 text-[11px] text-zinc-400 select-none">
               <div className="flex items-center gap-2">
                 <Terminal className="w-3.5 h-3.5 text-zinc-400" />
-                <span>domoscope-stream-ingest</span>
+                <span>domoscope-scanner</span>
               </div>
-              <span>Status: {progress === 100 ? 'COMPLETE' : 'PARSING'}</span>
+              <span>Status: {progress === 100 ? 'READY' : 'SCANNING'}</span>
             </div>
 
             <div className="space-y-1.5 max-h-32 overflow-y-auto">

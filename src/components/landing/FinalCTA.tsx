@@ -14,7 +14,7 @@ export function FinalCTA() {
     setErrorMessage(null);
     const parsed = parseGitHubUrl(url);
     if (!parsed) {
-      setErrorMessage('Please enter a valid GitHub repository URL.');
+      setErrorMessage('Please enter a valid GitHub project link (e.g. owner/project).');
       return;
     }
     navigate(`/repository/${parsed.owner}/${parsed.repo}`);
@@ -23,10 +23,10 @@ export function FinalCTA() {
   return (
     <section className="py-24 px-4 max-w-3xl mx-auto text-center border-t border-zinc-200">
       <h2 className="text-3xl sm:text-4xl font-semibold text-zinc-900 tracking-tight">
-        Start exploring.
+        Start exploring today.
       </h2>
       <p className="mt-3 text-sm text-zinc-600 max-w-md mx-auto">
-        Inspect any open-source GitHub repository immediately without account setup.
+        Understand any open-source GitHub project in seconds — completely free with zero setup.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 max-w-md mx-auto">
@@ -40,7 +40,7 @@ export function FinalCTA() {
                 setUrl(e.target.value);
                 if (errorMessage) setErrorMessage(null);
               }}
-              placeholder="Paste a public GitHub repository"
+              placeholder="Paste any public GitHub link (e.g. facebook/react)"
               className="w-full py-2 text-xs bg-transparent outline-none placeholder:text-zinc-400 text-zinc-900 font-mono"
             />
           </div>
@@ -48,7 +48,7 @@ export function FinalCTA() {
             type="submit"
             className="w-full sm:w-auto px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
           >
-            <span>Explore</span>
+            <span>Explore project</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

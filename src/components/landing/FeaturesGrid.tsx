@@ -5,32 +5,32 @@ const FEATURES = [
   {
     icon: Network,
     title: 'Project map',
-    description: 'See how the files connect through parsed imports and hierarchical layouts.',
+    description: 'See how files connect to one another in a clear, easy-to-follow visual layout.',
   },
   {
     icon: Database,
-    title: 'Database',
-    description: 'See tables, column definitions, and foreign key relationships across Prisma, SQL, and Drizzle.',
+    title: 'Database & data',
+    description: 'View your data layout, tables, and connections at a single glance.',
   },
   {
     icon: GitBranch,
-    title: 'Branches',
-    description: 'Explore different versions of the project and compare changes between branches.',
+    title: 'Versions & branches',
+    description: 'Compare different versions and see what changed between branches.',
   },
   {
     icon: Shield,
-    title: 'Security',
-    description: 'Find areas that may need attention, including exposed secrets, unsafe eval, and SQL patterns.',
+    title: 'Safety check',
+    description: 'Spot potential safety issues and weaknesses automatically before they become problems.',
   },
   {
     icon: MessageSquare,
-    title: 'Ask',
-    description: 'Ask questions about the project using your browser’s local assistant without sending code to paid APIs.',
+    title: 'Ask AI',
+    description: 'Chat with a private built-in assistant to get quick, helpful answers about the codebase.',
   },
   {
     icon: Search,
-    title: 'Search',
-    description: 'Find files, symbols, dependencies, and database schemas instantly with quick keyboard shortcuts.',
+    title: 'Instant search',
+    description: 'Jump to any file, setting, or part of the project instantly with simple search.',
   },
 ];
 
@@ -48,7 +48,7 @@ export function FeaturesGrid() {
           Everything in one workspace
         </h2>
         <p className="mt-2 text-sm text-zinc-500">
-          Built for engineers exploring new repositories, reading unfamiliar codebases, and auditing architecture.
+          Designed for anyone wanting to quickly explore, learn, or review any project.
         </p>
       </motion.div>
 

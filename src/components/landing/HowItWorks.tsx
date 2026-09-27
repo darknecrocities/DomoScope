@@ -3,18 +3,18 @@ import { motion } from 'framer-motion';
 const STEPS = [
   {
     step: '01',
-    title: 'Paste a repository',
-    description: 'Enter any public GitHub URL or owner/repository name. No token or configuration required to begin.',
+    title: 'Paste a link',
+    description: 'Enter any public GitHub link or project name. No sign-up, payment, or configuration required.',
   },
   {
     step: '02',
-    title: 'DomoScope explores it',
-    description: 'The engine inspects the file tree, parses import relationships, discovers database models, and checks security.',
+    title: 'DomoScope organizes it',
+    description: 'DomoScope scans the project, connects the pieces, and lays everything out in a clean, intuitive map.',
   },
   {
     step: '03',
-    title: 'Understand the project',
-    description: 'Explore the architecture graph, inspect schemas, navigate source code, and ask questions locally.',
+    title: 'Explore & understand',
+    description: 'Click through clear visual diagrams, browse files easily, and chat with AI to learn how any feature works.',
   },
 ];
 
@@ -26,7 +26,7 @@ export function HowItWorks() {
           How it works
         </h2>
         <p className="mt-2 text-sm text-zinc-500">
-          From a GitHub link to deep visual understanding in seconds.
+          Go from a GitHub link to an easy-to-read visual map in seconds.
         </p>
       </div>
 

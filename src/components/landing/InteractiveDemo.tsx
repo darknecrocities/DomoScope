@@ -27,9 +27,9 @@ interface MiniNodeData {
 
 function MiniCustomNode({ data, selected }: { data: MiniNodeData; selected?: boolean }) {
   const getIcon = () => {
-    if (data.category === 'database') return <Database className="w-4 h-4 text-emerald-600" />;
-    if (data.category === 'entry') return <FileCode className="w-4 h-4 text-rose-600" />;
-    return <FileCode className="w-4 h-4 text-indigo-600" />;
+    if (data.category === 'database') return <Database className="w-4 h-4 text-zinc-800" />;
+    if (data.category === 'entry') return <FileCode className="w-4 h-4 text-zinc-900" />;
+    return <FileCode className="w-4 h-4 text-zinc-700" />;
   };
 
   return (
@@ -50,8 +50,8 @@ function MiniCustomNode({ data, selected }: { data: MiniNodeData; selected?: boo
 
       {selected && (
         <span className="absolute -top-1 -right-1 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-zinc-900"></span>
         </span>
       )}
     </div>
@@ -66,10 +66,10 @@ const DEMO_NODES: Node<MiniNodeData>[] = [
     data: {
       label: 'main.tsx',
       category: 'entry',
-      type: 'Entry Point',
+      type: 'Starting Point',
       path: 'src/main.tsx',
       imports: ['src/App.tsx'],
-      description: 'Initializes the application runtime, mounts React DOM tree, and sets up global providers.',
+      description: 'The starting point that opens the application and loads the first screen.',
     },
   },
   {
@@ -79,10 +79,10 @@ const DEMO_NODES: Node<MiniNodeData>[] = [
     data: {
       label: 'App.tsx',
       category: 'component',
-      type: 'Root Component',
+      type: 'Main Layout',
       path: 'src/App.tsx',
       imports: ['src/components/Navbar.tsx', 'src/views/Dashboard.tsx'],
-      description: 'Root router and top-level layout wrapper containing navigation and global state.',
+      description: 'The main layout that brings pages, navigation, and shared settings together.',
     },
   },
   {
@@ -92,10 +92,10 @@ const DEMO_NODES: Node<MiniNodeData>[] = [
     data: {
       label: 'Navbar.tsx',
       category: 'component',
-      type: 'UI Component',
+      type: 'Navigation Bar',
       path: 'src/components/Navbar.tsx',
       imports: [],
-      description: 'Top header navigation component with global search shortcut and repository links.',
+      description: 'The top menu bar with search, helpful shortcuts, and account controls.',
     },
   },
   {
@@ -105,10 +105,10 @@ const DEMO_NODES: Node<MiniNodeData>[] = [
     data: {
       label: 'Dashboard.tsx',
       category: 'component',
-      type: 'Page Component',
+      type: 'Home Screen',
       path: 'src/views/Dashboard.tsx',
       imports: ['src/services/api.ts'],
-      description: 'Main overview dashboard view displaying project statistics and interactive diagrams.',
+      description: 'The central overview screen showing charts, statistics, and project summaries.',
     },
   },
   {
@@ -118,10 +118,10 @@ const DEMO_NODES: Node<MiniNodeData>[] = [
     data: {
       label: 'api.ts',
       category: 'service',
-      type: 'API Client',
+      type: 'Data Service',
       path: 'src/services/api.ts',
       imports: ['prisma/schema.prisma'],
-      description: 'REST and GraphQL API service module handling asynchronous data fetching & caching.',
+      description: 'Fetches live data from servers smoothly and keeps information up to date.',
     },
   },
   {
@@ -131,10 +131,10 @@ const DEMO_NODES: Node<MiniNodeData>[] = [
     data: {
       label: 'schema.prisma',
       category: 'database',
-      type: 'Database Schema',
+      type: 'Data Blueprint',
       path: 'prisma/schema.prisma',
       imports: [],
-      description: 'Prisma database model definitions detailing relational tables, columns, and foreign keys.',
+      description: 'Defines how information like users and accounts are stored and connected.',
     },
   },
 ];
@@ -218,15 +218,15 @@ export function InteractiveDemo() {
             <span className="w-2.5 h-2.5 rounded-full bg-zinc-300" />
           </div>
           <span className="text-xs font-mono font-semibold text-zinc-700 ml-2">
-            domoscope-architecture-canvas
+            domoscope-interactive-map
           </span>
         </div>
 
         {/* Video Animation Controls */}
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 rounded-full border border-zinc-200 text-[11px] font-mono text-zinc-600">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Auto-shifting Node Demo</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/80 border border-black/10 backdrop-blur-md rounded-full text-[11px] font-mono text-zinc-700 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-zinc-900 animate-pulse" />
+            <span>Interactive Preview</span>
           </div>
 
           <button
@@ -275,8 +275,8 @@ export function InteractiveDemo() {
               className="space-y-4"
             >
               <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Active Node Inspector</span>
+                <Sparkles className="w-3.5 h-3.5 text-zinc-800" />
+                <span>File Details</span>
               </div>
 
               <div>
@@ -286,7 +286,7 @@ export function InteractiveDemo() {
 
               <div className="p-3 bg-white border border-zinc-200 rounded-xl text-xs space-y-1 shadow-2xs">
                 <span className="text-[10px] font-mono text-zinc-400 uppercase font-semibold">
-                  Subsystem Type
+                  What this file does
                 </span>
                 <p className="text-xs font-semibold text-zinc-900">{activeNodeData.type}</p>
                 <p className="text-xs text-zinc-600 leading-relaxed pt-1 font-sans">
@@ -297,7 +297,7 @@ export function InteractiveDemo() {
               {activeNodeData.imports.length > 0 && (
                 <div className="pt-2">
                   <span className="text-[11px] font-mono text-zinc-500 uppercase font-semibold block mb-2">
-                    Outgoing Imports ({activeNodeData.imports.length})
+                    Connected to ({activeNodeData.imports.length} files)
                   </span>
                   <div className="space-y-1.5">
                     {activeNodeData.imports.map((imp) => (
@@ -316,7 +316,7 @@ export function InteractiveDemo() {
           </AnimatePresence>
 
           <div className="pt-4 border-t border-zinc-200/80 text-[11px] text-zinc-500 font-mono leading-relaxed">
-            Diagram automatically builds from parsed imports in your codebase.
+            Click any card above to see what it does and how it connects.
           </div>
         </div>
       </div>

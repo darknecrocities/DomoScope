@@ -4,7 +4,7 @@ import { Eye, Split, FileCode, Network, ArrowLeftRight, Check } from 'lucide-rea
 const LENS_PRESETS = [
   {
     id: 'router',
-    label: 'Application Routing',
+    label: 'Page Navigation',
     rawCode: `// src/router/AppRoutes.tsx
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -29,16 +29,16 @@ export function AppRoutes() {
   );
 }`,
     visualNodes: [
-      { name: 'AppRoutes.tsx', type: 'Router Component', status: 'Root' },
-      { name: 'useAuth.ts', type: 'Session Hook', status: 'Dependency' },
-      { name: 'Dashboard.tsx', type: 'Lazy Component', status: 'Route /' },
-      { name: 'Settings.tsx', type: 'Lazy Component', status: 'Route /settings' },
-      { name: 'AuditLog.tsx', type: 'Lazy Component', status: 'Route /audit' },
+      { name: 'AppRoutes.tsx', type: 'Main Navigation', status: 'Starting Point' },
+      { name: 'useAuth.ts', type: 'Sign-in State', status: 'Connected' },
+      { name: 'Dashboard.tsx', type: 'Home Screen', status: 'Opens /' },
+      { name: 'Settings.tsx', type: 'Account Settings', status: 'Opens /settings' },
+      { name: 'AuditLog.tsx', type: 'Activity History', status: 'Opens /audit' },
     ],
   },
   {
     id: 'schema',
-    label: 'Database Relationships',
+    label: 'Database Structure',
     rawCode: `// prisma/schema.prisma
 datasource db {
   provider = "postgresql"
@@ -60,9 +60,9 @@ model User {
   projects       Project[]
 }`,
     visualNodes: [
-      { name: 'Organization', type: 'Prisma Model', status: '1 : N with User' },
-      { name: 'User', type: 'Prisma Model', status: 'N : 1 with Org, 1 : N with Project' },
-      { name: 'Project', type: 'Prisma Model', status: 'Foreign Key: userId → User.id' },
+      { name: 'Organization', type: 'Company Profile', status: 'Has multiple members' },
+      { name: 'User', type: 'Team Member', status: 'Belongs to company, owns projects' },
+      { name: 'Project', type: 'Workspace Project', status: 'Linked to assigned owner' },
     ],
   },
 ];
@@ -111,10 +111,10 @@ export function ArchitectureLens() {
           <span>Interactive Visual Lens</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-semibold text-zinc-900 tracking-tight">
-          Drag the lens: Raw code vs Visual architecture
+          Slide to compare: Raw code vs Visual map
         </h2>
         <p className="mt-2 text-xs sm:text-sm text-zinc-500 max-w-lg mx-auto">
-          See how DomoScope automatically extracts clean structural node cards and connections straight from thousands of lines of raw source.
+          See how DomoScope turns complex code into clean, friendly cards that anyone can easily follow.
         </p>
       </div>
 
@@ -146,10 +146,10 @@ export function ArchitectureLens() {
           <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900">
               <Network className="w-4 h-4 text-zinc-800" />
-              <span>DomoScope Visual Representation</span>
+              <span>DomoScope Visual Map</span>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 text-zinc-600">
-              Interactive Graph
+              Visual Preview
             </span>
           </div>
 
@@ -173,7 +173,7 @@ export function ArchitectureLens() {
           </div>
 
           <div className="text-[11px] text-zinc-400 font-mono text-center">
-            Nodes and edges are dynamically updated on file changes.
+            Diagrams update automatically as your project grows.
           </div>
         </div>
 
@@ -210,9 +210,9 @@ export function ArchitectureLens() {
       </div>
 
       <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-zinc-400 px-2">
-        <span>◀ Raw GitHub Code</span>
-        <span>Drag center handle to compare</span>
-        <span>DomoScope Graph ▶</span>
+        <span>◀ Raw Code</span>
+        <span>Drag slider to compare</span>
+        <span>Visual Map ▶</span>
       </div>
     </section>
   );

@@ -45,34 +45,34 @@ export function LandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* GitHub Sign In / User Profile Badge */}
+            {/* GitHub Sign In / User Profile Badge (White & Black Glassmorphism) */}
             {userProfile ? (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all cursor-pointer shadow-xs"
+                className="flex items-center gap-2 px-3 py-1.5 bg-white/80 hover:bg-white border border-black/10 backdrop-blur-md rounded-xl transition-all cursor-pointer shadow-xs"
                 title="GitHub Authenticated (5,000 req/hr Active)"
               >
                 <img
                   src={userProfile.avatarUrl}
                   alt={userProfile.login}
-                  className="w-5 h-5 rounded-full border border-emerald-300"
+                  className="w-5 h-5 rounded-full border border-black/10 shadow-2xs"
                 />
-                <span className="text-xs font-mono font-bold text-emerald-900">
+                <span className="text-xs font-mono font-bold text-zinc-900">
                   @{userProfile.login}
                 </span>
-                <span className="text-[10px] font-mono font-bold text-white bg-emerald-600 px-1.5 py-0.2 rounded">
+                <span className="text-[10px] font-mono font-bold text-white bg-black/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded-lg shadow-xs">
                   5k Limit
                 </span>
               </button>
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs"
+                className="flex items-center gap-2 px-3.5 py-1.5 bg-white/80 hover:bg-white text-zinc-900 border border-black/10 backdrop-blur-md rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs"
                 title="Sign in with GitHub to increase rate limit to 5,000 requests/hour"
               >
-                <GitHubIcon className="w-4 h-4" />
+                <GitHubIcon className="w-4 h-4 text-zinc-900" />
                 <span>Sign in with GitHub</span>
-                <span className="text-[10px] font-mono bg-blue-600 text-white px-1.5 py-0.2 rounded font-bold">
+                <span className="text-[10px] font-mono bg-black/90 text-white backdrop-blur-md border border-white/20 px-2 py-0.5 rounded-lg font-bold shadow-xs">
                   5k Limit
                 </span>
               </button>

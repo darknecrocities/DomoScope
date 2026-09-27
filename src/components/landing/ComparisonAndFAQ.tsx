@@ -1,59 +1,59 @@
 import { useState } from 'react';
-import { Check, X, ChevronDown, ChevronUp, HelpCircle, Sparkles } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, HelpCircle, Sparkles } from 'lucide-react';
 
 const COMPARISON_ROWS = [
   {
-    capability: 'Visual Architecture Graph',
-    traditional: 'Manual file browsing & mental tracking',
-    domoscope: 'Automated interactive DAG from parsed imports',
+    capability: 'Visual Project Map',
+    traditional: 'Clicking through endless files and guessing connections',
+    domoscope: 'Automatic interactive map showing how everything connects',
   },
   {
-    capability: 'Database Schema & ERD',
-    traditional: 'Digging through folders of raw migration files',
-    domoscope: 'Auto-detected ERD with columns & foreign keys',
+    capability: 'Database & Data Layout',
+    traditional: 'Digging through folders of complex setup files',
+    domoscope: 'Clear visual view of all your tables and links',
   },
   {
-    capability: 'Security & Secret Checks',
-    traditional: 'Must clone repo & run third-party scanners',
-    domoscope: 'In-browser static audit before running code',
+    capability: 'Safety & Vulnerability Checks',
+    traditional: 'Requires complex tools and local installation',
+    domoscope: 'Automatic instant safety check right in your browser',
   },
   {
-    capability: 'Code Assistant & Chat',
-    traditional: 'Paid tokens, copy-pasting into external tools',
-    domoscope: 'Free on-device local WebLLM assistant',
+    capability: 'Built-in AI Assistant',
+    traditional: 'Copy-pasting files into paid external chatbots',
+    domoscope: 'Free, private AI helper built directly into the page',
   },
   {
-    capability: 'Setup & Installation Time',
-    traditional: 'Clone, configure environment, install dependencies',
-    domoscope: 'Instant: paste public URL and explore',
+    capability: 'Setup Time',
+    traditional: 'Minutes or hours configuring tools locally',
+    domoscope: 'Zero setup: paste any public link and explore immediately',
   },
 ];
 
 const FAQS = [
   {
-    question: 'Does DomoScope require a GitHub account or paid API keys?',
+    question: 'Do I need an account or credit card to use DomoScope?',
     answer:
-      'No. DomoScope is 100% free and open source. You can paste any public GitHub repository URL and inspect it immediately without signing in or providing an API key.',
+      'No. DomoScope is completely free to use. Just paste any public GitHub link and start exploring immediately — no sign-up, payment, or credit card required.',
   },
   {
-    question: 'How does the local assistant run without external servers?',
+    question: 'How does the built-in AI assistant work privately?',
     answer:
-      'DomoScope utilizes MLC WebLLM to run language models directly in your browser using WebGPU hardware acceleration. If WebGPU is not supported by your browser, DomoScope falls back to a deterministic grounded assistant that parses repository structures locally.',
+      'The AI helper runs directly inside your web browser on your own device. Your files and questions are never sent to external servers or used for training, keeping your browsing completely private.',
   },
   {
-    question: 'Does DomoScope ever execute code from inspected repositories?',
+    question: 'Is it safe to explore projects I don’t know?',
     answer:
-      'Never. DomoScope treats all repository files strictly as untrusted text data. It never runs npm install, executes lifecycle scripts, or spawns binaries, ensuring safe inspection of unfamiliar open-source projects.',
+      'Yes, 100% safe. DomoScope only reads files as text and never runs any programs or commands from the project on your computer. You can safely look through any project without risk.',
   },
   {
-    question: 'Which database schema formats are automatically detected?',
+    question: 'What kinds of database and data setups can it show?',
     answer:
-      'DomoScope automatically detects and extracts schemas from Prisma (schema.prisma), SQL DDL files (CREATE TABLE statements in migrations), and Drizzle ORM definitions (pgTable, mysqlTable, sqliteTable).',
+      'DomoScope automatically recognizes popular database setups like Prisma, SQL tables, and modern web data structures, turning them into clean, visual diagrams.',
   },
   {
-    question: 'What happens if I reach GitHub’s public API rate limit?',
+    question: 'What if I want to explore lots of projects in a row?',
     answer:
-      'Unauthenticated public requests to GitHub are limited to 60 requests/hour per IP address. You can optionally add a personal access token in the Settings modal (stored strictly in your browser’s IndexedDB) to raise your limit to 5,000 requests/hour.',
+      'Anyone can browse right away with normal access. If you want to explore many large projects in a short time, you can easily connect your free GitHub account to get higher hourly limits.',
   },
 ];
 
@@ -73,10 +73,10 @@ export function ComparisonAndFAQ() {
           <span>Workflow Comparison</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-semibold text-zinc-900 tracking-tight">
-          Traditional GitHub vs DomoScope Workspace
+          Traditional GitHub vs DomoScope
         </h2>
         <p className="mt-2 text-xs sm:text-sm text-zinc-500 max-w-lg mx-auto">
-          See how visual mapping transforms how developers read, review, and evaluate unfamiliar codebases.
+          See how visual mapping makes understanding unfamiliar projects effortless.
         </p>
       </div>
 
@@ -88,7 +88,7 @@ export function ComparisonAndFAQ() {
               <th className="py-3 px-5">Capability</th>
               <th className="py-3 px-5 text-zinc-400">Traditional GitHub</th>
               <th className="py-3 px-5 text-zinc-900 font-bold bg-zinc-100/70">
-                DomoScope Workspace
+                DomoScope
               </th>
             </tr>
           </thead>

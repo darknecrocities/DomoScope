@@ -155,28 +155,36 @@ export function AppBar({
           </div>
         </div>
 
-        {/* Login Button / Profile Badge (Monochrome) */}
+        {/* Login Button / Profile Badge (White & Black Glassmorphism) */}
         {userProfile ? (
           <button
             onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300 rounded-xl font-mono text-xs font-bold text-zinc-900 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-white/80 hover:bg-white border border-black/10 backdrop-blur-md rounded-xl font-mono text-xs font-bold text-zinc-900 transition-all cursor-pointer shadow-xs"
             title="Logged In (5,000 req/hr Limit)"
           >
-            <UserCheck className="w-3.5 h-3.5 text-zinc-900" />
+            {userProfile.avatarUrl ? (
+              <img
+                src={userProfile.avatarUrl}
+                alt={userProfile.login}
+                className="w-4 h-4 rounded-full border border-black/10 shadow-2xs"
+              />
+            ) : (
+              <UserCheck className="w-3.5 h-3.5 text-zinc-900" />
+            )}
             <span className="hidden sm:inline">@{userProfile.login}</span>
-            <span className="text-[10px] bg-zinc-900 text-white px-1.5 py-0.2 rounded font-mono font-bold">
+            <span className="text-[10px] bg-black/90 backdrop-blur-md border border-white/20 text-white px-2 py-0.5 rounded-lg font-mono font-bold shadow-xs">
               5k Limit
             </span>
           </button>
         ) : (
           <button
             onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1 bg-white/80 hover:bg-white border border-black/10 backdrop-blur-md rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer text-zinc-900"
             title="Login to increase GitHub API limit to 5,000 req/hr"
           >
-            <Zap className="w-3.5 h-3.5 fill-white text-white" />
+            <Zap className="w-3.5 h-3.5 text-zinc-900" />
             <span>Connect Token</span>
-            <span className="text-[10px] bg-zinc-700 text-white px-1.5 py-0.2 rounded font-mono font-bold">
+            <span className="text-[10px] bg-black/90 backdrop-blur-md border border-white/20 text-white px-2 py-0.5 rounded-lg font-mono font-bold shadow-xs">
               +5k
             </span>
           </button>

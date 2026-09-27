@@ -92,7 +92,7 @@ export function TechBelt() {
     <div className="w-full border-y border-zinc-200 py-6 overflow-hidden bg-zinc-50/50">
       <div className="max-w-6xl mx-auto px-4 mb-3">
         <p className="text-center text-xs font-mono uppercase tracking-wider text-zinc-400">
-          Seamlessly inspects codebases across ecosystems
+          Works automatically with all your favorite languages and tools
         </p>
       </div>
 

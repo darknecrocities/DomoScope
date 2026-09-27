@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, AlertCircle, Sparkles, Cpu } from 'lucide-react';
+import { ArrowRight, AlertCircle } from 'lucide-react';
 import { GitHubIcon } from '../common/Icons';
 import { parseGitHubUrl } from '../../services/github';
 
 const HEADLINES = [
-  'Understand any GitHub project.',
-  'Explore interactive flow diagrams.',
-  'Powered by Local AI & WebLLM.',
+  'Understand any GitHub project in seconds.',
+  'Explore clear, interactive visual maps.',
+  'Get instant answers with built-in AI.',
 ];
 
 const SUGGESTED_REPOS = [
@@ -56,25 +56,25 @@ export function Hero() {
 
   return (
     <div className="relative pt-20 pb-16 px-4 max-w-4xl mx-auto text-center z-10">
-      {/* Brand Logo & Name Header */}
+      {/* Brand Logo & Name Header (App Logo and Text Only - Card Removed) */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="inline-flex items-center gap-3.5 px-5 py-2.5 mb-8 rounded-full border border-zinc-200/90 bg-white/95 backdrop-blur-md shadow-sm hover:border-zinc-300 hover:shadow-md transition-all"
+        className="inline-flex items-center gap-3 mb-8"
       >
         <img
           src="/domoscope.png"
           alt="DomoScope Logo"
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-contain bg-zinc-950 p-1 border border-zinc-200 shadow-xs"
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-contain bg-zinc-950 p-1 border border-zinc-200/80 shadow-xs"
         />
-        <span className="font-extrabold text-lg sm:text-xl tracking-tight text-zinc-900 font-sans">
+        <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-zinc-900 font-sans">
           DomoScope
         </span>
       </motion.div>
 
-      {/* Controlled Animated Headline */}
-      <div className="min-h-[4.5rem] flex items-center justify-center overflow-hidden">
+      {/* Controlled Animated Headline with Expanded Bounds */}
+      <div className="min-h-[5.5rem] flex items-center justify-center py-2 overflow-visible">
         <AnimatePresence mode="wait">
           <motion.h1
             key={headlineIndex}
@@ -82,21 +82,21 @@ export function Hero() {
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }}
             transition={{ duration: 0.45, ease: 'easeOut' }}
-            className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-zinc-900 leading-tight"
+            className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-zinc-900 leading-normal pb-2"
           >
             {HEADLINES[headlineIndex]}
           </motion.h1>
         </AnimatePresence>
       </div>
 
-      {/* Supporting Description */}
+      {/* Supporting Description (Simplified Non-Technical Copy with Generous Bottom Space) */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.6 }}
-        className="mt-6 text-base sm:text-lg text-zinc-600 max-w-2xl mx-auto leading-relaxed"
+        className="mt-6 text-base sm:text-lg text-zinc-600 max-w-2xl mx-auto leading-relaxed pb-3"
       >
-        Instant visual architecture graph, reverse-engineering specs, dynamic Tech Stack inspection, and automated local WebLLM code explanations.
+        Turn complex code into clear interactive diagrams, instant project summaries, and easy explanations — right in your browser with zero setup.
       </motion.p>
 
       {/* Main Exploration Input Form */}
@@ -126,7 +126,7 @@ export function Hero() {
             type="submit"
             className="w-full sm:w-auto px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 shadow-md cursor-pointer active:scale-98"
           >
-            <span>Explore repository</span>
+            <span>Explore project</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -146,7 +146,7 @@ export function Hero() {
         transition={{ delay: 0.4, duration: 0.5 }}
         className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-zinc-500 font-mono"
       >
-        <span className="text-zinc-400">Try a featured repo:</span>
+        <span className="text-zinc-400">Try a sample project:</span>
         {SUGGESTED_REPOS.map((repo) => (
           <button
             key={repo}
