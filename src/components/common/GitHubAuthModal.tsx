@@ -41,6 +41,7 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
   const [privacyError, setPrivacyError] = useState(false);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -279,7 +280,17 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
                       />
                       <span className="text-[11px] sm:text-xs text-zinc-700 leading-relaxed font-sans">
                         I confirm this token will be used <strong>strictly for repository analysis</strong> without abuse, scraping spam, or rate-limit violations. I agree to DomoScope's{' '}
-                        <span className="text-zinc-900 font-bold underline cursor-pointer">Data Privacy Policy</span>.
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowPrivacyModal(true);
+                          }}
+                          className="text-zinc-900 font-bold underline hover:text-black focus:outline-none cursor-pointer inline-flex items-center gap-0.5"
+                        >
+                          Data Privacy Policy
+                        </button>.
                       </span>
                     </label>
                   </div>
@@ -463,6 +474,103 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* ========================================================== */}
+      {/* DATA PRIVACY & LOCAL ARCHITECTURE MODAL CARD              */}
+      {/* Normal White & Black theme with Agree button               */}
+      {/* ========================================================== */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-white border border-zinc-300 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 bg-zinc-50">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-zinc-900" />
+                <h3 className="text-base font-bold text-zinc-900">Data Privacy & Local Guarantee</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrivacyModal(false)}
+                className="p-1 text-zinc-400 hover:text-zinc-900 rounded-full hover:bg-zinc-200 transition-colors cursor-pointer"
+                aria-label="Close policy"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4 overflow-y-auto text-xs text-zinc-700 leading-relaxed font-sans">
+              <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-2xl flex items-center gap-3">
+                <img
+                  src="/domoscope.png"
+                  alt="DomoScope"
+                  className="w-10 h-10 rounded-xl object-contain bg-zinc-950 p-1 border border-zinc-300 shrink-0"
+                />
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-900">100% Client-Side Architecture</h4>
+                  <p className="text-[11px] text-zinc-500 font-mono">DomoScope does not operate backend storage servers.</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-3.5 border border-zinc-200 rounded-xl space-y-1">
+                  <h5 className="font-bold text-zinc-900 flex items-center gap-1.5 text-xs">
+                    <Database className="w-3.5 h-3.5 text-zinc-900" /> 1. No Code or Data Ingestion
+                  </h5>
+                  <p className="text-zinc-600 text-[11px]">
+                    Your repository files, AST graph nodes, commit histories, and code snippets are parsed exclusively inside your browser runtime. DomoScope never uploads, mirrors, or trains models on your code.
+                  </p>
+                </div>
+
+                <div className="p-3.5 border border-zinc-200 rounded-xl space-y-1">
+                  <h5 className="font-bold text-zinc-900 flex items-center gap-1.5 text-xs">
+                    <Lock className="w-3.5 h-3.5 text-zinc-900" /> 2. Encrypted Local Storage Only
+                  </h5>
+                  <p className="text-zinc-600 text-[11px]">
+                    Your Personal Access Token (PAT) is encrypted with modern AES-GCM cryptography and stored directly in your browser's private IndexedDB vault. It is never logged or exposed in network traffic.
+                  </p>
+                </div>
+
+                <div className="p-3.5 border border-zinc-200 rounded-xl space-y-1">
+                  <h5 className="font-bold text-zinc-900 flex items-center gap-1.5 text-xs">
+                    <Eye className="w-3.5 h-3.5 text-zinc-900" /> 3. Strictly Intended Read-Only Use
+                  </h5>
+                  <p className="text-zinc-600 text-[11px]">
+                    By using this tool, you confirm that your token is intended for legitimate architecture exploration and developer insights. DomoScope executes only read operations and never alters your code, branches, or settings.
+                  </p>
+                </div>
+
+                <div className="p-3.5 border border-zinc-200 rounded-xl space-y-1">
+                  <h5 className="font-bold text-zinc-900 flex items-center gap-1.5 text-xs">
+                    <FileCheck2 className="w-3.5 h-3.5 text-zinc-900" /> 4. Full User Sovereignty
+                  </h5>
+                  <p className="text-zinc-600 text-[11px]">
+                    You can clear all local caches and delete your stored token at any time by clicking "Disconnect & Sign Out" or directly in your GitHub token management page.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between gap-3">
+              <span className="text-[11px] font-mono text-zinc-500">
+                Zero telemetry · 100% private
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setPrivacyAgreed(true);
+                  setPrivacyError(false);
+                  setShowPrivacyModal(false);
+                }}
+                className="px-5 py-2.5 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs hover:scale-[1.01]"
+              >
+                I Agree to Privacy Policy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
