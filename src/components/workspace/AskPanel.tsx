@@ -235,14 +235,15 @@ function ThoughtProcessDisclosure({ thoughtProcess }: { thoughtProcess: string }
 // Multi-repository isolated chat memory store to prevent cross-repo hallucination
 const repoChatMemoryMap = new Map<string, ChatMessage[]>();
 
-function createWelcomeMessage(fullName: string, entryPoints: string[] = []): ChatMessage {
+function createWelcomeMessage(fullName: string, entryPoints: string[] = [], activeModelName?: string): ChatMessage {
+  const model = activeModelName || 'Direct Intelligent Engine';
   return {
     id: `welcome-${fullName}`,
     sender: 'assistant',
-    text: `Welcome to DomoScope Assistant. I inspect **${fullName}** directly in your browser with dynamic architectural reasoning. Ask me anything about components, routes, database schemas, or security!`,
+    text: `Welcome to DomoScope Assistant. I inspect **${fullName}** directly in your browser with dynamic architectural reasoning powered by **${model}**. Ask me anything about components, routes, database schemas, or security!`,
     timestamp: Date.now(),
     referencedFiles: entryPoints.slice(0, 2),
-    modelName: 'Direct Intelligent Engine',
+    modelName: model,
   };
 }
 
@@ -262,11 +263,15 @@ export function AskPanel({
 }: AskPanelProps) {
   const repoKey = analysis.metadata.fullName;
 
+  // Model selection state with synchronous initial load from localStorage
+  const [aiConfig, setAiConfig] = useState<AIProviderConfig>(() => AIService.getSyncConfig());
+  const activeModel = AI_MODELS.find((m) => m.id === aiConfig.selectedModel) || AI_MODELS[0];
+
   // Initialize or restore conversation specific to this repository
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = repoChatMemoryMap.get(repoKey);
     if (saved && saved.length > 0) return saved;
-    return [createWelcomeMessage(repoKey, analysis.entryPoints)];
+    return [createWelcomeMessage(repoKey, analysis.entryPoints, activeModel.name)];
   });
 
   // Switch chat memory whenever user shifts to a different repository
@@ -275,13 +280,13 @@ export function AskPanel({
     if (saved && saved.length > 0) {
       setMessages(saved);
     } else {
-      const freshWelcome = [createWelcomeMessage(repoKey, analysis.entryPoints)];
+      const freshWelcome = [createWelcomeMessage(repoKey, analysis.entryPoints, activeModel.name)];
       repoChatMemoryMap.set(repoKey, freshWelcome);
       setMessages(freshWelcome);
     }
     setInputValue('');
     setIsProcessing(false);
-  }, [repoKey, analysis.entryPoints]);
+  }, [repoKey, analysis.entryPoints, activeModel.name]);
 
   // Synchronize active chat messages to the repository memory store
   useEffect(() => {
@@ -291,7 +296,7 @@ export function AskPanel({
   }, [messages, repoKey]);
 
   const handleResetChat = () => {
-    const freshWelcome = [createWelcomeMessage(repoKey, analysis.entryPoints)];
+    const freshWelcome = [createWelcomeMessage(repoKey, analysis.entryPoints, activeModel.name)];
     repoChatMemoryMap.set(repoKey, freshWelcome);
     setMessages(freshWelcome);
   };
@@ -305,12 +310,6 @@ export function AskPanel({
   const [downloadingModelId, setDownloadingModelId] = useState<string | null>(null);
   const [isDownloadPopoverOpen, setIsDownloadPopoverOpen] = useState(false);
 
-  // Model selection state
-  const [aiConfig, setAiConfig] = useState<AIProviderConfig>({
-    provider: 'local',
-    selectedModel: 'local-grounded',
-    reasoningEffort: 'medium',
-  });
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [modelFilterTab, setModelFilterTab] = useState<'all' | 'local' | 'cloud'>('all');
 
@@ -326,7 +325,18 @@ export function AskPanel({
   const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    AIService.getConfig().then(setAiConfig);
+    AIService.getConfig().then((conf) => {
+      setAiConfig(conf);
+      // Auto-load WebLLM engine into memory if the active model is downloadable and already in cache
+      const isDl = AVAILABLE_WEBLLM_MODELS.some((m) => m.id === conf.selectedModel);
+      if (isDl && WebLLMService.isWebGPUSupported()) {
+        WebLLMService.isModelDownloaded(conf.selectedModel).then((isDownloaded) => {
+          if (isDownloaded && WebLLMService.getCurrentModelId() !== conf.selectedModel) {
+            WebLLMService.initModel(conf.selectedModel);
+          }
+        });
+      }
+    });
     WebLLMService.getCachedModels().then(setCachedModelIds);
   }, []);
 
@@ -437,6 +447,19 @@ export function AskPanel({
     await AIService.saveConfig(newConfig);
     setIsModelDropdownOpen(false);
 
+    // Update welcome message to permanently reflect newly active model
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id.startsWith('welcome-')
+          ? {
+              ...m,
+              modelName: model.name,
+              text: m.text.replace(/powered by \*\*[^*]+\*\*/, `powered by **${model.name}**`),
+            }
+          : m
+      )
+    );
+
     // If it's a downloadable WebLLM model and not cached/loaded, start download
     if (model.isDownloadable && WebLLMService.isWebGPUSupported()) {
       handleDownloadAndLoadModel(model.id);
@@ -502,7 +525,6 @@ export function AskPanel({
     }
   };
 
-  const activeModel = AI_MODELS.find((m) => m.id === aiConfig.selectedModel) || AI_MODELS[0];
   const activeDlModel = AVAILABLE_WEBLLM_MODELS.find((m) => m.id === downloadingModelId);
   const totalMB = activeDlModel ? parseFloat(activeDlModel.size) : 340;
   const percentDone = initProgress ? initProgress.progress : 0;
@@ -579,11 +601,11 @@ export function AskPanel({
               setIsDownloadPopoverOpen(false);
               setIsModelDropdownOpen((prev) => !prev);
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-100 text-[11px] font-mono text-zinc-800 transition-all shadow-2xs cursor-pointer min-w-0 flex-1 max-w-[145px] sm:max-w-[170px]"
-            title="Change AI Model"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-100 text-[11px] font-mono text-zinc-800 transition-all shadow-2xs cursor-pointer min-w-0 flex-1 max-w-[155px] sm:max-w-[185px]"
+            title="Change Active AI Model"
           >
-            <Sparkles className="w-3 h-3 text-zinc-700 shrink-0" />
-            <span className="font-medium truncate text-left min-w-0 flex-1">{activeModel.name}</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <span className="font-semibold text-zinc-900 truncate text-left min-w-0 flex-1">{activeModel.name}</span>
             <ChevronDown className="w-3 h-3 text-zinc-400 shrink-0" />
           </button>
 
@@ -947,10 +969,14 @@ export function AskPanel({
                 )}
               </div>
 
-              {/* Model Tag */}
-              {!isUser && msg.modelName && (
-                <div className="text-[10px] font-mono text-zinc-400 pl-1 flex items-center gap-1">
-                  <span>{msg.modelName}</span>
+              {/* Permanent Active Model Identity Tag */}
+              {!isUser && (
+                <div className="text-[10px] font-mono text-zinc-500 pl-1 flex items-center gap-1.5 pt-0.5 select-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="font-semibold text-zinc-700">{msg.modelName || activeModel.name}</span>
+                  <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-zinc-100 border border-zinc-200/70 text-zinc-500 font-mono font-medium">
+                    {msg.modelName === 'Direct Intelligent Engine' ? 'Built-in' : activeModel.provider === 'local' ? 'WebGPU' : 'Cloud'}
+                  </span>
                 </div>
               )}
 
@@ -994,14 +1020,35 @@ export function AskPanel({
 
       {/* Input Form Bar */}
       <div className="p-3 border-t border-zinc-200 bg-white shrink-0">
-        {selectedFile && (
-          <div className="flex items-center gap-1.5 mb-2 text-[11px] font-mono text-zinc-500">
-            <span className="text-zinc-400">Context:</span>
-            <span className="px-1.5 py-0.5 bg-zinc-100 rounded text-zinc-700 truncate max-w-xs">
-              {selectedFile}
+        {/* Permanent Active Model Indicator Bar */}
+        <div className="flex items-center justify-between gap-1.5 mb-2 px-0.5 text-[11px] font-mono select-none">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-zinc-400 font-medium shrink-0">Active Model:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setIsDownloadPopoverOpen(false);
+                setIsModelDropdownOpen((prev) => !prev);
+              }}
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200 text-zinc-900 font-bold transition-all cursor-pointer min-w-0 max-w-[210px] shadow-2xs group"
+              title="Click to switch active AI model"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+              <span className="truncate">{activeModel.name}</span>
+              <ChevronDown className="w-3 h-3 text-zinc-400 group-hover:text-zinc-700 shrink-0" />
+            </button>
+            <span className="text-[10px] text-zinc-400 font-normal hidden sm:inline shrink-0">
+              ({activeModel.provider === 'local' ? (activeModel.id === 'local-grounded' ? 'Client Engine' : 'WebGPU') : `${activeModel.provider.toUpperCase()} Cloud`})
             </span>
           </div>
-        )}
+
+          {selectedFile && (
+            <div className="flex items-center gap-1 text-[10px] text-zinc-500 truncate max-w-[130px] shrink-0" title={selectedFile}>
+              <span className="text-zinc-400">File:</span>
+              <span className="px-1.5 py-0.2 bg-zinc-100 rounded text-zinc-700 truncate font-mono">{selectedFile.split('/').pop()}</span>
+            </div>
+          )}
+        </div>
 
         <form
           onSubmit={(e) => {

@@ -15,11 +15,37 @@ const DEFAULT_CONFIG: AIProviderConfig = {
 };
 
 export const AIService = {
+  getSyncConfig(): AIProviderConfig {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('domoscope_ai_config');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.selectedModel) return parsed;
+        }
+      }
+    } catch {}
+    return DEFAULT_CONFIG;
+  },
+
   async getConfig(): Promise<AIProviderConfig> {
-    return await StorageService.getSetting<AIProviderConfig>('ai_config', DEFAULT_CONFIG);
+    const config = await StorageService.getSetting<AIProviderConfig>('ai_config', this.getSyncConfig());
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('domoscope_active_model', config.selectedModel);
+        localStorage.setItem('domoscope_ai_config', JSON.stringify(config));
+      }
+    } catch {}
+    return config;
   },
 
   async saveConfig(config: AIProviderConfig): Promise<void> {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('domoscope_active_model', config.selectedModel);
+        localStorage.setItem('domoscope_ai_config', JSON.stringify(config));
+      }
+    } catch {}
     await StorageService.setSetting('ai_config', config);
   },
 
