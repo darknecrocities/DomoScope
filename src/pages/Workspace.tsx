@@ -514,8 +514,8 @@ export function WorkspacePage() {
           <>
             <ResizableDivider onResize={handleResizeAsk} />
             <div
-              style={{ width: `${askPanelWidth}px` }}
-              className="hidden lg:flex h-full shrink-0"
+              style={{ width: `${askPanelWidth}px`, minWidth: '44px' }}
+              className="hidden lg:flex h-full shrink-0 overflow-hidden transition-all duration-200"
             >
               <AskPanel
                 analysis={analysis}

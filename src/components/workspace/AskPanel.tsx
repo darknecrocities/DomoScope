@@ -9,8 +9,11 @@ import {
   ArrowRight,
   Cpu,
   ChevronDown,
+  ChevronRight,
   Settings,
   Sparkles,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react';
 import { RepoAnalysis, RepoFile, ChatMessage, AIProviderConfig, RepoDependency, DatabaseSchema, SecurityFinding } from '../../types';
 import { AIService, AI_MODELS } from '../../services/aiService';
@@ -39,6 +42,157 @@ const SUGGESTED_QUESTIONS = [
   'Which files should I read first?',
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Proper markdown-to-JSX renderer (no raw **** in output)
+// ─────────────────────────────────────────────────────────────────────────────
+function renderMessageText(text: string): React.ReactNode {
+  // Split into lines for block-level processing
+  const rawLines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < rawLines.length) {
+    const line = rawLines[i];
+
+    // Skip blank lines (add spacing via margin on previous element instead)
+    if (line.trim() === '') {
+      i++;
+      continue;
+    }
+
+    // ── Numbered list item: "1. " or "1) "
+    if (/^\d+[.)]\s/.test(line.trim())) {
+      const listItems: string[] = [];
+      while (i < rawLines.length && /^\d+[.)]\s/.test(rawLines[i].trim())) {
+        listItems.push(rawLines[i].trim().replace(/^\d+[.)]\s+/, ''));
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${i}`} className="list-decimal list-inside space-y-1 mb-2 ml-1">
+          {listItems.map((item, idx) => (
+            <li key={idx} className="text-zinc-800 leading-relaxed">
+              {renderInline(item)}
+            </li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // ── Bullet list item: "- ", "• ", "* " at start
+    if (/^[-•*]\s/.test(line.trim())) {
+      const listItems: string[] = [];
+      while (i < rawLines.length && /^[-•*]\s/.test(rawLines[i].trim())) {
+        listItems.push(rawLines[i].trim().replace(/^[-•*]\s+/, ''));
+        i++;
+      }
+      elements.push(
+        <ul key={`ul-${i}`} className="list-none space-y-1 mb-2 ml-1">
+          {listItems.map((item, idx) => (
+            <li key={idx} className="flex gap-1.5 text-zinc-800 leading-relaxed">
+              <span className="mt-1 w-1 h-1 rounded-full bg-zinc-400 shrink-0 block" />
+              <span>{renderInline(item)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // ── Section header: "## " or "### " or "**Title:**"
+    if (/^#{1,3}\s/.test(line.trim())) {
+      const heading = line.trim().replace(/^#{1,3}\s+/, '');
+      elements.push(
+        <p key={`h-${i}`} className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-500 mt-3 mb-1">
+          {renderInline(heading)}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    // ── Code block: ``` ... ```
+    if (line.trim().startsWith('```')) {
+      const codeLines: string[] = [];
+      i++; // skip opening ```
+      while (i < rawLines.length && !rawLines[i].trim().startsWith('```')) {
+        codeLines.push(rawLines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      elements.push(
+        <pre
+          key={`code-${i}`}
+          className="bg-zinc-900 text-zinc-100 text-[11px] font-mono rounded-lg px-3 py-2.5 overflow-x-auto mb-2 leading-relaxed"
+        >
+          {codeLines.join('\n')}
+        </pre>
+      );
+      continue;
+    }
+
+    // ── Regular paragraph line
+    elements.push(
+      <p key={`p-${i}`} className="text-zinc-800 leading-relaxed mb-1.5">
+        {renderInline(line)}
+      </p>
+    );
+    i++;
+  }
+
+  return <>{elements}</>;
+}
+
+// Inline markdown: **bold**, *italic*, `code`, plain text
+function renderInline(text: string): React.ReactNode {
+  // tokenize by **bold**, *italic*, `code`
+  const parts: React.ReactNode[] = [];
+  // Pattern captures: **bold** | *italic* | `code` | plain
+  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Plain text before match
+    if (match.index > lastIndex) {
+      parts.push(<span key={lastIndex}>{text.slice(lastIndex, match.index)}</span>);
+    }
+
+    const token = match[0];
+    if (token.startsWith('**') && token.endsWith('**')) {
+      parts.push(
+        <strong key={match.index} className="font-semibold text-zinc-900">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      parts.push(
+        <em key={match.index} className="italic text-zinc-700">
+          {token.slice(1, -1)}
+        </em>
+      );
+    } else if (token.startsWith('`') && token.endsWith('`')) {
+      parts.push(
+        <code key={match.index} className="bg-zinc-200 text-zinc-900 font-mono text-[10px] px-1 py-0.5 rounded">
+          {token.slice(1, -1)}
+        </code>
+      );
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  // Remaining text
+  if (lastIndex < text.length) {
+    parts.push(<span key={lastIndex}>{text.slice(lastIndex)}</span>);
+  }
+
+  return parts.length > 0 ? <>{parts}</> : <>{text}</>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AskPanel component
+// ─────────────────────────────────────────────────────────────────────────────
 export function AskPanel({
   analysis,
   files,
@@ -57,7 +211,7 @@ export function AskPanel({
     {
       id: 'welcome',
       sender: 'assistant',
-      text: `Welcome to DomoScope Assistant. I inspect ${analysis.metadata.fullName} directly from your repository files. What would you like to explore?`,
+      text: `Welcome to DomoScope Assistant. I inspect **${analysis.metadata.fullName}** directly from your repository files. What would you like to explore?`,
       timestamp: Date.now(),
       referencedFiles: analysis.entryPoints.slice(0, 2),
       modelName: 'Local Grounded Engine',
@@ -66,6 +220,7 @@ export function AskPanel({
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [initProgress, setInitProgress] = useState<LLMProgress | null>(null);
 
   // Model selection state
@@ -145,6 +300,9 @@ export function AskPanel({
     setInputValue('');
     setIsProcessing(true);
 
+    // Auto-expand if minimized when a message is sent
+    if (isMinimized) setIsMinimized(false);
+
     try {
       const result = await AIService.askQuestion(
         trimmed,
@@ -188,6 +346,37 @@ export function AskPanel({
 
   const activeModel = AI_MODELS.find((m) => m.id === aiConfig.selectedModel) || AI_MODELS[0];
 
+  // ── Minimized state: slim vertical tab strip ────────────────────────────────
+  if (isMinimized) {
+    return (
+      <div
+        className="h-full flex flex-col bg-white border-l border-zinc-200 select-none"
+        style={{ width: '44px' }}
+      >
+        {/* Expand button */}
+        <button
+          onClick={() => setIsMinimized(false)}
+          className="flex flex-col items-center gap-2 px-2 pt-4 pb-3 hover:bg-zinc-50 transition-colors group w-full"
+          title="Expand AI Chat"
+        >
+          <PanelRightOpen className="w-4 h-4 text-zinc-500 group-hover:text-zinc-900 transition-colors" />
+          <span
+            className="text-[10px] font-mono font-semibold text-zinc-400 group-hover:text-zinc-700 transition-colors"
+            style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', letterSpacing: '0.08em' }}
+          >
+            AI Chat
+          </span>
+        </button>
+
+        {/* New message indicator when minimized and has unread */}
+        {messages.length > 1 && (
+          <div className="mx-auto mt-1 w-1.5 h-1.5 rounded-full bg-zinc-900" />
+        )}
+      </div>
+    );
+  }
+
+  // ── Full panel ──────────────────────────────────────────────────────────────
   return (
     <div
       className={`h-full flex flex-col bg-white border-l border-zinc-200 transition-all select-none ${
@@ -195,7 +384,7 @@ export function AskPanel({
       }`}
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/80 relative">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/80 relative shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <MessageSquare className="w-4 h-4 text-zinc-700 shrink-0" />
           <h3 className="text-xs font-semibold text-zinc-900 hidden sm:inline">Ask</h3>
@@ -220,7 +409,6 @@ export function AskPanel({
                 </div>
 
                 <div className="max-h-64 overflow-y-auto divide-y divide-zinc-50">
-                  {/* Group by provider */}
                   {(['local', 'anthropic', 'gemini', 'openai'] as const).map((prov) => {
                     const groupModels = AI_MODELS.filter((m) => m.provider === prov);
                     const providerLabel =
@@ -280,6 +468,16 @@ export function AskPanel({
 
         {/* Right Controls */}
         <div className="flex items-center gap-1">
+          {/* Minimize button */}
+          <button
+            onClick={() => setIsMinimized(true)}
+            className="p-1 text-zinc-400 hover:text-zinc-700 rounded transition-colors"
+            title="Minimize chat panel"
+          >
+            <PanelRightClose className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Maximize / restore */}
           <button
             onClick={() => setIsMaximized((prev) => !prev)}
             className="p-1 text-zinc-400 hover:text-zinc-700 rounded transition-colors"
@@ -287,6 +485,8 @@ export function AskPanel({
           >
             {isMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
+
+          {/* Close */}
           <button
             onClick={onClose}
             className="p-1 text-zinc-400 hover:text-zinc-700 rounded transition-colors"
@@ -299,7 +499,7 @@ export function AskPanel({
 
       {/* WebLLM Engine Progress Bar */}
       {initProgress && initProgress.progress < 100 && (
-        <div className="px-4 py-2 bg-zinc-100/70 border-b border-zinc-200 text-[11px] font-mono text-zinc-600 flex items-center justify-between">
+        <div className="px-4 py-2 bg-zinc-100/70 border-b border-zinc-200 text-[11px] font-mono text-zinc-600 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5 text-zinc-500 animate-spin" />
             <span>Preparing local model: {initProgress.text}</span>
@@ -309,7 +509,7 @@ export function AskPanel({
       )}
 
       {/* Suggested Questions Carousel */}
-      <div className="px-4 py-2 border-b border-zinc-100 bg-white flex items-center gap-1.5 overflow-x-auto">
+      <div className="px-4 py-2 border-b border-zinc-100 bg-white flex items-center gap-1.5 overflow-x-auto shrink-0">
         <span className="text-[10px] font-mono uppercase text-zinc-400 shrink-0">Ask:</span>
         {SUGGESTED_QUESTIONS.map((q) => (
           <button
@@ -333,16 +533,20 @@ export function AskPanel({
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1`}
             >
               <div
-                className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ${
+                className={`max-w-[88%] rounded-xl px-3.5 py-2.5 text-xs ${
                   isUser
-                    ? 'bg-zinc-900 text-white font-sans shadow-xs'
-                    : 'bg-zinc-100 text-zinc-800 border border-zinc-200/80 font-sans'
+                    ? 'bg-zinc-900 text-white font-sans shadow-xs leading-relaxed'
+                    : 'bg-zinc-50 text-zinc-800 border border-zinc-200 font-sans'
                 }`}
               >
-                <p className="whitespace-pre-wrap">{msg.text}</p>
+                {isUser ? (
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                ) : (
+                  <div className="space-y-0.5">{renderMessageText(msg.text)}</div>
+                )}
               </div>
 
-              {/* Model Tag & Timestamp */}
+              {/* Model Tag */}
               {!isUser && msg.modelName && (
                 <div className="text-[10px] font-mono text-zinc-400 pl-1 flex items-center gap-1">
                   <span>{msg.modelName}</span>
@@ -381,7 +585,7 @@ export function AskPanel({
       </div>
 
       {/* Input Form Bar */}
-      <div className="p-3 border-t border-zinc-200 bg-white">
+      <div className="p-3 border-t border-zinc-200 bg-white shrink-0">
         {selectedFile && (
           <div className="flex items-center gap-1.5 mb-2 text-[11px] font-mono text-zinc-500">
             <span className="text-zinc-400">Context:</span>
