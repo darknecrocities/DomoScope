@@ -77,9 +77,41 @@ export default async function handler(req: any, res: any) {
 
     // ── 2. Scope & Guardrail Filtering (Exclude friendly greetings) ───────────
     const isGreetingQuery =
-      /^(hi|hello|hey|heya|howdy|sup|yo|hiya|aloha|hola|bonjour|greetings)(\s+there|\s+assistant|\s+domoscope|\s+bot)?[\s!.,?]*$/i.test(trimmedQ) ||
-      /^(good\s+(morning|afternoon|evening|day))(\s+there|\s+assistant|\s+domoscope)?[\s!.,?]*$/i.test(trimmedQ) ||
-      /^(how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|introduce\s+yourself|help(\s+me)?|how\s+can\s+you\s+help(\s+me)?)[\s!.,?]*$/i.test(trimmedQ);
+      /^(hi+|hello+|he+y+|heya|howdy|sup|yo+|hiya|aloha|hola|bonjour|greetings)(\s+there|\s+assistant|\s+domoscope|\s+bot)?[\s!.,?]*$/i.test(trimmedQ) ||
+      /^(good\s*(morning|afternoon|evening|day|night)|gm|gn|g'?day|mornin'?|morning|afternoon|evening)(\s+there|\s+assistant|\s+domoscope)?[\s!.,?]*$/i.test(trimmedQ) ||
+      /^(how\s+are\s+(you|u)|how\s+r\s+u|how'?s\s+it\s+going|how'?s\s+everything|how\s+do\s+you\s+do|how'?s\s+your\s+day)[\s!.,?]*$/i.test(trimmedQ) ||
+      /^(who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|what\s+do\s+you\s+do|introduce\s+yourself|tell\s+me\s+about\s+yourself|help(\s+me)?|how\s+can\s+you\s+help(\s+me)?)[\s!.,?]*$/i.test(trimmedQ) ||
+      /^(thanks|thank\s+you|ty|thx|thank\s+you\s+so\s+much|appreciate\s+it)[\s!.,?]*$/i.test(trimmedQ) ||
+      /^(nice\s+to\s+meet\s+you|pleased\s+to\s+meet\s+you|what'?s\s+up|wassup|wazzup)[\s!.,?]*$/i.test(trimmedQ);
+
+    // If it's a greeting, return warm and contextual greeting immediately
+    if (isGreetingQuery) {
+      let body = '';
+      if (/how\s+are\s+(you|u)|how\s+r\s+u|how'?s\s+it\s+going|how'?s\s+everything|how\s+do\s+you\s+do|how'?s\s+your\s+day/i.test(trimmedQ)) {
+        body = `I'm doing great, thank you for asking! 😊 I'm fully primed and ready as your **DomoScope AI Assistant**.\n\nAll files, routes, and schemas are indexed. What would you like to inspect today?`;
+      } else if (/who\s+are\s+you|what\s+is\s+your\s+name|what\s+are\s+you|introduce\s+yourself|tell\s+me\s+about\s+yourself/i.test(trimmedQ)) {
+        body = `I am **DomoScope AI Assistant**, an intelligent software architecture and code inspection assistant. I can guide you through components, API routes, database schemas, security posture, and source code. What area would you like to investigate?`;
+      } else if (/what\s+can\s+you\s+do|help|how\s+can\s+you\s+help/i.test(trimmedQ)) {
+        body = `As your **DomoScope AI Assistant**, I can inspect and reverse-engineer this codebase:\n\n- 🏗️ Trace high-level architecture and component dependencies\n- 🔌 Map API endpoints and HTTP route handlers\n- 🗄️ Inspect database schemas and data persistence models\n- 🛡️ Audit security posture and token exposure\n\nWhat would you like to start with?`;
+      } else if (/thanks|thank\s+you|ty|thx|appreciate\s+it/i.test(trimmedQ)) {
+        body = `You're very welcome! 😊 Glad I could help. Let me know if you'd like to inspect another component, API route, or database table!`;
+      } else if (/good\s*morning|gm\b|mornin/i.test(trimmedQ)) {
+        body = `Good morning! ☀️ I'm your **DomoScope AI Assistant**, ready to inspect this repository with you. What would you like to explore today?`;
+      } else if (/good\s*afternoon/i.test(trimmedQ)) {
+        body = `Good afternoon! 🌤️ I'm your **DomoScope AI Assistant**, ready to dive into this repository. How can I assist you with this codebase?`;
+      } else if (/good\s*evening|gn\b/i.test(trimmedQ)) {
+        body = `Good evening! 🌙 I'm your **DomoScope AI Assistant**, ready to analyze this repository. What would you like to inspect tonight?`;
+      } else {
+        body = `Hello! 👋 Glad to connect. I'm your **DomoScope AI Assistant**, specialized in analyzing this repository. How can I help you today?`;
+      }
+
+      res.status(200).json({
+        text: body,
+        modelUsed: 'DomoScope Direct Engine',
+        provider: 'built-in',
+      });
+      return;
+    }
 
     if (!isGreetingQuery) {
       if (

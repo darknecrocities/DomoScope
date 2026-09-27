@@ -3,7 +3,7 @@ import { StorageService } from './storage';
 import { WebLLMService, parseThoughtProcess } from './webLLMService';
 import { DEFAULT_AI_MODELS, ModelFetcherService } from './modelFetcherService';
 import { detectFrameworks } from './frameworkDetector';
-import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SAFETY_VIOLATION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL } from './chatGuardrail';
+import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SAFETY_VIOLATION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL, generateGreetingResponse } from './chatGuardrail';
 import { detectAppType } from './appTypeDetector';
 
 export const AI_MODELS: AIModelOption[] = DEFAULT_AI_MODELS;
@@ -211,6 +211,17 @@ CRITICAL SAFETY & REASONING RULES:
         text: guardrail.message || GUARDRAIL_REJECTION_MESSAGE,
         referencedFiles: [],
         modelUsed: guardrail.violationType === 'safety' ? 'Safety & Content Guardrail' : 'Repository Scope Guardrail',
+      };
+    }
+
+    // ── Dedicated Dynamic Greeting Check (Zero-latency, high-fidelity greeting) ─
+    if (guardrail.isGreeting) {
+      const greeting = generateGreetingResponse(question, analysis);
+      return {
+        text: greeting.text,
+        referencedFiles: greeting.referencedFiles,
+        modelUsed: 'Direct Intelligent Engine',
+        thoughtProcess: greeting.thoughtProcess,
       };
     }
 

@@ -206,42 +206,7 @@ export const WebLLMService = {
       };
     }
 
-    // ── If a WebLLM neural model is loaded, query it directly ────────────────
-    if (engine) {
-      try {
-        const context = buildContext(question, analysis, files, fileContents, selectedFile);
-        const systemPrompt = `You are DomoScope Assistant, an expert software architect and code analyst embedded in a GitHub repository explorer.
-${SYSTEM_PROMPT_GUARDRAIL}
-
-REASONING DIRECTIVE:
-First, trace your step-by-step thinking process inside <think>...</think> tags.
-Break down:
-1. User question intent and target repository domain
-2. Files, symbols, and dependencies inspected
-3. Control flow and architecture evaluation
-4. Verification against repository facts
-
-Then, provide your answer. If the user sent a greeting or asked how you are or who you are (e.g. "hi", "how are you", "who are you"), respond warmly, naturally, and concisely in 1-3 sentences as DomoScope Assistant for ${analysis.metadata.fullName}, ready to inspect this codebase. Otherwise, provide your structured technical answer using ## headings, **bold** key terms, \`code\` blocks, and bullet points. Mention specific file paths.`;
-
-        const reply = await engine.chat.completions.create({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nUser Question: ${question}` },
-          ],
-          temperature: 0.4,
-          max_tokens: 1200,
-        });
-
-        const rawText = reply.choices[0]?.message?.content || '';
-        const { text, thoughtProcess } = parseThoughtProcess(rawText);
-        const referencedFiles = extractReferencedFiles(text, files);
-        return { text, referencedFiles, thoughtProcess };
-      } catch (e) {
-        console.warn('WebLLM neural query failed, falling back to deep reasoning engine:', e);
-      }
-    }
-
-    // ── Dedicated Dynamic Greeting Fallback (When no neural weights are active) ─
+    // ── Dedicated Dynamic Greeting Check (Zero-latency, high-fidelity greeting) ─
     if (guardrail.isGreeting) {
       const greeting = generateGreetingResponse(question, analysis);
       return {
@@ -251,10 +216,66 @@ Then, provide your answer. If the user sent a greeting or asked how you are or w
       };
     }
 
+    // ── If a WebLLM neural model is loaded, query it directly ────────────────
+    if (engine) {
+      try {
+        const context = buildContext(question, analysis, files, fileContents, selectedFile);
+        const systemPrompt = `You are DomoScope Assistant, an expert software architect analyzing ${analysis.metadata.fullName}.
+Answer the developer's question directly, accurately, and concisely based strictly on the facts in <repo_data>.
+Structure your answer clearly with markdown ## headings, **bold** key terms, and \`code\` references with exact file paths.
+Never output meta-instructions, prompt explanations, hypothetical options, or leaked labels. Provide only your direct technical answer.
+First, put your step-by-step reasoning trace inside <think>...</think> tags.
+Then, provide your final markdown response.`;
+
+        const reply = await engine.chat.completions.create({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nUser Question: ${question}` },
+          ],
+          temperature: 0.3,
+          max_tokens: 1200,
+        });
+
+        const rawText = reply.choices[0]?.message?.content || '';
+        const { text, thoughtProcess } = parseThoughtProcess(rawText);
+        const cleanedText = cleanModelResponse(text);
+        const referencedFiles = extractReferencedFiles(cleanedText, files);
+        return { text: cleanedText, referencedFiles, thoughtProcess };
+      } catch (e) {
+        console.warn('WebLLM neural query failed, falling back to deep reasoning engine:', e);
+      }
+    }
+
     // Deep semantic reasoning engine — produces structured reasoning and technical answers
     return executeSemanticReasoningEngine(question, analysis, files, fileContents, selectedFile);
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Output cleaner to prevent prompt leaks & meta-commentary
+// ─────────────────────────────────────────────────────────────────────────────
+export function cleanModelResponse(rawText: string): string {
+  let cleaned = rawText.trim();
+
+  // Strip meta-commentary like "Since the user asked..., I'll respond with..."
+  cleaned = cleaned.replace(
+    /^(?:(?:Good\s*(?:morning|afternoon|evening|day)!\s*)?As\s+DomoScope\s+Assistant\s+for[^,\n]+,\s+I'm\s+here\s+to\s+help\.\s*)?Since\s+the\s+user\s+asked[^\n]+\n*/i,
+    ''
+  );
+
+  // If a model generated dual headers like "**Warm and friendly response:**" and "**Structured technical answer:**"
+  if (/Warm and friendly response/i.test(cleaned) && /Structured technical answer/i.test(cleaned)) {
+    const match = cleaned.match(/Structured technical answer:?\s*([\s\S]*)/i);
+    if (match && match[1].trim()) {
+      cleaned = match[1].trim();
+    }
+  }
+
+  // Remove leaked option labels
+  cleaned = cleaned.replace(/\*\*(?:Warm and friendly response|Structured technical answer):\*\*\s*/gi, '');
+
+  return cleaned.trim();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Thought process extractor
@@ -263,10 +284,10 @@ export function parseThoughtProcess(rawText: string): { text: string; thoughtPro
   const match = rawText.match(/<think>([\s\S]*?)<\/think>/i);
   if (match) {
     const thoughtProcess = match[1].trim();
-    const text = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    const text = cleanModelResponse(rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim());
     return { text, thoughtProcess };
   }
-  return { text: rawText };
+  return { text: cleanModelResponse(rawText) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

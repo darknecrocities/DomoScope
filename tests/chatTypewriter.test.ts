@@ -44,4 +44,19 @@ describe('Chat Text Animation & Generative Typewriter Engine', () => {
       expect(partial.length).toBeLessThanOrEqual(textWithMarkdown.length);
     }
   });
+
+  it('strips leaked prompt instructions and meta-commentary from neural outputs', async () => {
+    const { cleanModelResponse } = await import('../src/services/webLLMService');
+    const dirty = `Good morning! As DomoScope Assistant for repo, I'm here to help. Since the user asked "goodmorning", I'll respond with a friendly and professional greeting.
+
+**Warm and friendly response:**
+"Good morning! How can I assist you today?"
+**Structured technical answer:**
+Here is the architecture overview.`;
+
+    const cleaned = cleanModelResponse(dirty);
+    expect(cleaned).not.toContain('Since the user asked');
+    expect(cleaned).not.toContain('**Warm and friendly response:**');
+    expect(cleaned).not.toContain('**Structured technical answer:**');
+  });
 });

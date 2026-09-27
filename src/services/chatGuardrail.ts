@@ -52,11 +52,12 @@ export const HARASSMENT_ABUSE_PATTERNS: RegExp[] = [
  * Common greetings and introductory phrases
  */
 export const GREETING_PATTERNS: RegExp[] = [
-  /^(hi|hello|hey|heya|howdy|sup|yo|hiya|aloha|hola|bonjour|greetings)(\s+there|\s+assistant|\s+domoscope|\s+bot)?[\s!.,?]*$/i,
-  /^(good\s+(morning|afternoon|evening|day))(\s+there|\s+assistant|\s+domoscope)?[\s!.,?]*$/i,
-  /^(how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|how\s+is\s+your\s+day)[\s!.,?]*$/i,
-  /^(who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|what\s+do\s+you\s+do|introduce\s+yourself|help(\s+me)?|how\s+can\s+you\s+help(\s+me)?)[\s!.,?]*$/i,
-  /^(nice\s+to\s+meet\s+you|pleased\s+to\s+meet\s+you|what's\s+up)[\s!.,?]*$/i,
+  /^(hi+|hello+|he+y+|heya|howdy|sup|yo+|hiya|aloha|hola|bonjour|greetings)(\s+there|\s+assistant|\s+domoscope|\s+bot)?[\s!.,?]*$/i,
+  /^(good\s*(morning|afternoon|evening|day|night)|gm|gn|g'?day|mornin'?|morning|afternoon|evening)(\s+there|\s+assistant|\s+domoscope)?[\s!.,?]*$/i,
+  /^(how\s+are\s+(you|u)|how\s+r\s+u|how'?s\s+it\s+going|how'?s\s+everything|how\s+do\s+you\s+do|how'?s\s+your\s+day)[\s!.,?]*$/i,
+  /^(who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|what\s+do\s+you\s+do|introduce\s+yourself|tell\s+me\s+about\s+yourself|help(\s+me)?|how\s+can\s+you\s+help(\s+me)?)[\s!.,?]*$/i,
+  /^(nice\s+to\s+meet\s+you|pleased\s+to\s+meet\s+you|what'?s\s+up|wassup|wazzup)[\s!.,?]*$/i,
+  /^(thanks|thank\s+you|ty|thx|thank\s+you\s+so\s+much|appreciate\s+it)[\s!.,?]*$/i,
 ];
 
 const COMMON_OFF_TOPIC_PATTERNS: RegExp[] = [
@@ -257,17 +258,19 @@ export function generateGreetingResponse(
 
   let body = '';
 
-  if (/how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|how\s+is\s+your\s+day/i.test(qLower)) {
+  if (/how\s+are\s+(you|u)|how\s+r\s+u|how'?s\s+it\s+going|how'?s\s+everything|how\s+do\s+you\s+do|how'?s\s+your\s+day/i.test(qLower)) {
     body = `I'm doing great, thank you for asking! 😊 I'm fully primed and ready as your **DomoScope AI Assistant** for **${repoName}**.\n\n${statsSentence} Everything is ready for deep inspection—whether you want to trace system architecture, inspect database schemas, evaluate security findings${entryPoint ? `, or analyze entry points like \`${entryPoint}\`` : ''}, feel free to ask!`;
-  } else if (/who\s+are\s+you|what\s+is\s+your\s+name|what\s+are\s+you|introduce\s+yourself/i.test(qLower)) {
+  } else if (/who\s+are\s+you|what\s+is\s+your\s+name|what\s+are\s+you|introduce\s+yourself|tell\s+me\s+about\s+yourself/i.test(qLower)) {
     body = `I am **DomoScope AI Assistant**, an intelligent software architecture and code inspection assistant dedicated to **${repoName}**.\n\n${statsSentence} I can guide you through the components, API routes, database schemas, security posture, or any specific file${entryPoint ? ` such as \`${entryPoint}\`` : ''}. What would you like to investigate?`;
   } else if (/what\s+can\s+you\s+do|help|how\s+can\s+you\s+help/i.test(qLower)) {
     body = `As your **DomoScope AI Assistant** for **${repoName}**, I can inspect and reverse-engineer any layer of this codebase.\n\n${statsSentence}\n\nYou can ask me to:\n- 🏗️ Trace high-level architecture and component dependencies\n- 🔌 Map API endpoints and HTTP route handlers\n- 🗄️ Inspect database schemas and data persistence models\n- 🛡️ Audit security posture and token exposure\n${entryPoint ? `- 📄 Deep-dive into specific files like \`${entryPoint}\`\n` : ''}\nWhat area would you like to start with?`;
-  } else if (/good\s+morning/i.test(qLower)) {
+  } else if (/thanks|thank\s+you|ty|thx|appreciate\s+it/i.test(qLower)) {
+    body = `You're very welcome! 😊 Glad I could help. Let me know if you'd like to inspect another component, analyze API routes, or evaluate database tables in **${repoName}**!`;
+  } else if (/good\s*morning|gm\b|mornin/i.test(qLower)) {
     body = `Good morning! ☀️ I'm your **DomoScope AI Assistant**, ready to inspect **${repoName}** with you.\n\n${statsSentence} What would you like to explore today?`;
-  } else if (/good\s+afternoon/i.test(qLower)) {
+  } else if (/good\s*afternoon/i.test(qLower)) {
     body = `Good afternoon! 🌤️ I'm your **DomoScope AI Assistant**, ready to dive into **${repoName}**.\n\n${statsSentence} How can I assist you with this codebase?`;
-  } else if (/good\s+evening/i.test(qLower)) {
+  } else if (/good\s*evening|gn\b/i.test(qLower)) {
     body = `Good evening! 🌙 I'm your **DomoScope AI Assistant**, ready to analyze **${repoName}**.\n\n${statsSentence} What would you like to inspect tonight?`;
   } else {
     body = `Hello! 👋 Glad to connect. I'm your **DomoScope AI Assistant**, specialized in analyzing **${repoName}**.\n\n${statsSentence} I'm loaded with the full context of this project${entryPoint ? ` (including entry points like \`${entryPoint}\`)` : ''}. How can I help you today?`;
