@@ -47,7 +47,7 @@ export function TechStackModal({ isOpen, onClose, files, fileContents }: TechSta
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 bg-zinc-900 text-white">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-zinc-800 rounded-lg border border-zinc-700">
-              <Cpu className="w-5 h-5 text-emerald-400" />
+              <Cpu className="w-5 h-5 text-white" />
             </div>
             <div>
               <h2 className="text-base font-semibold tracking-tight">Tech Stack & Architecture Services</h2>
