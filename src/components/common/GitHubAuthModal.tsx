@@ -353,7 +353,7 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
                 <div className="space-y-2">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-mono text-zinc-300">
                     <ShieldCheck className="w-3.5 h-3.5 text-white" />
-                    <span>Developer-First Security</span>
+                    <span>100% Private & Safe</span>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
                     Explore, map, and understand any codebase with complete privacy.
