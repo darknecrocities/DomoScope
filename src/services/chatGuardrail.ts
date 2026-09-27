@@ -1,31 +1,74 @@
+import { RepoAnalysis } from '../types';
+
 /**
- * DomoScope Repository Scope Guardrail
- * Ensures all chat interactions remain strictly scoped to the repository, its architecture,
- * files, APIs, database schemas, and security.
+ * DomoScope Repository Scope & Safety Guardrail
+ * Ensures all chat interactions remain safe, professional, and strictly scoped
+ * to repository architecture, code files, APIs, database schemas, and security.
  */
 
 export const GUARDRAIL_REJECTION_MESSAGE =
   'Sorry, I can only answer questions within the scope of this repository (architecture, code files, API routes, database schemas, and security). Please ask a question related to this project.';
 
+export const SAFETY_VIOLATION_MESSAGE =
+  'I cannot fulfill this request. DomoScope is strictly committed to a safe, respectful, and professional developer environment. Content involving harassment, hate speech, sexual content, violence, or abuse is strictly prohibited.';
+
 export const SYSTEM_PROMPT_GUARDRAIL = `
+SAFETY & CONTENT GUARDRAIL:
+You must strictly refuse any prompts containing sexual content, sexualization, harassment, hate speech, profanity, threats of violence, or abuse. You must immediately refuse by replying:
+"${SAFETY_VIOLATION_MESSAGE}"
+
 SCOPE & RELEVANCE GUARDRAIL:
 You are strictly an expert assistant for this specific repository.
-You MUST ONLY answer questions concerning this codebase: its architecture, files, components, API endpoints, dependencies, database schema, security, and setup.
-If the user's input is off-topic, nonsense, unrelated to software engineering or this repository (such as general trivia, personal questions, recipes, poetry, creative fiction, jokes, or non-coding queries), you MUST immediately refuse by replying:
-"${GUARDRAIL_REJECTION_MESSAGE}"
-Do not entertain off-scope queries under any circumstances.`;
+- When the user sends a greeting or asks who you are (e.g. "hello", "hi", "hey", "how are you", "who are you", "what can you do"), respond warmly and professionally, introduce yourself as DomoScope Assistant for this repository, and briefly highlight what you can help inspect.
+- You MUST answer questions concerning this codebase: its architecture, files, components, API endpoints, dependencies, database schema, security, and setup.
+- If the user's input is off-topic, nonsense, or completely unrelated to software engineering or this repository (such as general trivia, recipes, poetry, creative fiction, jokes, or non-coding queries), you MUST immediately refuse by replying:
+"${GUARDRAIL_REJECTION_MESSAGE}"`;
+
+/**
+ * Sexual content, sexualization, and explicit NSFW patterns
+ */
+export const SEXUAL_CONTENT_PATTERNS: RegExp[] = [
+  /\b(nsfw|porn|porno|pornography|erotic\w*|hentai|sex|sexual\w*|sexy|nudes?|nudity|naked|masturbat\w*|orgasm\w*|intercourse|fetish\w*|horny|boobs?|breast\w*|penis\w*|vagina\w*|dildo\w*|blowjob\w*|anal\s+sex|threesome|xxx|escort|camgirl)\b/i,
+  /\b(send\s+nudes?|undress|touch\s+yourself|sexual\s+fantasy|dirty\s+talk|talk\s+dirty|roleplay\s+sex|be\s+my\s+(boyfriend|girlfriend|lover))\b/i,
+  /\b(child\s+porn|cp|pedophil\w*|underage\s+sex)\b/i,
+];
+
+/**
+ * Harassment, hate speech, abuse, and violence patterns
+ */
+export const HARASSMENT_ABUSE_PATTERNS: RegExp[] = [
+  // Harassment and self-harm
+  /\b(kill\s+yourself|kys|commit\s+suicide|die\s+bitch|hang\s+yourself|slit\s+your\s+wrists)\b/i,
+  /\b(i\s+will\s+kill\s+you|i\s+will\s+hurt\s+you|i\s+will\s+murder|i\s+will\s+find\s+you\s+and|threat\s+to\s+kill)\b/i,
+  // Slurs and severe hate speech
+  /\b(faggot|nigger|nigga|chink|kike|spic|retard|cunt|whore|slut|bitch|bastard)\b/i,
+  // Violent threats & terrorism
+  /\b(terroris\w*|bomb\s+threat|mass\s+shooting|school\s+shooting|behead\w*)\b/i,
+  // Targeted harassment / doxxing
+  /\b(doxx\w*|stalk\w*|swat\w*)\s+(someone|them|her|him|user)\b/i,
+];
+
+/**
+ * Common greetings and introductory phrases
+ */
+export const GREETING_PATTERNS: RegExp[] = [
+  /^(hi|hello|hey|heya|howdy|sup|yo|hiya|aloha|hola|bonjour|greetings)(\s+there|\s+assistant|\s+domoscope|\s+bot)?[\s!.,?]*$/i,
+  /^(good\s+(morning|afternoon|evening|day))(\s+there|\s+assistant|\s+domoscope)?[\s!.,?]*$/i,
+  /^(how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|how\s+is\s+your\s+day)[\s!.,?]*$/i,
+  /^(who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|what\s+do\s+you\s+do|introduce\s+yourself|help(\s+me)?|how\s+can\s+you\s+help(\s+me)?)[\s!.,?]*$/i,
+  /^(nice\s+to\s+meet\s+you|pleased\s+to\s+meet\s+you|what's\s+up)[\s!.,?]*$/i,
+];
 
 const COMMON_OFF_TOPIC_PATTERNS: RegExp[] = [
-  // General chat / personal
-  /^(how are you|who are you|what is your name|who created you|sing me a song|tell me a joke|tell a joke|make me laugh)/i,
+  // Creative Writing & Jokes
+  /^(sing me a song|tell me a joke|tell a joke|make me laugh)/i,
+  /^(write a poem|write a song|write a story|write an essay|write a novel|compose a haiku)/i,
+  /^(summarize the plot of|explain the movie|who died in)/i,
   // Trivia & World Knowledge
   /^(who is|who was|who are)\s+(the president|the prime minister|the king|the queen|elon|trump|biden|obama|taylor swift|celebrity)/i,
   /^(what is the capital of|what's the capital of)/i,
   /^(what is the weather|what's the weather|forecast|temperature in)/i,
   /^(who won the|what was the score of)\s+(world cup|super bowl|nba|match|game)/i,
-  // Creative Writing & Academics
-  /^(write a poem|write a song|write a story|write an essay|write a novel|compose a haiku)/i,
-  /^(summarize the plot of|explain the movie|who died in)/i,
   // Cooking & Lifestyle
   /^(recipe(s)? for|how to cook|how to bake)/i,
   /^(how to make)\s+(.*?\b)?(cake|pizza|bread|coffee|soup|pasta|cookies|salad|pie|steak|chicken|dessert|meal)/i,
@@ -38,27 +81,88 @@ const COMMON_OFF_TOPIC_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Checks whether a question is valid and within repository scope.
+ * Checks whether text contains sexual content or harassment.
  */
-export function validateQuestionScope(question: string): { allowed: boolean; message?: string } {
+export function isSafetyViolation(question: string): boolean {
+  const lower = (question || '').toLowerCase();
+  for (const pattern of SEXUAL_CONTENT_PATTERNS) {
+    if (pattern.test(lower)) return true;
+  }
+  for (const pattern of HARASSMENT_ABUSE_PATTERNS) {
+    if (pattern.test(lower)) return true;
+  }
+  return false;
+}
+
+/**
+ * Checks whether text is a friendly greeting or introductory query.
+ */
+export function isGreeting(question: string): boolean {
+  const trimmed = (question || '').trim();
+  for (const pattern of GREETING_PATTERNS) {
+    if (pattern.test(trimmed)) return true;
+  }
+  return false;
+}
+
+export interface GuardrailValidationResult {
+  allowed: boolean;
+  message?: string;
+  isGreeting?: boolean;
+  violationType?: 'safety' | 'scope';
+}
+
+/**
+ * Checks whether a question is safe and within repository scope.
+ */
+export function validateQuestionScope(question: string): GuardrailValidationResult {
   const trimmed = (question || '').trim();
 
-  // 1. Empty or extremely short input
+  // 1. Safety Guardrail Check (Sexualization, Harassment, Hate Speech, Abuse)
+  if (isSafetyViolation(trimmed)) {
+    return {
+      allowed: false,
+      message: SAFETY_VIOLATION_MESSAGE,
+      violationType: 'safety',
+    };
+  }
+
+  // 2. Greetings and Pleasantries Check
+  if (isGreeting(trimmed)) {
+    return {
+      allowed: true,
+      isGreeting: true,
+    };
+  }
+
+  // 3. Empty or extremely short input (less than 2 chars)
   if (trimmed.length < 2) {
-    return { allowed: false, message: GUARDRAIL_REJECTION_MESSAGE };
+    return {
+      allowed: false,
+      message: GUARDRAIL_REJECTION_MESSAGE,
+      violationType: 'scope',
+    };
   }
 
-  // 2. Pure symbols / punctuation
+  // 4. Pure symbols / punctuation
   if (/^[^\w\s]+$/.test(trimmed)) {
-    return { allowed: false, message: GUARDRAIL_REJECTION_MESSAGE };
+    return {
+      allowed: false,
+      message: GUARDRAIL_REJECTION_MESSAGE,
+      violationType: 'scope',
+    };
   }
 
-  // 3. Repeated single character (e.g. "aaaaaa", "111111", "......")
+  // 5. Repeated single character (e.g. "aaaaaa", "111111", "......")
   if (/^(.)\1{4,}$/.test(trimmed)) {
-    return { allowed: false, message: GUARDRAIL_REJECTION_MESSAGE };
+    return {
+      allowed: false,
+      message: GUARDRAIL_REJECTION_MESSAGE,
+      violationType: 'scope',
+    };
   }
 
-  // 4. Repeated laughing / nonsense syllables (e.g. "hahaha", "lololol", "hehehe", "lmao")
+  // 6. Repeated laughing / nonsense syllables
   const noSpaces = trimmed.replace(/\s+/g, '');
   if (
     /^(ha|he|xd|rofl){3,}$/i.test(noSpaces) ||
@@ -66,23 +170,35 @@ export function validateQuestionScope(question: string): { allowed: boolean; mes
     /^l(ol){2,}$/i.test(noSpaces) ||
     /^(lmao){2,}$/i.test(noSpaces)
   ) {
-    return { allowed: false, message: GUARDRAIL_REJECTION_MESSAGE };
+    return {
+      allowed: false,
+      message: GUARDRAIL_REJECTION_MESSAGE,
+      violationType: 'scope',
+    };
   }
 
-  // 5. Common keyboard mash patterns
+  // 7. Common keyboard mash patterns
   const lower = trimmed.toLowerCase();
   if (/^(asdfghjkl|qwertyuiop|zxcvbnm|qwerasdf|asdfasdf)/i.test(lower)) {
-    return { allowed: false, message: GUARDRAIL_REJECTION_MESSAGE };
+    return {
+      allowed: false,
+      message: GUARDRAIL_REJECTION_MESSAGE,
+      violationType: 'scope',
+    };
   }
 
-  // 6. Explicit Off-Topic Patterns
+  // 8. Explicit Off-Topic Patterns
   for (const pattern of COMMON_OFF_TOPIC_PATTERNS) {
     if (pattern.test(lower)) {
-      return { allowed: false, message: GUARDRAIL_REJECTION_MESSAGE };
+      return {
+        allowed: false,
+        message: GUARDRAIL_REJECTION_MESSAGE,
+        violationType: 'scope',
+      };
     }
   }
 
-  // 7. Check if query is high-length single word with zero vowels and not a known tech token
+  // 9. Vowelless non-tech token check
   const words = trimmed.split(/\s+/);
   if (words.length === 1 && words[0].length > 7) {
     const word = words[0].toLowerCase();
@@ -107,9 +223,55 @@ export function validateQuestionScope(question: string): { allowed: boolean; mes
     ];
     const hasVowels = /[aeiouy]/.test(word);
     if (!hasVowels && !knownTech.some((k) => k.includes(word))) {
-      return { allowed: false, message: GUARDRAIL_REJECTION_MESSAGE };
+      return {
+        allowed: false,
+        message: GUARDRAIL_REJECTION_MESSAGE,
+        violationType: 'scope',
+      };
     }
   }
 
   return { allowed: true };
+}
+
+/**
+ * Generates a warm, professional greeting response introducing DomoScope Assistant
+ * and offering concrete repository exploration topics.
+ */
+export function generateGreetingResponse(
+  question: string,
+  analysis?: RepoAnalysis | null
+): { text: string; thoughtProcess: string; referencedFiles: string[] } {
+  const repoName = analysis?.metadata?.fullName || 'this repository';
+  const entryPoint = analysis?.entryPoints?.[0];
+
+  const greetingHeaders = [
+    'Hello! 👋 Welcome to DomoScope',
+    'Hi there! 👋 Glad to help you with this codebase',
+    'Greetings! 👋 DomoScope Assistant at your service',
+  ];
+  const header = greetingHeaders[Math.abs(question.length) % greetingHeaders.length];
+
+  const text = `## ${header}
+
+I'm your **DomoScope AI Assistant**, specialized in analyzing **${repoName}**.
+
+### What I Can Help You Explore:
+- 🏗️ **Architecture & Design:** Ask *"How is this repository structured?"* or *"Explain the high-level architecture."*
+- 🔌 **API Routes & Endpoints:** Ask *"What API routes are declared?"* or *"Where are the HTTP controllers?"*
+- 🗄️ **Database & Models:** Ask *"What database schema or ORM is used?"* or *"Show me the database tables."*
+- 🛡️ **Security & Audits:** Ask *"Are there any security vulnerabilities or token leaks?"*
+- 📦 **Dependencies:** Ask *"What external libraries and packages are installed?"*
+${entryPoint ? `- 📄 **Code Deep Dives:** Ask *"Explain the role of \`${entryPoint}\`"* or select any file in the file explorer.\n` : ''}
+How can I assist you with this project today?`;
+
+  const thoughtProcess = `1. Intent Classification: Detected greeting / introductory inquiry ("${question}").
+2. Context Retrieval: Target repository is "${repoName}".
+3. Formulating response: Welcoming the developer, introducing DomoScope Assistant capabilities, and providing actionable exploration prompts.`;
+
+  return {
+    text,
+    thoughtProcess,
+    referencedFiles: entryPoint ? [entryPoint] : [],
+  };
 }

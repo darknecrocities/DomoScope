@@ -8,12 +8,21 @@ export const config = {
 const GUARDRAIL_REJECTION =
   'Sorry, I can only answer questions within the scope of this repository (architecture, code files, API routes, database schemas, and security). Please ask a question related to this project.';
 
+const SAFETY_REJECTION =
+  'I cannot fulfill this request. DomoScope is strictly committed to a safe, respectful, and professional developer environment. Content involving harassment, hate speech, sexual content, violence, or abuse is strictly prohibited.';
+
 const SYSTEM_PROMPT = `You are DomoScope Assistant, an expert developer tool assistant embedded in a repository explorer.
 You inspect GitHub repositories and explain code architecture in plain, direct English.
 
+SAFETY & CONTENT GUARDRAIL:
+You must strictly refuse any prompts containing sexual content, sexualization, harassment, hate speech, profanity, threats of violence, or abuse. You must immediately refuse by replying:
+"${SAFETY_REJECTION}"
+
 SCOPE & RELEVANCE GUARDRAIL:
-You are strictly scoped to this repository. You MUST ONLY answer questions concerning this codebase: its architecture, files, components, API endpoints, dependencies, database schema, security, and project setup.
-If the user's question is unrelated, off-topic, nonsense, or outside the scope of this codebase (e.g. general trivia, personal questions, recipes, poetry, creative writing, or non-coding topics), you MUST refuse by responding exactly:
+You are strictly scoped to this repository.
+- When the user sends a greeting or asks who you are (e.g. 'hello', 'hi', 'hey', 'how are you', 'who are you', 'what can you do'), respond warmly and professionally, introduce yourself as DomoScope Assistant for this repository, and briefly highlight what you can help inspect (architecture, API routes, database schemas, security, and source files).
+- You MUST ONLY answer questions concerning this codebase: its architecture, files, components, API endpoints, dependencies, database schema, security, and project setup.
+- If the user's question is unrelated, off-topic, nonsense, or outside the scope of this codebase (e.g. general trivia, recipes, poetry, creative writing, or non-coding topics), you MUST refuse by responding exactly:
 "${GUARDRAIL_REJECTION}"
 
 CRITICAL RULES:
@@ -50,9 +59,37 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // Fast heuristic guardrail check
     const trimmedQ = (question || '').trim().toLowerCase();
     const noSpacesQ = trimmedQ.replace(/\s+/g, '');
+
+    // ── 1. Safety Guardrail Check (Sexualization, Harassment, Hate Speech, Abuse) ─
+    if (
+      /\b(nsfw|porn|porno|pornography|erotic\w*|hentai|sex|sexual\w*|sexy|nudes?|nudity|naked|masturbat\w*|orgasm\w*|intercourse|fetish\w*|horny|boobs?|breast\w*|penis\w*|vagina\w*|dildo\w*|blowjob\w*|anal\s+sex|threesome|xxx|escort|camgirl|send\s+nudes?|undress|touch\s+yourself|sexual\s+fantasy|dirty\s+talk|talk\s+dirty|roleplay\s+sex)\b/i.test(trimmedQ) ||
+      /\b(kill\s+yourself|kys|commit\s+suicide|die\s+bitch|hang\s+yourself|slit\s+your\s+wrists|i\s+will\s+kill\s+you|i\s+will\s+hurt\s+you|i\s+will\s+murder|faggot|nigger|nigga|chink|kike|spic|cunt|whore|slut|terroris\w*|bomb\s+threat)\b/i.test(trimmedQ)
+    ) {
+      res.status(200).json({
+        text: SAFETY_REJECTION,
+        modelUsed: 'Safety & Content Guardrail',
+        provider: 'guardrail',
+      });
+      return;
+    }
+
+    // ── 2. Greetings and Pleasantries Check ──────────────────────────────────
+    if (
+      /^(hi|hello|hey|heya|howdy|sup|yo|hiya|aloha|hola|bonjour|greetings)(\s+there|\s+assistant|\s+domoscope|\s+bot)?[\s!.,?]*$/i.test(trimmedQ) ||
+      /^(good\s+(morning|afternoon|evening|day))(\s+there|\s+assistant|\s+domoscope)?[\s!.,?]*$/i.test(trimmedQ) ||
+      /^(how\s+are\s+you|how's\s+it\s+going|how\s+are\s+things|how\s+do\s+you\s+do|who\s+are\s+you|what\s+is\s+your\s+name|what\s+can\s+you\s+do|what\s+are\s+you|introduce\s+yourself|help(\s+me)?|how\s+can\s+you\s+help(\s+me)?)[\s!.,?]*$/i.test(trimmedQ)
+    ) {
+      res.status(200).json({
+        text: `## Hello! 👋 Welcome to DomoScope\n\nI'm your **DomoScope AI Assistant**, ready to help you analyze and understand this repository.\n\n### What I Can Help You Explore:\n- 🏗️ **Architecture & Design:** Ask *"How is this repository structured?"* or *"Explain the high-level architecture."*\n- 🔌 **API Routes & Endpoints:** Ask *"What API routes are declared?"* or *"Where are the HTTP controllers?"*\n- 🗄️ **Database & Models:** Ask *"What database schema or ORM is used?"* or *"Show me the database tables."*\n- 🛡️ **Security & Audits:** Ask *"Are there any security vulnerabilities or token leaks?"*\n- 📦 **Dependencies:** Ask *"What external libraries and packages are installed?"*\n\nHow can I assist you with this codebase today?`,
+        modelUsed: 'DomoScope Assistant',
+        provider: 'greeting',
+      });
+      return;
+    }
+
+    // ── 3. Fast heuristic scope check ───────────────────────────────────────
     if (
       trimmedQ.length < 2 ||
       /^[^\w\s]+$/.test(trimmedQ) ||

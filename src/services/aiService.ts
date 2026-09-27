@@ -3,7 +3,7 @@ import { StorageService } from './storage';
 import { WebLLMService, parseThoughtProcess } from './webLLMService';
 import { DEFAULT_AI_MODELS, ModelFetcherService } from './modelFetcherService';
 import { detectFrameworks } from './frameworkDetector';
-import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL } from './chatGuardrail';
+import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SAFETY_VIOLATION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL, generateGreetingResponse } from './chatGuardrail';
 import { detectAppType } from './appTypeDetector';
 
 export const AI_MODELS: AIModelOption[] = DEFAULT_AI_MODELS;
@@ -178,13 +178,24 @@ CRITICAL SAFETY & REASONING RULES:
     databaseSchema?: DatabaseSchema | null,
     securityFindings: SecurityFinding[] = []
   ): Promise<{ text: string; referencedFiles: string[]; modelUsed: string; thoughtProcess?: string }> {
-    // ── Repository Scope Guardrail Check ──────────────────────────────────────
+    // ── Repository Scope & Safety Guardrail Check ─────────────────────────────
     const guardrail = validateQuestionScope(question);
     if (!guardrail.allowed) {
       return {
         text: guardrail.message || GUARDRAIL_REJECTION_MESSAGE,
         referencedFiles: [],
-        modelUsed: 'Repository Scope Guardrail',
+        modelUsed: guardrail.violationType === 'safety' ? 'Safety & Content Guardrail' : 'Repository Scope Guardrail',
+      };
+    }
+
+    // ── Dedicated Warm Greeting Response ──────────────────────────────────────
+    if (guardrail.isGreeting) {
+      const greeting = generateGreetingResponse(question, analysis);
+      return {
+        text: greeting.text,
+        referencedFiles: greeting.referencedFiles,
+        modelUsed: 'DomoScope Assistant',
+        thoughtProcess: greeting.thoughtProcess,
       };
     }
 

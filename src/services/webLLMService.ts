@@ -1,5 +1,5 @@
 import { RepoAnalysis, RepoFile } from '../types';
-import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL } from './chatGuardrail';
+import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SAFETY_VIOLATION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL, generateGreetingResponse } from './chatGuardrail';
 
 export interface LLMProgress {
   text: string;
@@ -197,12 +197,22 @@ export const WebLLMService = {
     selectedFile?: string,
     preferredModelId?: string
   ): Promise<{ text: string; referencedFiles: string[]; thoughtProcess?: string }> {
-    // ── Repository Scope Guardrail Check ──────────────────────────────────────
+    // ── Repository Scope & Safety Guardrail Check ─────────────────────────────
     const guardrail = validateQuestionScope(question);
     if (!guardrail.allowed) {
       return {
         text: guardrail.message || GUARDRAIL_REJECTION_MESSAGE,
         referencedFiles: [],
+      };
+    }
+
+    // ── Dedicated Warm Greeting Response ──────────────────────────────────────
+    if (guardrail.isGreeting) {
+      const greeting = generateGreetingResponse(question, analysis);
+      return {
+        text: greeting.text,
+        referencedFiles: greeting.referencedFiles,
+        thoughtProcess: greeting.thoughtProcess,
       };
     }
 
