@@ -380,11 +380,39 @@ function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoF
 
   if (
     lower.includes('schema.prisma') ||
+    lower.includes('.prisma') ||
     lower.includes('migrations/') ||
+    lower.includes('/migration/') ||
     lower.endsWith('.sql') ||
     lower.includes('/models/') ||
+    lower.includes('/model/') ||
+    lower.includes('/entities/') ||
+    lower.includes('/entity/') ||
+    lower.includes('/schemas/') ||
+    lower.includes('/schema/') ||
+    lower.includes('/db/') ||
+    lower.includes('/database/') ||
+    lower.includes('/dao/') ||
+    lower.includes('/repositories/') ||
+    lower.includes('/repository/') ||
+    lower.includes('/drift/') ||
+    lower.includes('/sqlite/') ||
+    lower.includes('/storage/') ||
+    lower.includes('/tables/') ||
     lower.includes('drizzle.config') ||
-    lower.includes('ormconfig')
+    lower.includes('ormconfig') ||
+    lower.endsWith('_model.dart') ||
+    lower.endsWith('.model.ts') ||
+    lower.endsWith('.model.js') ||
+    lower.endsWith('_entity.dart') ||
+    lower.endsWith('.entity.ts') ||
+    lower.endsWith('_repository.dart') ||
+    lower.endsWith('.repository.ts') ||
+    lower.endsWith('_schema.dart') ||
+    lower.endsWith('.schema.ts') ||
+    lower.endsWith('models.py') ||
+    lower.endsWith('entities.py') ||
+    lower.endsWith('schemas.py')
   ) {
     return 'database';
   }

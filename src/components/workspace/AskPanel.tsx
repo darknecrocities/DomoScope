@@ -20,6 +20,7 @@ import {
   Check,
   HardDrive,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 import { RepoAnalysis, RepoFile, ChatMessage, AIProviderConfig, RepoDependency, DatabaseSchema, SecurityFinding } from '../../types';
 import { AIService, AI_MODELS } from '../../services/aiService';
@@ -231,6 +232,20 @@ function ThoughtProcessDisclosure({ thoughtProcess }: { thoughtProcess: string }
   );
 }
 
+// Multi-repository isolated chat memory store to prevent cross-repo hallucination
+const repoChatMemoryMap = new Map<string, ChatMessage[]>();
+
+function createWelcomeMessage(fullName: string, entryPoints: string[] = []): ChatMessage {
+  return {
+    id: `welcome-${fullName}`,
+    sender: 'assistant',
+    text: `Welcome to DomoScope Assistant. I inspect **${fullName}** directly in your browser with dynamic architectural reasoning. Ask me anything about components, routes, database schemas, or security!`,
+    timestamp: Date.now(),
+    referencedFiles: entryPoints.slice(0, 2),
+    modelName: 'Direct Intelligent Engine',
+  };
+}
+
 export function AskPanel({
   analysis,
   files,
@@ -245,16 +260,42 @@ export function AskPanel({
   databaseSchema,
   securityFindings = [],
 }: AskPanelProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'assistant',
-      text: `Welcome to DomoScope Assistant. I inspect **${analysis.metadata.fullName}** directly in your browser with dynamic architectural reasoning. Ask me anything about components, routes, database schemas, or security!`,
-      timestamp: Date.now(),
-      referencedFiles: analysis.entryPoints.slice(0, 2),
-      modelName: 'Direct Intelligent Engine',
-    },
-  ]);
+  const repoKey = analysis.metadata.fullName;
+
+  // Initialize or restore conversation specific to this repository
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = repoChatMemoryMap.get(repoKey);
+    if (saved && saved.length > 0) return saved;
+    return [createWelcomeMessage(repoKey, analysis.entryPoints)];
+  });
+
+  // Switch chat memory whenever user shifts to a different repository
+  useEffect(() => {
+    const saved = repoChatMemoryMap.get(repoKey);
+    if (saved && saved.length > 0) {
+      setMessages(saved);
+    } else {
+      const freshWelcome = [createWelcomeMessage(repoKey, analysis.entryPoints)];
+      repoChatMemoryMap.set(repoKey, freshWelcome);
+      setMessages(freshWelcome);
+    }
+    setInputValue('');
+    setIsProcessing(false);
+  }, [repoKey, analysis.entryPoints]);
+
+  // Synchronize active chat messages to the repository memory store
+  useEffect(() => {
+    if (messages.length > 0) {
+      repoChatMemoryMap.set(repoKey, messages);
+    }
+  }, [messages, repoKey]);
+
+  const handleResetChat = () => {
+    const freshWelcome = [createWelcomeMessage(repoKey, analysis.entryPoints)];
+    repoChatMemoryMap.set(repoKey, freshWelcome);
+    setMessages(freshWelcome);
+  };
+
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -573,6 +614,14 @@ export function AskPanel({
 
         {/* Right Controls */}
         <div className="flex items-center gap-1">
+          <button
+            onClick={handleResetChat}
+            className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/50 rounded transition-colors cursor-pointer"
+            title="Reset conversation for this repository"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+
           <button
             onClick={() => setIsMinimized(true)}
             className="p-1 text-zinc-400 hover:text-zinc-700 rounded transition-colors cursor-pointer"

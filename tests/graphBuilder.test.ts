@@ -118,4 +118,74 @@ describe('Architecture Graph Builder', () => {
     expect(node.data.complexityScore).toBeDefined();
     expect(['green', 'yellow', 'red']).toContain(node.data.healthColor);
   });
+
+  it('builds an isolated, dynamic Database diagram when filterCategory is database', () => {
+    const files: RepoFile[] = [
+      { path: 'lib/main.dart', name: 'main.dart', type: 'blob', sha: '1', extension: 'dart', category: 'component' },
+      { path: 'lib/screens/home.dart', name: 'home.dart', type: 'blob', sha: '2', extension: 'dart', category: 'component' },
+      { path: 'lib/services/api.dart', name: 'api.dart', type: 'blob', sha: '3', extension: 'dart', category: 'service' },
+      { path: 'lib/models/agent.dart', name: 'agent.dart', type: 'blob', sha: '4', extension: 'dart', category: 'database' },
+    ];
+
+    const databaseSchema = {
+      tables: [
+        {
+          name: 'Agent',
+          columns: [
+            { name: 'id', type: 'String', isPrimary: true, isNullable: false, isForeignKey: false },
+            { name: 'name', type: 'String', isPrimary: false, isNullable: false, isForeignKey: false },
+          ],
+          sourceFile: 'lib/models/agent.dart',
+          schemaType: 'domain',
+        },
+        {
+          name: 'Session',
+          columns: [
+            { name: 'id', type: 'String', isPrimary: true, isNullable: false, isForeignKey: false },
+            { name: 'agentId', type: 'String', isPrimary: false, isNullable: false, isForeignKey: true },
+          ],
+          sourceFile: 'lib/models/session.dart',
+          schemaType: 'domain',
+        },
+      ],
+      relationships: [
+        {
+          id: 'rel-1',
+          fromTable: 'Session',
+          fromColumn: 'agentId',
+          toTable: 'Agent',
+          toColumn: 'id',
+          type: 'one-to-many' as const,
+          isInferred: false,
+        },
+      ],
+      detectedTypes: ['domain'],
+      sourceFiles: ['lib/models/agent.dart'],
+    };
+
+    // When filterCategory is database, only database tables and database files are returned
+    const dbGraph = buildArchitectureGraph(files, new Map(), {
+      filterCategory: 'database',
+      databaseSchema,
+    });
+
+    // Must NOT return main.dart, home.dart, or api.dart
+    const nodeIds = dbGraph.nodes.map((n) => n.id);
+    expect(nodeIds).not.toContain('lib/main.dart');
+    expect(nodeIds).not.toContain('lib/screens/home.dart');
+    expect(nodeIds).not.toContain('lib/services/api.dart');
+
+    // Must contain the database tables and models
+    expect(nodeIds).toContain('table:Agent');
+    expect(nodeIds).toContain('table:Session');
+    expect(nodeIds).toContain('lib/models/agent.dart');
+
+    // Must contain relationship edge between Session and Agent
+    const relEdge = dbGraph.edges.find((e) => e.source === 'table:Session' && e.target === 'table:Agent');
+    expect(relEdge).toBeDefined();
+
+    // Must NOT be the same as 'all'
+    const allGraph = buildArchitectureGraph(files, new Map(), { filterCategory: 'all', databaseSchema });
+    expect(allGraph.nodes.length).not.toBe(dbGraph.nodes.length);
+  });
 });

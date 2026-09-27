@@ -182,8 +182,12 @@ export function CustomNode({ data, selected }: CustomNodeProps) {
       </div>
 
       <div className={`flex items-center justify-between text-[10px] font-mono ${metaColor}`}>
-        <span className="capitalize">{data.category}</span>
-        {isHeatmap ? (
+        <span className="capitalize truncate max-w-[110px]">{data.subtitle || data.category}</span>
+        {data.badge ? (
+          <span className="font-semibold text-[9.5px] uppercase px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
+            {data.badge}
+          </span>
+        ) : isHeatmap ? (
           <span className="font-semibold">
             {health === 'red' ? 'Heavy' : health === 'yellow' ? 'Moderate' : 'Healthy'} ({score})
           </span>

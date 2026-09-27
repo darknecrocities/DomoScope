@@ -1,5 +1,5 @@
 import { Node, Edge } from '@xyflow/react';
-import { RepoFile, ArchitectureNodeData, ArchitectureEdgeData, FileCategory } from '../types';
+import { RepoFile, ArchitectureNodeData, ArchitectureEdgeData, FileCategory, DatabaseSchema } from '../types';
 
 export interface GraphBuildResult {
   nodes: Node<ArchitectureNodeData>[];
@@ -283,11 +283,22 @@ export function getArchitecturalTier(path: string, category: FileCategory, isEnt
 
   // Tier 6: Database & Persistence
   if (
+    path.startsWith('table:') ||
     category === 'database' ||
     lower.includes('/db/') ||
+    lower.includes('/database/') ||
     lower.includes('/models/') ||
+    lower.includes('/model/') ||
+    lower.includes('/entities/') ||
+    lower.includes('/entity/') ||
+    lower.includes('/schemas/') ||
     lower.includes('/schema/') ||
+    lower.includes('/dao/') ||
     lower.includes('/repositories/') ||
+    lower.includes('/repository/') ||
+    lower.includes('/storage/') ||
+    lower.includes('/drift/') ||
+    lower.includes('/sqlite/') ||
     lower.includes('.prisma') ||
     lower.endsWith('.sql')
   ) {
@@ -425,9 +436,10 @@ export function buildArchitectureGraph(
     rankDirection?: 'TB' | 'LR' | 'BT' | 'RL';
     heatmapMode?: boolean;
     clusterMode?: boolean;
+    databaseSchema?: DatabaseSchema | null;
   } = {}
 ): GraphBuildResult {
-  const { filterCategory = 'all', rankDirection = 'TB', clusterMode = false } = options;
+  const { filterCategory = 'all', rankDirection = 'TB', clusterMode = false, databaseSchema } = options;
 
   const validExtensions = [
     'ts', 'tsx', 'js', 'jsx', 'dart', 'java', 'kt', 'c', 'cpp', 'cc', 'cxx',
@@ -448,6 +460,61 @@ export function buildArchitectureGraph(
   const filePathsSet = new Set(files.map((f) => f.path));
   const candidateSet = new Set(sourceFiles.map((f) => f.path));
   const filesMap = new Map<string, RepoFile>(files.map((f) => [f.path, f]));
+
+  // Database detection helper
+  const isDbPath = (p: string) => {
+    const l = p.toLowerCase();
+    return (
+      l.includes('/model/') ||
+      l.includes('/models/') ||
+      l.includes('/entities/') ||
+      l.includes('/entity/') ||
+      l.includes('/schemas/') ||
+      l.includes('/schema/') ||
+      l.includes('/db/') ||
+      l.includes('/database/') ||
+      l.includes('/dao/') ||
+      l.includes('/repositories/') ||
+      l.includes('/repository/') ||
+      l.includes('/storage/') ||
+      l.includes('/tables/') ||
+      l.includes('/drift/') ||
+      l.includes('/sqlite/') ||
+      l.includes('schema.prisma') ||
+      l.includes('.prisma') ||
+      l.endsWith('.sql') ||
+      l.endsWith('_model.dart') ||
+      l.endsWith('.model.ts') ||
+      l.endsWith('.model.js') ||
+      l.endsWith('_entity.dart') ||
+      l.endsWith('.entity.ts') ||
+      l.endsWith('_repository.dart') ||
+      l.endsWith('.repository.ts') ||
+      l.endsWith('_schema.dart') ||
+      l.endsWith('.schema.ts') ||
+      l.endsWith('models.py') ||
+      l.endsWith('entities.py') ||
+      l.endsWith('schemas.py')
+    );
+  };
+
+  const schemaTables = databaseSchema?.tables || [];
+  const schemaRelationships = databaseSchema?.relationships || [];
+  const schemaSourceFiles = new Set(databaseSchema?.sourceFiles || []);
+
+  // Register synthetic RepoFile for each database schema table
+  for (const table of schemaTables) {
+    const tableId = `table:${table.name}`;
+    filesMap.set(tableId, {
+      path: tableId,
+      name: table.name,
+      type: 'blob',
+      sha: `table-${table.name}`,
+      extension: table.schemaType || 'table',
+      category: 'database',
+      size: table.columns.length * 100,
+    });
+  }
 
   const adjacencyList = new Map<string, Set<string>>();
   const inDegreeMap = new Map<string, number>();
@@ -473,20 +540,37 @@ export function buildArchitectureGraph(
   }
 
   // Filter paths by category
-  let filteredPaths = sourceFiles
-    .filter((f) => filterCategory === 'all' || f.category === filterCategory)
-    .map((f) => f.path);
+  let filteredPaths: string[] = [];
 
-  // Fallback: If 'component' filter was selected but repo is a backend/API without visual UI components
-  if (filterCategory === 'component' && filteredPaths.length === 0) {
-    filteredPaths = sourceFiles
-      .filter((f) => f.category === 'api' || f.category === 'service' || f.category === 'database')
-      .map((f) => f.path);
-    if (filteredPaths.length === 0) {
-      filteredPaths = sourceFiles.map((f) => f.path);
+  if (filterCategory === 'database') {
+    // Isolated dynamic Database & Data Architecture Diagram
+    const dbSourceFiles = sourceFiles.filter(
+      (f) => f.category === 'database' || isDbPath(f.path) || schemaSourceFiles.has(f.path)
+    );
+    const tableIds = schemaTables.map((t) => `table:${t.name}`);
+
+    if (tableIds.length > 0 && dbSourceFiles.length > 0) {
+      filteredPaths = [...tableIds, ...dbSourceFiles.map((f) => f.path)].slice(0, 45);
+    } else if (tableIds.length > 0) {
+      filteredPaths = tableIds.slice(0, 45);
+    } else if (dbSourceFiles.length > 0) {
+      filteredPaths = dbSourceFiles.map((f) => f.path).slice(0, 45);
+    } else {
+      filteredPaths = [];
     }
-  } else if (filteredPaths.length === 0 && sourceFiles.length > 0) {
+  } else if (filterCategory === 'all') {
     filteredPaths = sourceFiles.map((f) => f.path);
+  } else {
+    filteredPaths = sourceFiles
+      .filter((f) => f.category === filterCategory)
+      .map((f) => f.path);
+
+    // Fallback: If 'component' filter was selected but repo is a backend/API without visual UI components
+    if (filterCategory === 'component' && filteredPaths.length === 0) {
+      filteredPaths = sourceFiles
+        .filter((f) => f.category === 'api' || f.category === 'service')
+        .map((f) => f.path);
+    }
   }
 
   // If too many nodes, cap detailed view to top 45 files sorted by entry priority & coupling
@@ -524,6 +608,60 @@ export function buildArchitectureGraph(
           connectionsMap.get(source)!.add(target);
           connectionsMap.get(target)!.add(source);
         }
+      }
+    }
+  }
+
+  // 1.5 Table-to-Table & File-to-Table relationships for Database Architecture
+  if (filterCategory === 'database' || filterCategory === 'all') {
+    // Foreign key relationships between tables
+    for (const rel of schemaRelationships) {
+      const sourceId = `table:${rel.fromTable}`;
+      const targetId = `table:${rel.toTable}`;
+      if (filteredSet.has(sourceId) && filteredSet.has(targetId)) {
+        edges.push({
+          id: `e-rel-${rel.id || `${rel.fromTable}-${rel.toTable}`}`,
+          source: sourceId,
+          target: targetId,
+          data: { type: 'direct', label: rel.type },
+          type: 'smoothstep',
+          style: { stroke: '#09090b', strokeWidth: 2 },
+        });
+
+        if (!connectionsMap.has(sourceId)) connectionsMap.set(sourceId, new Set());
+        if (!connectionsMap.has(targetId)) connectionsMap.set(targetId, new Set());
+        connectionsMap.get(sourceId)!.add(targetId);
+        connectionsMap.get(targetId)!.add(sourceId);
+      }
+    }
+
+    // Connect source model/repository files to the tables they define
+    for (const table of schemaTables) {
+      const tableId = `table:${table.name}`;
+      if (!filteredSet.has(tableId)) continue;
+
+      const matchingFile = filteredPaths.find(
+        (p) =>
+          !p.startsWith('table:') &&
+          (p === table.sourceFile ||
+            p.toLowerCase().includes(table.name.toLowerCase()) ||
+            p.toLowerCase().includes(table.name.toLowerCase().replace(/s$/, '')))
+      );
+
+      if (matchingFile) {
+        edges.push({
+          id: `e-file-table-${matchingFile}-${table.name}`,
+          source: matchingFile,
+          target: tableId,
+          data: { type: 'direct' },
+          type: 'smoothstep',
+          style: { stroke: '#71717a', strokeWidth: 1.5, strokeDasharray: '4 4' },
+        });
+
+        if (!connectionsMap.has(matchingFile)) connectionsMap.set(matchingFile, new Set());
+        if (!connectionsMap.has(tableId)) connectionsMap.set(tableId, new Set());
+        connectionsMap.get(matchingFile)!.add(tableId);
+        connectionsMap.get(tableId)!.add(matchingFile);
       }
     }
   }
@@ -578,13 +716,19 @@ export function buildArchitectureGraph(
 
   // Map to React Flow nodes with Complexity & Health metrics
   const nodes: Node<ArchitectureNodeData>[] = filteredPaths.map((path) => {
+    const isTableNode = path.startsWith('table:');
+    const tableName = isTableNode ? path.replace('table:', '') : '';
+    const tableObj = isTableNode
+      ? schemaTables.find((t) => t.name.toLowerCase() === tableName.toLowerCase())
+      : null;
+
     const file = filesMap.get(path) || {
       path,
-      name: path.split('/').pop() || path,
+      name: isTableNode ? tableName : path.split('/').pop() || path,
       type: 'blob' as const,
       sha: path,
-      extension: path.split('.').pop() || '',
-      category: 'file' as const,
+      extension: isTableNode ? tableObj?.schemaType || 'table' : path.split('.').pop() || '',
+      category: 'database' as const,
     };
 
     const coord = layoutCoords.get(path) || { x: 0, y: 0 };
@@ -592,9 +736,21 @@ export function buildArchitectureGraph(
     const importedByCount = inDegreeMap.get(path) || 0;
     const isEntryPoint = path === primaryEntry;
 
+    const pkCol = tableObj?.columns.find((c) => c.isPrimary)?.name;
+    const badge = isTableNode
+      ? pkCol
+        ? `PK: ${pkCol}`
+        : `${tableObj?.columns.length || 0} fields`
+      : undefined;
+    const subtitle = isTableNode
+      ? `${tableObj?.columns.length || 0} cols · ${tableObj?.schemaType || 'Table'}`
+      : undefined;
+
     const fileSize = file.size || 500;
     const couplingScore = importsCount + importedByCount;
-    const complexityScore = Math.min(100, Math.round((fileSize / 100) + couplingScore * 8));
+    const complexityScore = isTableNode
+      ? Math.min(100, 15 + (tableObj?.columns.length || 0) * 5)
+      : Math.min(100, Math.round(fileSize / 100 + couplingScore * 8));
 
     let healthColor: 'green' | 'yellow' | 'red' = 'green';
     if (complexityScore > 65) {
@@ -611,20 +767,22 @@ export function buildArchitectureGraph(
         y: coord.y,
       },
       data: {
-        label: file.name,
-        path: file.path,
-        extension: file.extension,
+        label: isTableNode ? tableName : file.name,
+        path: isTableNode ? tableObj?.sourceFile || path : file.path,
+        extension: isTableNode ? tableObj?.schemaType || 'table' : file.extension,
         category: file.category,
         importsCount,
         importedByCount,
         size: file.size,
         isEntryPoint,
-        isDatabase: file.category === 'database',
+        isDatabase: isTableNode || file.category === 'database',
         complexityScore,
         couplingScore,
         healthColor,
         heatmapMode: options.heatmapMode,
         rankDirection,
+        badge,
+        subtitle,
       },
     };
   });

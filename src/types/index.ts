@@ -74,6 +74,8 @@ export interface ArchitectureNodeData {
   heatmapMode?: boolean;
   theme?: 'light' | 'dark' | 'monokai';
   rankDirection?: 'TB' | 'LR' | 'BT' | 'RL';
+  badge?: string;
+  subtitle?: string;
   [key: string]: unknown;
 }
 

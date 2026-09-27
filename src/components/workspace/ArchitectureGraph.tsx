@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Search, Filter, Eye, Lock, Unlock, Flame, Download, Palette, FileText } from 'lucide-react';
-import { RepoFile, FileCategory, ArchitectureNodeData } from '../../types';
+import { RepoFile, FileCategory, ArchitectureNodeData, DatabaseSchema } from '../../types';
 import { buildArchitectureGraph } from '../../services/graphBuilder';
 import { exportToMermaid, exportToPlantUML } from '../../services/diagramExporter';
 import { CustomNode } from './CustomNode';
@@ -26,6 +26,7 @@ interface ArchitectureGraphProps {
   onOpenFile: (path: string) => void;
   onAskExplain: (path: string) => void;
   rankDirection?: 'TB' | 'LR' | 'BT' | 'RL';
+  databaseSchema?: DatabaseSchema | null;
 }
 
 const CATEGORY_FILTERS: { id: FileCategory | 'all'; label: string }[] = [
@@ -46,6 +47,7 @@ export function ArchitectureGraph({
   onOpenFile,
   onAskExplain,
   rankDirection: initialRankDirection = 'TB',
+  databaseSchema,
 }: ArchitectureGraphProps) {
   const [filterCategory, setFilterCategory] = useState<FileCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,13 +70,14 @@ export function ArchitectureGraph({
       filterCategory,
       rankDirection,
       heatmapMode,
+      databaseSchema,
     });
     return {
       initialNodes: result.nodes,
       initialEdges: result.edges,
       connectionsMap: result.connectionsMap,
     };
-  }, [files, fileContents, filterCategory, rankDirection, heatmapMode]);
+  }, [files, fileContents, filterCategory, rankDirection, heatmapMode, databaseSchema]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);

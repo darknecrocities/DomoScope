@@ -495,6 +495,7 @@ export function WorkspacePage() {
                   }}
                   onAskExplain={handleAskExplain}
                   rankDirection={graphDirection}
+                  databaseSchema={databaseSchema}
                 />
               )}
 
@@ -607,6 +608,7 @@ export function WorkspacePage() {
                 <div className="flex-1 p-3 sm:p-5 bg-zinc-50 flex items-center justify-center overflow-hidden">
                   <div className="w-full max-w-5xl h-full bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
                     <AskPanel
+                      key={analysis.metadata.fullName}
                       analysis={analysis}
                       files={files}
                       fileContents={fileContents}
@@ -639,6 +641,7 @@ export function WorkspacePage() {
               className="hidden lg:flex h-full shrink-0 overflow-hidden transition-all duration-200"
             >
               <AskPanel
+                key={analysis.metadata.fullName}
                 analysis={analysis}
                 files={files}
                 fileContents={fileContents}
