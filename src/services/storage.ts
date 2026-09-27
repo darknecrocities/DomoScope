@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { RepoAnalysis, RepoFile, DatabaseSchema, SecurityFinding, BranchInfo } from '../types';
+import { CryptoService } from './cryptoService';
 
 interface DomoScopeDB extends DBSchema {
   repositories: {
@@ -93,10 +94,18 @@ function getDB(): Promise<IDBPDatabase<DomoScopeDB>> {
 }
 
 export const StorageService = {
-  async getAnalysis(owner: string, repo: string): Promise<RepoAnalysis | null> {
+  async getAnalysis(owner: string, repo: string, branch?: string): Promise<RepoAnalysis | null> {
     try {
       const db = await getDB();
-      const record = await db.get('repositories', `${owner.toLowerCase()}/${repo.toLowerCase()}`);
+      const baseKey = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
+      if (branch) {
+        const branchKey = `${baseKey}@${branch.toLowerCase()}`;
+        const branchRecord = await db.get('repositories', branchKey);
+        if (branchRecord && Date.now() - branchRecord.cachedAt < 1000 * 60 * 60 * 24) {
+          return branchRecord.analysis;
+        }
+      }
+      const record = await db.get('repositories', baseKey);
       if (record && Date.now() - record.cachedAt < 1000 * 60 * 60 * 24) { // 24hr cache
         return record.analysis;
       }
@@ -106,16 +115,61 @@ export const StorageService = {
     }
   },
 
-  async saveAnalysis(owner: string, repo: string, analysis: RepoAnalysis): Promise<void> {
+  async saveAnalysis(owner: string, repo: string, analysis: RepoAnalysis, branch?: string): Promise<void> {
     try {
       const db = await getDB();
-      await db.put('repositories', {
-        id: `${owner.toLowerCase()}/${repo.toLowerCase()}`,
-        analysis,
+      const baseKey = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
+      
+      const isDefault =
+        !branch ||
+        (analysis.metadata.defaultBranch &&
+          branch.toLowerCase() === analysis.metadata.defaultBranch.toLowerCase());
+
+      if (isDefault) {
+        await db.put('repositories', {
+          id: baseKey,
+          analysis,
+          cachedAt: Date.now(),
+        });
+      }
+
+      if (branch) {
+        await db.put('repositories', {
+          id: `${baseKey}@${branch.toLowerCase()}`,
+          analysis,
+          cachedAt: Date.now(),
+        });
+      }
+    } catch (e) {
+      console.warn('Storage saveAnalysis error:', e);
+    }
+  },
+
+  async getFileTree(owner: string, repo: string, branch: string): Promise<RepoFile[] | null> {
+    try {
+      const db = await getDB();
+      const key = `${owner.toLowerCase()}/${repo.toLowerCase()}@${branch.toLowerCase()}`;
+      const record = await db.get('fileTrees', key);
+      if (record && Date.now() - record.cachedAt < 1000 * 60 * 60 * 24) {
+        return record.files;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  async saveFileTree(owner: string, repo: string, branch: string, files: RepoFile[]): Promise<void> {
+    try {
+      const db = await getDB();
+      const key = `${owner.toLowerCase()}/${repo.toLowerCase()}@${branch.toLowerCase()}`;
+      await db.put('fileTrees', {
+        id: key,
+        files,
         cachedAt: Date.now(),
       });
     } catch (e) {
-      console.warn('Storage saveAnalysis error:', e);
+      console.warn('Storage saveFileTree error:', e);
     }
   },
 
@@ -241,7 +295,23 @@ export const StorageService = {
     try {
       const db = await getDB();
       const val = await db.get('settings', key);
-      return val !== undefined ? (val as T) : defaultValue;
+      if (val === undefined) return defaultValue;
+
+      // Transparent decryption for sensitive credentials
+      if (key === 'github_token' && typeof val === 'string') {
+        const decrypted = await CryptoService.decrypt(val);
+        return (decrypted as unknown) as T;
+      }
+
+      if (key === 'ai_config' && val && typeof val === 'object') {
+        const conf = { ...(val as any) };
+        if (conf.openaiKey) conf.openaiKey = await CryptoService.decrypt(conf.openaiKey);
+        if (conf.anthropicKey) conf.anthropicKey = await CryptoService.decrypt(conf.anthropicKey);
+        if (conf.geminiKey) conf.geminiKey = await CryptoService.decrypt(conf.geminiKey);
+        return (conf as unknown) as T;
+      }
+
+      return val as T;
     } catch {
       return defaultValue;
     }
@@ -250,7 +320,20 @@ export const StorageService = {
   async setSetting(key: string, value: any): Promise<void> {
     try {
       const db = await getDB();
-      await db.put('settings', value, key);
+      let storedValue = value;
+
+      // Transparent encryption for sensitive credentials
+      if (key === 'github_token' && typeof value === 'string' && value.trim() !== '') {
+        storedValue = await CryptoService.encrypt(value.trim());
+      } else if (key === 'ai_config' && value && typeof value === 'object') {
+        const conf = { ...value };
+        if (conf.openaiKey) conf.openaiKey = await CryptoService.encrypt(conf.openaiKey);
+        if (conf.anthropicKey) conf.anthropicKey = await CryptoService.encrypt(conf.anthropicKey);
+        if (conf.geminiKey) conf.geminiKey = await CryptoService.encrypt(conf.geminiKey);
+        storedValue = conf;
+      }
+
+      await db.put('settings', storedValue, key);
     } catch (e) {
       console.warn('Storage setSetting error:', e);
     }

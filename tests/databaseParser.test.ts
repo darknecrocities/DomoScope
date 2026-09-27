@@ -56,4 +56,59 @@ describe('Database / ERD Parser', () => {
     const users = result.tables.find((t) => t.name === 'users');
     expect(users?.columns.find((c) => c.name === 'id')?.isPrimary).toBe(true);
   });
+
+  it('synthesizes database tables and relationships from TypeScript interfaces', () => {
+    const tsContent = `
+      export interface User {
+        id: string;
+        email: string;
+        fullName: string;
+      }
+
+      export interface Order {
+        id: string;
+        userId: string;
+        amount: number;
+        status: string;
+      }
+    `;
+
+    const result = parseDatabaseFiles([
+      { path: 'src/types/models.ts', content: tsContent },
+    ]);
+
+    expect(result.tables.length).toBe(2);
+    expect(result.tables.map((t) => t.name)).toContain('User');
+    expect(result.tables.map((t) => t.name)).toContain('Order');
+
+    const orderTable = result.tables.find((t) => t.name === 'Order');
+    expect(orderTable?.columns.some((c) => c.name === 'userId' && c.isForeignKey)).toBe(true);
+    expect(result.relationships.some((r) => r.fromTable === 'Order' && r.toTable === 'User')).toBe(true);
+  });
+
+  it('synthesizes entities from Go structs and Python Pydantic models', () => {
+    const goContent = `
+      type Customer struct {
+        ID        uint      \`json:"id"\`
+        Name      string    \`json:"name"\`
+        Email     string    \`json:"email"\`
+      }
+    `;
+
+    const pyContent = `
+      class Invoice(BaseModel):
+        id: int
+        customer_id: int
+        total: float
+    `;
+
+    const result = parseDatabaseFiles([
+      { path: 'models/customer.go', content: goContent },
+      { path: 'schemas/invoice.py', content: pyContent },
+    ]);
+
+    expect(result.tables.length).toBe(2);
+    expect(result.tables.map((t) => t.name)).toContain('Customer');
+    expect(result.tables.map((t) => t.name)).toContain('Invoice');
+  });
 });

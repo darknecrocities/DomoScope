@@ -1,4 +1,3 @@
-import dagre from 'dagre';
 import { Node, Edge } from '@xyflow/react';
 import { RepoFile, ArchitectureNodeData, ArchitectureEdgeData, FileCategory } from '../types';
 
@@ -177,7 +176,7 @@ export function resolveImportPath(importTarget: string, fromPath: string, allFil
 /**
  * Finds primary project entry point (prioritizing lib/main.dart for Flutter, src/main.tsx for web, etc.)
  */
-function findPrimaryEntryPoint(paths: string[]): string {
+export function findPrimaryEntryPoint(paths: string[]): string {
   // 1. Priority Flutter entry
   const flutterMain = paths.find((p) => p === 'lib/main.dart' || p.endsWith('/lib/main.dart'));
   if (flutterMain) return flutterMain;
@@ -194,17 +193,227 @@ function findPrimaryEntryPoint(paths: string[]): string {
   const anyMain = paths.find((p) => /main|index|App/i.test(p));
   if (anyMain) return anyMain;
 
-  return paths[0];
+  return paths[0] || '';
 }
 
 /**
  * Group files into Directory Subsystems / Modules
  */
-function getDirectoryModule(path: string): string {
+export function getDirectoryModule(path: string): string {
   const parts = path.split('/');
   if (parts.length <= 2) return parts[0] || 'root';
-  // e.g., lib/screens/onboarding/step.dart -> lib/screens
   return `${parts[0]}/${parts[1]}`;
+}
+
+/**
+ * Architectural Tier Classification for Balanced Vertical Hierarchy
+ */
+export function getArchitecturalTier(path: string, category: FileCategory, isEntry: boolean): number {
+  if (isEntry) return 0;
+
+  const lower = path.toLowerCase();
+
+  // Tier 0: Only primary entry file
+  if (/^(src\/)?(main|index)\.[a-z]+$/i.test(path) || lower === 'lib/main.dart') {
+    return 0;
+  }
+
+  // Tier 1: Root Layout, Pages, Screens & Routing
+  if (
+    /^(src\/)?app\.[a-z]+$/i.test(path) ||
+    lower.includes('/pages/') ||
+    lower.includes('/screens/') ||
+    lower.includes('/views/') ||
+    lower.includes('/routes/') ||
+    lower.includes('page.') ||
+    lower.includes('route.')
+  ) {
+    return 1;
+  }
+
+  // Tier 2: UI Components & Subviews
+  if (
+    category === 'component' ||
+    lower.includes('/components/') ||
+    lower.includes('/widgets/') ||
+    lower.includes('/ui/') ||
+    lower.includes('/elements/') ||
+    lower.includes('/layouts/') ||
+    lower.includes('/modals/') ||
+    lower.includes('/cards/')
+  ) {
+    return 2;
+  }
+
+  // Tier 3: State Management & Logic
+  if (
+    lower.includes('/hooks/') ||
+    lower.includes('/store/') ||
+    lower.includes('/context/') ||
+    lower.includes('/controllers/') ||
+    lower.includes('/state/') ||
+    lower.includes('/bloc/') ||
+    lower.includes('/provider/')
+  ) {
+    return 3;
+  }
+
+  // Tier 4: Core Services & Helpers
+  if (
+    category === 'service' ||
+    lower.includes('/services/') ||
+    lower.includes('/utils/') ||
+    lower.includes('/helpers/') ||
+    lower.includes('/lib/') ||
+    lower.includes('/core/')
+  ) {
+    return 4;
+  }
+
+  // Tier 5: API & Network Integration
+  if (
+    category === 'api' ||
+    lower.includes('/api/') ||
+    lower.includes('/endpoints/') ||
+    lower.includes('/clients/') ||
+    lower.includes('/network/')
+  ) {
+    return 5;
+  }
+
+  // Tier 6: Database & Persistence
+  if (
+    category === 'database' ||
+    lower.includes('/db/') ||
+    lower.includes('/models/') ||
+    lower.includes('/schema/') ||
+    lower.includes('/repositories/') ||
+    lower.includes('.prisma') ||
+    lower.endsWith('.sql')
+  ) {
+    return 6;
+  }
+
+  // Tier 7: Config, Types & Constants
+  return 7;
+}
+
+interface NodeLayoutCoord {
+  x: number;
+  y: number;
+}
+
+/**
+ * Computes a balanced, vertical multi-column layout for architecture nodes.
+ * Prevents horizontal pancake spreading by grouping files into architectural tiers
+ * and wrapping nodes into clean, centered columns (maximum 3-4 per row).
+ */
+function computeBalancedArchitectureLayout(
+  filteredPaths: string[],
+  filesMap: Map<string, RepoFile>,
+  primaryEntry: string,
+  rankDirection: 'TB' | 'LR' | 'BT' | 'RL'
+): Map<string, NodeLayoutCoord> {
+  const coords = new Map<string, NodeLayoutCoord>();
+  const isLR = rankDirection === 'LR';
+
+  const NODE_WIDTH = 220;
+  const NODE_HEIGHT = 72;
+  const COL_GAP = 48;
+  const ROW_GAP = 36;
+  const TIER_GAP = 64;
+
+  // Group paths into 8 Architectural Tiers
+  const tierBuckets = new Map<number, string[]>();
+  for (let t = 0; t <= 7; t++) {
+    tierBuckets.set(t, []);
+  }
+
+  for (const path of filteredPaths) {
+    const file = filesMap.get(path);
+    const category = file?.category || 'file';
+    const isEntry = path === primaryEntry;
+    const tier = getArchitecturalTier(path, category, isEntry);
+    tierBuckets.get(tier)!.push(path);
+  }
+
+  // Within each tier, keep related directory subsystems clustered together
+  for (let t = 0; t <= 7; t++) {
+    const list = tierBuckets.get(t)!;
+    list.sort((a, b) => {
+      const modA = getDirectoryModule(a);
+      const modB = getDirectoryModule(b);
+      if (modA !== modB) return modA.localeCompare(modB);
+      return a.localeCompare(b);
+    });
+  }
+
+  if (isLR) {
+    // Horizontal (Left-to-Right) Layout: Tiers advance along X, columns advance along X, rows advance along Y
+    let currentX = 40;
+
+    for (let t = 0; t <= 7; t++) {
+      const pathsInTier = tierBuckets.get(t)!;
+      if (pathsInTier.length === 0) continue;
+
+      const maxRowsPerCol = 3;
+      const numCols = Math.ceil(pathsInTier.length / maxRowsPerCol);
+
+      for (let colIdx = 0; colIdx < numCols; colIdx++) {
+        const start = colIdx * maxRowsPerCol;
+        const colPaths = pathsInTier.slice(start, start + maxRowsPerCol);
+        const colHeight = colPaths.length * NODE_HEIGHT + (colPaths.length - 1) * ROW_GAP;
+        const startY = -colHeight / 2;
+
+        for (let rowIdx = 0; rowIdx < colPaths.length; rowIdx++) {
+          const path = colPaths[rowIdx];
+          const x = currentX + colIdx * (NODE_WIDTH + COL_GAP);
+          const y = startY + rowIdx * (NODE_HEIGHT + ROW_GAP);
+          coords.set(path, { x, y });
+        }
+      }
+
+      currentX += numCols * (NODE_WIDTH + COL_GAP) + TIER_GAP;
+    }
+  } else {
+    // Vertical (Top-to-Bottom) Layout: Tiers advance along Y, rows advance along Y, columns advance along X
+    let currentY = 40;
+
+    for (let t = 0; t <= 7; t++) {
+      const pathsInTier = tierBuckets.get(t)!;
+      if (pathsInTier.length === 0) continue;
+
+      // Wrap into rows of max 3 (or 4 for larger sets, 2 for 4 items)
+      let maxColsPerRow = 3;
+      if (pathsInTier.length >= 8) {
+        maxColsPerRow = 4;
+      } else if (pathsInTier.length === 4) {
+        maxColsPerRow = 2; // 2 rows of 2 is clean and balanced
+      }
+
+      const numRows = Math.ceil(pathsInTier.length / maxColsPerRow);
+
+      for (let rowIdx = 0; rowIdx < numRows; rowIdx++) {
+        const start = rowIdx * maxColsPerRow;
+        const rowPaths = pathsInTier.slice(start, start + maxColsPerRow);
+        const rowWidth = rowPaths.length * NODE_WIDTH + (rowPaths.length - 1) * COL_GAP;
+        const startX = -rowWidth / 2;
+
+        for (let colIdx = 0; colIdx < rowPaths.length; colIdx++) {
+          const path = rowPaths[colIdx];
+          const x = startX + colIdx * (NODE_WIDTH + COL_GAP);
+          const y = currentY;
+          coords.set(path, { x, y });
+        }
+
+        currentY += NODE_HEIGHT + ROW_GAP;
+      }
+
+      currentY += TIER_GAP - ROW_GAP; // Add distinct tier separation
+    }
+  }
+
+  return coords;
 }
 
 export function buildArchitectureGraph(
@@ -238,6 +447,7 @@ export function buildArchitectureGraph(
 
   const filePathsSet = new Set(files.map((f) => f.path));
   const candidateSet = new Set(sourceFiles.map((f) => f.path));
+  const filesMap = new Map<string, RepoFile>(files.map((f) => [f.path, f]));
 
   const adjacencyList = new Map<string, Set<string>>();
   const inDegreeMap = new Map<string, number>();
@@ -267,6 +477,18 @@ export function buildArchitectureGraph(
     .filter((f) => filterCategory === 'all' || f.category === filterCategory)
     .map((f) => f.path);
 
+  // Fallback: If 'component' filter was selected but repo is a backend/API without visual UI components
+  if (filterCategory === 'component' && filteredPaths.length === 0) {
+    filteredPaths = sourceFiles
+      .filter((f) => f.category === 'api' || f.category === 'service' || f.category === 'database')
+      .map((f) => f.path);
+    if (filteredPaths.length === 0) {
+      filteredPaths = sourceFiles.map((f) => f.path);
+    }
+  } else if (filteredPaths.length === 0 && sourceFiles.length > 0) {
+    filteredPaths = sourceFiles.map((f) => f.path);
+  }
+
   // If too many nodes, cap detailed view to top 45 files sorted by entry priority & coupling
   if (!clusterMode && filteredPaths.length > 50) {
     const primaryEntry = findPrimaryEntryPoint(filteredPaths);
@@ -283,19 +505,18 @@ export function buildArchitectureGraph(
   const edges: Edge<ArchitectureEdgeData>[] = [];
   const connectionsMap = new Map<string, Set<string>>();
 
-  let explicitEdgeCount = 0;
+  // Create explicit dependency edges
   for (const [source, targets] of adjacencyList.entries()) {
     if (filteredSet.has(source)) {
       for (const target of targets) {
         if (filteredSet.has(target)) {
-          explicitEdgeCount++;
           edges.push({
             id: `e-${source}-${target}`,
             source,
             target,
             data: { type: 'direct' },
             type: 'smoothstep',
-            style: { stroke: '#64748b', strokeWidth: 1.5 },
+            style: { stroke: '#94a3b8', strokeWidth: 1.5 },
           });
 
           if (!connectionsMap.has(source)) connectionsMap.set(source, new Set());
@@ -307,92 +528,69 @@ export function buildArchitectureGraph(
     }
   }
 
-  // 2. Hierarchical Directory Subsystem Fallback (PREVENTS SINGLE FLAT HORIZONTAL LINE)
-  if (explicitEdgeCount === 0 && filteredPaths.length > 0) {
-    const primaryEntry = findPrimaryEntryPoint(filteredPaths);
+  // 2. Structured Inferred Connections for Unconnected Subsystems
+  const primaryEntry = findPrimaryEntryPoint(filteredPaths);
+  const connectedNodeIds = new Set<string>();
+  for (const e of edges) {
+    connectedNodeIds.add(e.source);
+    connectedNodeIds.add(e.target);
+  }
 
-    // Group files by directory subsystem
-    const modulesMap = new Map<string, string[]>();
-    for (const p of filteredPaths) {
-      const mod = getDirectoryModule(p);
-      if (!modulesMap.has(mod)) modulesMap.set(mod, []);
-      modulesMap.get(mod)!.push(p);
-    }
+  // Group files by directory subsystem
+  const modulesMap = new Map<string, string[]>();
+  for (const p of filteredPaths) {
+    const mod = getDirectoryModule(p);
+    if (!modulesMap.has(mod)) modulesMap.set(mod, []);
+    modulesMap.get(mod)!.push(p);
+  }
 
-    // Connect Entry -> Directory Subsystem Leader -> Subsystem Files (hierarchical multi-rank layout!)
-    for (const [mod, modFiles] of modulesMap.entries()) {
-      const leader = modFiles.find((f) => f === primaryEntry) || modFiles[0];
+  // Connect orphan files within their module
+  for (const [, modFiles] of modulesMap.entries()) {
+    const leader = modFiles.find((f) => connectedNodeIds.has(f)) || modFiles[0];
 
-      if (leader !== primaryEntry) {
+    for (const file of modFiles) {
+      if (file !== leader && !connectedNodeIds.has(file)) {
         edges.push({
-          id: `e-${primaryEntry}-${leader}`,
-          source: primaryEntry,
-          target: leader,
-          data: { type: 'hierarchy' },
+          id: `e-mod-${leader}-${file}`,
+          source: leader,
+          target: file,
+          data: { type: 'inferred' },
           type: 'smoothstep',
-          style: { stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '4 4' },
+          style: { stroke: '#a1a1aa', strokeWidth: 1.2, strokeDasharray: '3 3' },
         });
-        if (!connectionsMap.has(primaryEntry)) connectionsMap.set(primaryEntry, new Set());
+        connectedNodeIds.add(file);
+        connectedNodeIds.add(leader);
         if (!connectionsMap.has(leader)) connectionsMap.set(leader, new Set());
-        connectionsMap.get(primaryEntry)!.add(leader);
-        connectionsMap.get(leader)!.add(primaryEntry);
-      }
-
-      // Connect leader to other files within the SAME directory module (max 4 per sub-branch to prevent horizontal spillage)
-      for (let i = 1; i < Math.min(modFiles.length, 6); i++) {
-        const file = modFiles[i];
-        const parentNode = modFiles[Math.floor((i - 1) / 2)] || leader;
-        if (file !== parentNode) {
-          edges.push({
-            id: `e-${parentNode}-${file}`,
-            source: parentNode,
-            target: file,
-            data: { type: 'inferred' },
-            type: 'smoothstep',
-            style: { stroke: '#94a3b8', strokeWidth: 1.5, strokeDasharray: '2 2' },
-          });
-          if (!connectionsMap.has(parentNode)) connectionsMap.set(parentNode, new Set());
-          if (!connectionsMap.has(file)) connectionsMap.set(file, new Set());
-          connectionsMap.get(parentNode)!.add(file);
-          connectionsMap.get(file)!.add(parentNode);
-        }
+        if (!connectionsMap.has(file)) connectionsMap.set(file, new Set());
+        connectionsMap.get(leader)!.add(file);
+        connectionsMap.get(file)!.add(leader);
       }
     }
   }
 
-  // 3. Multi-Column Grid Dagre Layout
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({
-    rankdir: rankDirection,
-    nodesep: 40,
-    ranksep: 80,
-    marginx: 40,
-    marginy: 40,
-  });
-  g.setDefaultEdgeLabel(() => ({}));
-
-  const nodeWidth = 220;
-  const nodeHeight = 68;
-
-  for (const path of filteredPaths) {
-    g.setNode(path, { width: nodeWidth, height: nodeHeight });
-  }
-
-  for (const edge of edges) {
-    if (g.hasNode(edge.source) && g.hasNode(edge.target)) {
-      g.setEdge(edge.source, edge.target);
-    }
-  }
-
-  dagre.layout(g);
+  // 3. Compute Balanced Vertical Architecture Layout Coordinates
+  const layoutCoords = computeBalancedArchitectureLayout(
+    filteredPaths,
+    filesMap,
+    primaryEntry,
+    rankDirection
+  );
 
   // Map to React Flow nodes with Complexity & Health metrics
   const nodes: Node<ArchitectureNodeData>[] = filteredPaths.map((path) => {
-    const file = files.find((f) => f.path === path)!;
-    const dagreNode = g.node(path) || { x: 0, y: 0 };
+    const file = filesMap.get(path) || {
+      path,
+      name: path.split('/').pop() || path,
+      type: 'blob' as const,
+      sha: path,
+      extension: path.split('.').pop() || '',
+      category: 'file' as const,
+    };
+
+    const coord = layoutCoords.get(path) || { x: 0, y: 0 };
     const importsCount = adjacencyList.get(path)?.size || 0;
     const importedByCount = inDegreeMap.get(path) || 0;
-    const isEntryPoint = path === findPrimaryEntryPoint(filteredPaths);
+    const isEntryPoint = path === primaryEntry;
 
     const fileSize = file.size || 500;
     const couplingScore = importsCount + importedByCount;
@@ -409,8 +607,8 @@ export function buildArchitectureGraph(
       id: path,
       type: 'customCard',
       position: {
-        x: dagreNode.x - nodeWidth / 2,
-        y: dagreNode.y - nodeHeight / 2,
+        x: coord.x,
+        y: coord.y,
       },
       data: {
         label: file.name,
@@ -425,6 +623,8 @@ export function buildArchitectureGraph(
         complexityScore,
         couplingScore,
         healthColor,
+        heatmapMode: options.heatmapMode,
+        rankDirection,
       },
     };
   });

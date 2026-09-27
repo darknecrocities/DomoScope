@@ -399,14 +399,45 @@ function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoF
   }
 
   if (
-    lower.includes('/components/') ||
-    lower.includes('/views/') ||
-    lower.includes('/pages/') ||
-    lower.includes('/layouts/') ||
     ext === 'tsx' ||
     ext === 'jsx' ||
     ext === 'vue' ||
-    ext === 'svelte'
+    ext === 'svelte' ||
+    ext === 'astro' ||
+    lower.includes('/components/') ||
+    lower.includes('/widgets/') ||
+    lower.includes('/screens/') ||
+    lower.includes('/views/') ||
+    lower.includes('/pages/') ||
+    lower.includes('/layouts/') ||
+    lower.includes('/ui/') ||
+    lower.includes('/containers/') ||
+    lower.includes('/modals/') ||
+    lower.includes('/dialogs/') ||
+    lower.includes('/elements/') ||
+    lower.includes('/cards/') ||
+    lower.includes('/navigation/') ||
+    lower.includes('/templates/') ||
+    lower.includes('/forms/') ||
+    lower.includes('/partials/') ||
+    lower.includes('/atoms/') ||
+    lower.includes('/molecules/') ||
+    lower.includes('/organisms/') ||
+    lower.includes('/features/') ||
+    lower.includes('/compose/') ||
+    lower.includes('/fragments/') ||
+    lower.endsWith('.component.ts') ||
+    lower.endsWith('.component.js') ||
+    lower.endsWith('.blade.php') ||
+    lower.endsWith('.jinja') ||
+    lower.endsWith('.jinja2') ||
+    lower.endsWith('.ejs') ||
+    lower.endsWith('.hbs') ||
+    lower.endsWith('.njk') ||
+    lower.endsWith('.twig') ||
+    (lower.endsWith('.swift') && (lower.includes('/view') || lower.endsWith('view.swift'))) ||
+    (lower.endsWith('.dart') && (lower.includes('/widget') || lower.includes('/screen') || lower.includes('/page'))) ||
+    (lower.endsWith('.kt') && (lower.includes('/ui') || lower.includes('/screen') || lower.includes('/compose')))
   ) {
     return 'component';
   }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   RefreshCw,
@@ -33,6 +33,9 @@ import { SearchModal } from '../components/common/SearchModal';
 import { SettingsModal } from '../components/common/SettingsModal';
 import { TechStackModal } from '../components/common/TechStackModal';
 import { SpecGeneratorModal } from '../components/workspace/SpecGeneratorModal';
+import { useOpenRepositories } from '../hooks/useOpenRepositories';
+import { RepoTabsBar } from '../components/workspace/RepoTabsBar';
+import { AddRepoModal } from '../components/workspace/AddRepoModal';
 
 export function WorkspacePage() {
   const { owner = '', repo = '', tab = 'overview' } = useParams<{
@@ -41,6 +44,8 @@ export function WorkspacePage() {
     tab?: string;
   }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlBranch = searchParams.get('branch') || undefined;
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(
     (tab as WorkspaceTab) || 'overview'
@@ -56,7 +61,11 @@ export function WorkspacePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTechStackOpen, setIsTechStackOpen] = useState(false);
   const [isSpecGeneratorOpen, setIsSpecGeneratorOpen] = useState(false);
+  const [isAddRepoOpen, setIsAddRepoOpen] = useState(false);
   const [explainPrompt, setExplainPrompt] = useState<string | null>(null);
+
+  const { openRepos, addRepository, switchRepository, closeRepository } =
+    useOpenRepositories(owner, repo, activeTab);
 
   const {
     status,
@@ -80,7 +89,25 @@ export function WorkspacePage() {
     loadFileContent,
     refresh,
     loadRepository,
-  } = useRepository(owner, repo);
+  } = useRepository(owner, repo, urlBranch);
+
+  // Smooth branch switching with URL persistence
+  const handleSelectBranch = useCallback(
+    (newBranch: string) => {
+      if (!newBranch || newBranch === currentBranch) return;
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (newBranch && newBranch !== metadata?.defaultBranch) {
+          next.set('branch', newBranch);
+        } else {
+          next.delete('branch');
+        }
+        return next;
+      });
+      loadRepository(owner, repo, newBranch);
+    },
+    [currentBranch, metadata?.defaultBranch, setSearchParams, loadRepository, owner, repo]
+  );
 
   // Sync tab with URL if needed
   const handleTabChange = (newTab: WorkspaceTab) => {
@@ -134,8 +161,8 @@ export function WorkspacePage() {
     return fileContents.get(selectedFile) || '';
   }, [selectedFile, fileContents]);
 
-  // Meaningful Loading Experience
-  if (status === 'loading') {
+  // Meaningful Loading Experience (initial load only)
+  if (status === 'loading' && files.length === 0) {
     const steps = [
       'Checking repository',
       'Reading files',
@@ -216,6 +243,12 @@ export function WorkspacePage() {
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Try Again</span>
           </button>
+          <button
+            onClick={() => setIsAddRepoOpen(true)}
+            className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
+          >
+            Open Another Repo
+          </button>
           {isRateLimited && (
             <button
               onClick={() => setIsSettingsOpen(true)}
@@ -232,6 +265,12 @@ export function WorkspacePage() {
           </button>
         </div>
 
+        <AddRepoModal
+          isOpen={isAddRepoOpen}
+          onClose={() => setIsAddRepoOpen(false)}
+          onAddRepo={addRepository}
+          existingRepos={openRepos}
+        />
         <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       </div>
     );
@@ -252,6 +291,16 @@ export function WorkspacePage() {
         onOpenSpecGenerator={() => setIsSpecGeneratorOpen(true)}
       />
 
+      {/* Multi-Repository Tabs Bar */}
+      <RepoTabsBar
+        openRepos={openRepos}
+        activeOwner={owner}
+        activeRepo={repo}
+        onSelectRepo={switchRepository}
+        onCloseRepo={closeRepository}
+        onOpenAddModal={() => setIsAddRepoOpen(true)}
+      />
+
       {/* Contextual App Bar */}
       <AppBar
         owner={owner}
@@ -261,14 +310,22 @@ export function WorkspacePage() {
         branches={branches}
         metadata={metadata}
         isFallbackMode={isFallbackMode}
-        onSelectBranch={(b) => loadRepository(owner, repo, b)}
+        onSelectBranch={handleSelectBranch}
         onRefresh={refresh}
         isFullscreen={isFullscreen}
         onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
         onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
         graphDirection={graphDirection}
         onToggleGraphDirection={() => setGraphDirection((prev) => (prev === 'TB' ? 'LR' : 'TB'))}
+        onOpenAddRepo={() => setIsAddRepoOpen(true)}
       />
+
+      {/* Seamless loading bar when switching branches */}
+      {status === 'loading' && files.length > 0 && (
+        <div className="w-full h-0.5 bg-zinc-100 overflow-hidden shrink-0 z-30">
+          <div className="h-full bg-zinc-950 animate-pulse w-full" />
+        </div>
+      )}
 
       {/* Main Workspace Frame */}
       <div className="flex-1 flex overflow-hidden relative">
@@ -298,6 +355,12 @@ export function WorkspacePage() {
               branches={branches}
               securityFindings={securityFindings}
               onNavigateTab={handleTabChange}
+              files={files}
+              fileContents={fileContents}
+              onOpenFile={(path) => {
+                setSelectedFile(path);
+                setActiveTab('files');
+              }}
             />
           )}
 
@@ -364,7 +427,7 @@ export function WorkspacePage() {
               repo={repo}
               currentBranch={currentBranch}
               branches={branches}
-              onSelectBranch={(b) => loadRepository(owner, repo, b)}
+              onSelectBranch={handleSelectBranch}
             />
           )}
 
@@ -381,6 +444,7 @@ export function WorkspacePage() {
           {activeTab === 'api_catalog' && (
             <ApiCatalogTab
               fileContents={fileContents}
+              files={files}
               onOpenFile={(path) => {
                 setSelectedFile(path);
                 setActiveTab('files');
@@ -511,6 +575,14 @@ export function WorkspacePage() {
           securityFindings={securityFindings}
         />
       )}
+
+      {/* Add Repository Modal */}
+      <AddRepoModal
+        isOpen={isAddRepoOpen}
+        onClose={() => setIsAddRepoOpen(false)}
+        onAddRepo={addRepository}
+        existingRepos={openRepos}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Maximize2, Minimize2, GitBranch, Menu, ArrowUpDown, Star, Zap, UserCheck } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, GitBranch, Menu, ArrowUpDown, Star, Zap, UserCheck, Plus } from 'lucide-react';
 import { WorkspaceTab } from './Sidebar';
 import { RepoMetadata } from '../../types';
 import { GitHubService } from '../../services/github';
@@ -21,6 +21,7 @@ interface AppBarProps {
   onToggleMobileMenu: () => void;
   graphDirection?: 'TB' | 'LR';
   onToggleGraphDirection?: () => void;
+  onOpenAddRepo?: () => void;
 }
 
 export function AppBar({
@@ -38,6 +39,7 @@ export function AppBar({
   onToggleMobileMenu,
   graphDirection,
   onToggleGraphDirection,
+  onOpenAddRepo,
 }: AppBarProps) {
   const [rateLimit, setRateLimit] = useState(GitHubService.getRateLimit());
   const [userProfile, setUserProfile] = useState<GitHubUserProfile | null>(null);
@@ -79,6 +81,16 @@ export function AppBar({
           <span className="hidden sm:inline text-zinc-300">/</span>
           <span className="font-bold text-zinc-900 truncate">{repo}</span>
 
+          {onOpenAddRepo && (
+            <button
+              onClick={onOpenAddRepo}
+              className="p-1 text-zinc-500 hover:text-zinc-950 hover:bg-zinc-100 rounded-md transition-colors cursor-pointer"
+              title="Add another repository to workspace"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            </button>
+          )}
+
           {/* GitHub Stars Badge (Monochrome) */}
           {metadata && typeof metadata.stars === 'number' && (
             <div
@@ -119,18 +131,6 @@ export function AppBar({
 
       {/* Right Controls: Monochrome Rate Limit Bar & Login Button */}
       <div className="flex items-center gap-2 shrink-0">
-        {/* High-Availability Direct Stream Badge (Monochrome) */}
-        {isFallbackMode && (
-          <div
-            onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer hover:bg-black"
-            title="Operating via High-Availability Direct Stream (GitHub REST API Rate Limit Bypassed)"
-          >
-            <Zap className="w-3.5 h-3.5 fill-white text-white" />
-            <span className="hidden sm:inline">HA Direct Stream (Limit Bypassed)</span>
-            <span className="sm:hidden">Limit Bypassed</span>
-          </div>
-        )}
 
         {/* Workspace GitHub API Quota Progress Bar Widget (Monochrome) */}
         <div

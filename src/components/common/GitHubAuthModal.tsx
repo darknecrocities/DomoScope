@@ -17,6 +17,7 @@ import { GitHubAuthService, GitHubUserProfile } from '../../services/githubAuth'
 import { GitHubService } from '../../services/github';
 
 import { StorageService } from '../../services/storage';
+import { CryptoService } from '../../services/cryptoService';
 
 interface GitHubAuthModalProps {
   isOpen: boolean;
@@ -128,7 +129,7 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
               </div>
 
               {/* Active 5,000 Quota Display */}
-              <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-1.5">
+              <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-zinc-900">
                   <span className="flex items-center gap-1.5 text-zinc-900">
                     <Zap className="w-4 h-4 text-zinc-900" /> API Quota Active:
@@ -140,7 +141,30 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
                 <p className="text-xs text-zinc-600 leading-relaxed">
                   Your GitHub account is connected. Rate limit is active for all public & private repositories.
                 </p>
+
+                {/* Encrypted Vault Token Display */}
+                {tokenInput && (
+                  <div className="flex items-center justify-between text-[11px] font-mono bg-zinc-100/80 border border-zinc-200 px-3 py-1.5 rounded-lg pt-1">
+                    <span className="text-zinc-500 flex items-center gap-1.5">
+                      <Lock className="w-3 h-3 text-zinc-700" /> Encrypted Vault:
+                    </span>
+                    <span className="text-zinc-900 font-semibold">{CryptoService.maskToken(tokenInput)}</span>
+                  </div>
+                )}
               </div>
+
+              {/* Scope Minimization Advisory (If excess write/admin scopes detected) */}
+              {profile.hasExcessiveScopes && (
+                <div className="p-3.5 bg-zinc-50 border border-zinc-300 rounded-xl space-y-1 text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-zinc-900">
+                    <ShieldCheck className="w-4 h-4 text-zinc-900" />
+                    <span>Least-Privilege Security Notice</span>
+                  </div>
+                  <p className="text-zinc-600 leading-relaxed text-[11px]">
+                    This token has elevated write or admin scopes ({profile.scopes?.join(', ')}). DomoScope operates strictly in read-only mode and never modifies repositories. For best security, we recommend using a Fine-Grained token with read-only access.
+                  </p>
+                </div>
+              )}
 
               <div className="flex justify-between items-center pt-2">
                 <button

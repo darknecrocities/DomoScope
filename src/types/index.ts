@@ -71,6 +71,9 @@ export interface ArchitectureNodeData {
   complexityScore?: number;
   couplingScore?: number;
   healthColor?: 'green' | 'yellow' | 'red';
+  heatmapMode?: boolean;
+  theme?: 'light' | 'dark' | 'monokai';
+  rankDirection?: 'TB' | 'LR' | 'BT' | 'RL';
   [key: string]: unknown;
 }
 
@@ -201,11 +204,26 @@ export interface AIProviderConfig {
 
 export interface ApiEndpoint {
   id: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'QUERY' | 'MUTATION';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'QUERY' | 'MUTATION' | 'ALL' | 'HEAD' | 'OPTIONS';
   path: string;
   file: string;
   line: number;
-  framework: 'express' | 'fastapi' | 'flask' | 'spring' | 'gin' | 'dio' | 'http' | 'graphql';
+  framework:
+    | 'express'
+    | 'fastapi'
+    | 'flask'
+    | 'spring'
+    | 'gin'
+    | 'dio'
+    | 'http'
+    | 'graphql'
+    | 'nextjs'
+    | 'nestjs'
+    | 'django'
+    | 'laravel'
+    | 'client-http'
+    | 'client-fetch'
+    | 'discovered-route';
   summary?: string;
 }
 

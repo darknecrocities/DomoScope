@@ -568,6 +568,79 @@ function synthesizeDomainEntities(files: { path: string; content: string }[]): D
         });
       }
     }
+
+    // Go structs: type User struct { ID string ... }
+    const goStructRegex = /type\s+([A-Z][a-zA-Z0-9_]+)\s+struct\s*\{([^}]+)\}/g;
+    while ((match = goStructRegex.exec(code)) !== null) {
+      const entityName = match[1];
+      const body = match[2];
+      const columns: TableColumn[] = [];
+      const lines = body.split('\n');
+
+      for (const line of lines) {
+        const clean = line.trim();
+        const tokens = clean.split(/\s+/);
+        if (tokens.length >= 2 && /^[A-Z]/.test(tokens[0])) {
+          const colName = tokens[0];
+          const colType = tokens[1];
+          columns.push({
+            name: colName,
+            type: colType,
+            isPrimary: colName.toLowerCase() === 'id',
+            isNullable: colType.startsWith('*'),
+            isForeignKey: colName.toLowerCase().endsWith('id') && colName.toLowerCase() !== 'id',
+          });
+        }
+      }
+
+      if (columns.length >= 2) {
+        tables.push({
+          name: entityName,
+          columns,
+          sourceFile: path,
+          schemaType: 'go',
+        });
+      }
+    }
+
+    // Python Pydantic / Dataclass models: class User(BaseModel): ...
+    const pyModelRegex = /class\s+([A-Z][a-zA-Z0-9_]+)\s*(?:\([^)]*\))?:\s*(?:\n\s+"""[\s\S]*?""")?([\s\S]*?)(?=\nclass|\ndef|\n\S|$)/g;
+    if (path.endsWith('.py')) {
+      while ((match = pyModelRegex.exec(code)) !== null) {
+        const entityName = match[1];
+        const body = match[2];
+        if (['View', 'ViewSet', 'Form', 'Serializer', 'Test', 'Meta', 'Config'].some((s) => entityName.endsWith(s))) {
+          continue;
+        }
+
+        const columns: TableColumn[] = [];
+        const lines = body.split('\n');
+        for (const line of lines) {
+          const clean = line.trim();
+          const fieldMatch = clean.match(/^([a-zA-Z0-9_]+)\s*:\s*([a-zA-Z0-9_\[\], ]+)/);
+          if (fieldMatch) {
+            const colName = fieldMatch[1];
+            const colType = fieldMatch[2];
+            columns.push({
+              name: colName,
+              type: colType.slice(0, 20),
+              isPrimary: colName.toLowerCase() === 'id',
+              isNullable: colType.includes('Optional'),
+              isForeignKey: colName.toLowerCase().endsWith('id') && colName.toLowerCase() !== 'id',
+            });
+          }
+        }
+
+        if (columns.length >= 2) {
+          tables.push({
+            name: entityName,
+            columns,
+            sourceFile: path,
+            schemaType: 'python',
+          });
+        }
+      }
+    }
   }
 
   // Deduplicate and return top domain tables

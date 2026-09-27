@@ -66,59 +66,79 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
 
       try {
         // Step 1: Check cache unless forceRefresh
-        if (!forceRefresh) {
-          const cachedAnalysis = await StorageService.getAnalysis(ownerName, repoName);
-          const { hasToken } = await getAuthHeaders();
+        const cachedAnalysis = await StorageService.getAnalysis(ownerName, repoName, branchName);
+        const { hasToken } = await getAuthHeaders();
 
-          // Check if cache was a fallback 2-file probe
-          const isFallbackCache =
-            cachedAnalysis?.metadata.description?.includes('Stream') ||
-            (cachedAnalysis?.files && cachedAnalysis.files.length <= 2);
+        // Check if cache was a fallback 2-file probe
+        const isFallbackCache =
+          cachedAnalysis?.metadata.description?.includes('Stream') ||
+          (cachedAnalysis?.files && cachedAnalysis.files.length <= 2);
 
-          // If authenticated with token, ignore stale fallback cache and fetch live API!
-          if (cachedAnalysis && (!hasToken || !isFallbackCache) && isMounted.current) {
-            setMetadata(cachedAnalysis.metadata);
-            setAnalysis(cachedAnalysis);
-            setFiles(cachedAnalysis.files);
-            setCurrentBranch(cachedAnalysis.metadata.defaultBranch);
+        // Check if the requested branch matches the cached analysis
+        const isTargetingDefault = !branchName || (cachedAnalysis && branchName === cachedAnalysis.metadata.defaultBranch);
+        const isMatchingBranch = branchName ? Boolean(cachedAnalysis) : isTargetingDefault;
 
-            // Load cached branches, database, security
-            const cachedBranches = await StorageService.getBranches(ownerName, repoName);
-            if (cachedBranches) setBranches(cachedBranches);
+        // If authenticated with token, ignore stale fallback cache and fetch live API!
+        if (
+          !forceRefresh &&
+          isMatchingBranch &&
+          cachedAnalysis &&
+          (!hasToken || !isFallbackCache) &&
+          isMounted.current
+        ) {
+          const resolvedBranch = branchName || cachedAnalysis.metadata.defaultBranch;
+          setMetadata(cachedAnalysis.metadata);
+          setAnalysis(cachedAnalysis);
+          setFiles(cachedAnalysis.files);
+          setCurrentBranch(resolvedBranch);
 
-            const activeBranch = branchName || cachedAnalysis.metadata.defaultBranch;
-            const cachedSchema = await StorageService.getDatabaseSchema(ownerName, repoName, activeBranch);
-            if (cachedSchema) setDatabaseSchema(cachedSchema);
+          // Load cached branches, database, security
+          const cachedBranches = await StorageService.getBranches(ownerName, repoName);
+          if (cachedBranches) setBranches(cachedBranches);
 
-            const cachedSec = await StorageService.getSecurityFindings(ownerName, repoName, activeBranch);
-            if (cachedSec) setSecurityFindings(cachedSec);
+          const cachedSchema = await StorageService.getDatabaseSchema(ownerName, repoName, resolvedBranch);
+          if (cachedSchema) setDatabaseSchema(cachedSchema);
 
-            if (cachedAnalysis.entryPoints.length > 0) {
-              setSelectedFile(cachedAnalysis.entryPoints[0]);
-            } else if (cachedAnalysis.files.length > 0) {
-              const firstBlob = cachedAnalysis.files.find((f) => f.type === 'blob');
-              if (firstBlob) setSelectedFile(firstBlob.path);
-            }
+          const cachedSec = await StorageService.getSecurityFindings(ownerName, repoName, resolvedBranch);
+          if (cachedSec) setSecurityFindings(cachedSec);
 
-            setStatus('success');
-            setLoadingStep('done');
-            return;
+          if (cachedAnalysis.entryPoints.length > 0) {
+            setSelectedFile(cachedAnalysis.entryPoints[0]);
+          } else if (cachedAnalysis.files.length > 0) {
+            const firstBlob = cachedAnalysis.files.find((f) => f.type === 'blob');
+            if (firstBlob) setSelectedFile(firstBlob.path);
           }
+
+          setStatus('success');
+          setLoadingStep('done');
+          return;
         }
 
-        let meta: RepoMetadata | null = null;
+        // Check if this specific branch file tree is cached in IndexedDB
+        const cachedBranchTree = (!forceRefresh && branchName)
+          ? await StorageService.getFileTree(ownerName, repoName, branchName)
+          : null;
+
+        let meta: RepoMetadata | null = metadata;
         let repoFiles: RepoFile[] = [];
         let isFallback = false;
         let preloadedContents = new Map<string, string>();
-        let activeBranch = branchName || 'main';
+        let activeBranch = branchName || metadata?.defaultBranch || 'main';
 
         // Step 2: Try fetching metadata & file tree via GitHub REST API
         try {
-          meta = await GitHubService.fetchRepoMetadata(ownerName, repoName);
+          if (!meta) {
+            meta = await GitHubService.fetchRepoMetadata(ownerName, repoName);
+          }
           activeBranch = branchName || meta.defaultBranch;
 
           setLoadingStep('Reading files');
-          repoFiles = await GitHubService.fetchRepoTree(ownerName, repoName, activeBranch);
+          if (cachedBranchTree && cachedBranchTree.length > 0) {
+            repoFiles = cachedBranchTree;
+          } else {
+            repoFiles = await GitHubService.fetchRepoTree(ownerName, repoName, activeBranch);
+            StorageService.saveFileTree(ownerName, repoName, activeBranch, repoFiles);
+          }
         } catch (err: any) {
           // If GitHub REST API throws RateLimit, 403, 404 or network error -> engage Zero-Rate-Limit Fallback Engine!
           console.warn('[DomoScope] REST API blocked/failed. Engaging High-Availability Direct Stream Engine...', err);
@@ -161,9 +181,21 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
 
         const contentsMap = new Map<string, string>(preloadedContents);
 
-        // Load missing critical contents in parallel
-        const missingCriticals = criticalFiles.filter((f) => !contentsMap.has(f.path));
-        const fetchPromises = missingCriticals.slice(0, 80).map(async (file) => {
+        // Load missing critical contents in parallel with smart priority sorting (Manifests -> Schemas/Models -> Routes/Entry Points)
+        const getFilePriority = (f: RepoFile): number => {
+          const n = f.name.toLowerCase();
+          const p = f.path.toLowerCase();
+          if (n === 'package.json' || n === 'go.mod' || n === 'cargo.toml' || n === 'requirements.txt' || n === 'pyproject.toml') return 1;
+          if (n === 'schema.prisma' || n.endsWith('.sql') || p.includes('schema') || p.includes('model') || p.includes('entity') || p.includes('entities')) return 2;
+          if (p.includes('routes') || p.includes('api') || p.includes('controllers') || /src\/(main|index|app)\./i.test(p) || p === 'lib/main.dart') return 3;
+          return 4;
+        };
+
+        const missingCriticals = criticalFiles
+          .filter((f) => !contentsMap.has(f.path))
+          .sort((a, b) => getFilePriority(a) - getFilePriority(b));
+
+        const fetchPromises = missingCriticals.slice(0, 100).map(async (file) => {
           try {
             const content = await GitHubService.fetchFileContent(ownerName, repoName, activeBranch, file.path);
             contentsMap.set(file.path, content);
@@ -180,17 +212,25 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         setAnalysis(analyzed);
         setFileContents(new Map(contentsMap));
 
-        // Step 6: Parse database schemas
-        const schemaFilesToParse = Array.from(contentsMap.entries())
-          .filter(
-            ([p]) =>
-              p.includes('schema.prisma') ||
-              p.endsWith('.sql') ||
-              p.includes('drizzle') ||
-              p.includes('migrations/')
-          )
-          .map(([path, content]) => ({ path, content }));
-        const schema = parseDatabaseFiles(schemaFilesToParse);
+        // Step 6: Parse database schemas & domain entity models
+        const allFetchedFiles = Array.from(contentsMap.entries()).map(([path, content]) => ({ path, content }));
+        const schemaFilesToParse = allFetchedFiles.filter((f) => {
+          const p = f.path.toLowerCase();
+          return (
+            p.includes('schema') ||
+            p.includes('model') ||
+            p.includes('entity') ||
+            p.includes('entities') ||
+            p.includes('migration') ||
+            p.includes('drizzle') ||
+            p.endsWith('.sql') ||
+            p.endsWith('.prisma') ||
+            p.endsWith('.drift') ||
+            p.includes('types')
+          );
+        });
+
+        const schema = parseDatabaseFiles(schemaFilesToParse.length > 0 ? schemaFilesToParse : allFetchedFiles);
         setDatabaseSchema(schema);
         await StorageService.saveDatabaseSchema(ownerName, repoName, activeBranch, schema);
 
@@ -217,7 +257,7 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         if (!isFallback) {
           GitHubService.fetchBranches(ownerName, repoName)
             .then((bList) => {
-              if (isMounted.current) {
+              if (isMounted.current && bList.length > 0) {
                 const enriched = bList.map((b) => ({
                   ...b,
                   isDefault: b.name === meta.defaultBranch,
@@ -228,11 +268,17 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
             })
             .catch(() => {});
         } else {
-          setBranches([{ name: activeBranch, sha: 'latest', isDefault: true }]);
+          // If fallback mode, preserve existing branches or load from cache
+          const cachedBranches = await StorageService.getBranches(ownerName, repoName);
+          if (cachedBranches && cachedBranches.length > 0) {
+            setBranches(cachedBranches);
+          } else {
+            setBranches([{ name: activeBranch, sha: 'latest', isDefault: true }]);
+          }
         }
 
-        // Save analysis to IndexedDB
-        await StorageService.saveAnalysis(ownerName, repoName, analyzed);
+        // Save analysis to IndexedDB with branch context
+        await StorageService.saveAnalysis(ownerName, repoName, analyzed, activeBranch);
 
         // Set initial selected file
         if (analyzed.entryPoints.length > 0) {
