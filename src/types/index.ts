@@ -124,7 +124,7 @@ export interface RepoDependency {
   name: string;
   version: string;
   isDev: boolean;
-  ecosystem: 'npm' | 'python' | 'go' | 'rust' | 'unknown';
+  ecosystem: 'npm' | 'python' | 'go' | 'rust' | 'pub' | 'packagist' | 'rubygems' | 'unknown';
   manifestPath: string;
   usedInFiles: string[];
 }

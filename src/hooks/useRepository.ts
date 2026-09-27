@@ -190,21 +190,59 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
 
         // Step 4: Fetch manifest, schema, and source files for deep analysis & polyglot graph
         setLoadingStep('Understanding structure');
-        const criticalFiles = repoFiles.filter(
-          (f) =>
-            f.type === 'blob' &&
-            (f.name === 'package.json' ||
-              f.name === 'requirements.txt' ||
-              f.name === 'pyproject.toml' ||
-              f.name === 'go.mod' ||
-              f.name === 'Cargo.toml' ||
-              f.name === 'pubspec.yaml' ||
-              f.name === 'schema.prisma' ||
-              f.path.includes('drizzle') ||
-              f.path.includes('migrations/') ||
-              f.name.endsWith('.sql') ||
-              ['ts', 'tsx', 'js', 'jsx', 'dart', 'java', 'kt', 'py', 'go', 'rs', 'cs', 'cpp', 'h'].includes(f.extension))
-        );
+        const criticalFiles = repoFiles.filter((f) => {
+          if (f.type !== 'blob') return false;
+          const n = f.name.toLowerCase();
+          const p = f.path.toLowerCase();
+
+          // Package manifests
+          if (
+            n === 'package.json' ||
+            n === 'pubspec.yaml' ||
+            n === 'pubspec.yml' ||
+            n === 'requirements.txt' ||
+            n === 'pyproject.toml' ||
+            n === 'pipfile' ||
+            n === 'go.mod' ||
+            n === 'cargo.toml' ||
+            n === 'gemfile' ||
+            n === 'composer.json'
+          ) return true;
+
+          // Cloud & Infrastructure configs
+          if (
+            n === 'google-services.json' ||
+            n === 'googleservice-info.plist' ||
+            n === 'firebase.json' ||
+            n === 'firestore.rules' ||
+            n === 'storage.rules' ||
+            n === '.firebaserc' ||
+            n === 'wrangler.toml' ||
+            n === 'wrangler.json' ||
+            n === 'serverless.yml' ||
+            n === 'serverless.yaml' ||
+            n === 'sam.yaml' ||
+            n === 'sam.yml' ||
+            n === 'cdk.json' ||
+            n === 'app.yaml' ||
+            n === 'cloudbuild.yaml' ||
+            n === 'vercel.json' ||
+            n === 'netlify.toml' ||
+            n === 'docker-compose.yml' ||
+            n === 'docker-compose.yaml'
+          ) return true;
+
+          // Database & schemas
+          if (
+            n === 'schema.prisma' ||
+            p.includes('drizzle') ||
+            p.includes('migrations/') ||
+            n.endsWith('.sql')
+          ) return true;
+
+          // Key source files
+          return ['ts', 'tsx', 'js', 'jsx', 'dart', 'java', 'kt', 'py', 'go', 'rs', 'cs', 'cpp', 'h', 'swift', 'php', 'rb'].includes(f.extension);
+        });
 
         const contentsMap = new Map<string, string>(preloadedContents);
 
@@ -212,7 +250,28 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         const getFilePriority = (f: RepoFile): number => {
           const n = f.name.toLowerCase();
           const p = f.path.toLowerCase();
-          if (n === 'package.json' || n === 'go.mod' || n === 'cargo.toml' || n === 'requirements.txt' || n === 'pyproject.toml') return 1;
+          if (
+            n === 'package.json' ||
+            n === 'pubspec.yaml' ||
+            n === 'pubspec.yml' ||
+            n === 'requirements.txt' ||
+            n === 'pyproject.toml' ||
+            n === 'pipfile' ||
+            n === 'go.mod' ||
+            n === 'cargo.toml' ||
+            n === 'gemfile' ||
+            n === 'composer.json' ||
+            n === 'google-services.json' ||
+            n === 'googleservice-info.plist' ||
+            n === 'firebase.json' ||
+            n === 'firestore.rules' ||
+            n === 'storage.rules' ||
+            n === 'wrangler.toml' ||
+            n === 'vercel.json' ||
+            n === 'netlify.toml' ||
+            n === 'serverless.yml' ||
+            n === 'serverless.yaml'
+          ) return 1;
           if (n === 'schema.prisma' || n.endsWith('.sql') || p.includes('schema') || p.includes('model') || p.includes('entity') || p.includes('entities')) return 2;
           if (p.includes('routes') || p.includes('api') || p.includes('controllers') || /src\/(main|index|app)\./i.test(p) || p === 'lib/main.dart') return 3;
           return 4;
@@ -265,13 +324,21 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
 
         // Step 7: Parse dependencies
         const manifestFiles = Array.from(contentsMap.entries())
-          .filter(
-            ([p]) =>
-              p.endsWith('package.json') ||
-              p.endsWith('requirements.txt') ||
-              p.endsWith('go.mod') ||
-              p.endsWith('Cargo.toml')
-          )
+          .filter(([p]) => {
+            const n = p.split('/').pop()?.toLowerCase() || '';
+            return (
+              n === 'package.json' ||
+              n === 'pubspec.yaml' ||
+              n === 'pubspec.yml' ||
+              n === 'requirements.txt' ||
+              n === 'pyproject.toml' ||
+              n === 'pipfile' ||
+              n === 'go.mod' ||
+              n === 'cargo.toml' ||
+              n === 'gemfile' ||
+              n === 'composer.json'
+            );
+          })
           .map(([path, content]) => ({ path, content }));
         const sourceCandidates = Array.from(contentsMap.entries()).map(([path, content]) => ({ path, content }));
         const deps = parseDependencies(manifestFiles, sourceCandidates);

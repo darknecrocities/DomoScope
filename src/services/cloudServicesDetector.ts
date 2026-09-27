@@ -93,6 +93,41 @@ export function detectCloudServices(
     }
   }
 
+  // Read pubspec.yaml / pubspec.yml if present to capture Flutter / Dart packages
+  const pubspecContent = contentsMap.get('pubspec.yaml') || contentsMap.get('pubspec.yml') || '';
+  if (pubspecContent) {
+    const lines = pubspecContent.split('\n');
+    let inDeps = false;
+    for (const rawLine of lines) {
+      const clean = rawLine.replace(/#.*$/, '').trimEnd();
+      if (!clean.trim()) continue;
+      if (/^(dependencies|dev_dependencies)\s*:/i.test(clean)) {
+        inDeps = true;
+        continue;
+      } else if (/^[a-zA-Z0-9_-]+\s*:/i.test(clean) && !clean.startsWith(' ') && !clean.startsWith('\t')) {
+        inDeps = false;
+        continue;
+      }
+      if (inDeps) {
+        const match = rawLine.match(/^(\s{2,}|\t+)([a-zA-Z0-9_]+)\s*:/);
+        if (match && match[2] && match[2] !== 'sdk' && match[2] !== 'flutter') {
+          depNames.add(match[2].toLowerCase());
+        }
+      }
+    }
+  }
+
+  // Read requirements.txt if present
+  const reqContent = contentsMap.get('requirements.txt') || '';
+  if (reqContent) {
+    for (const line of reqContent.split('\n')) {
+      const match = line.trim().match(/^([a-zA-Z0-9_.-]+)/);
+      if (match && !line.trim().startsWith('#')) {
+        depNames.add(match[1].toLowerCase());
+      }
+    }
+  }
+
   // Combined code sample for regex/substring matching across loaded files
   let codeSample = '';
   for (const [path, content] of contentsMap.entries()) {
@@ -103,9 +138,16 @@ export function detectCloudServices(
       path.endsWith('.jsx') ||
       path.endsWith('.py') ||
       path.endsWith('.go') ||
-      path.endsWith('.rs')
+      path.endsWith('.rs') ||
+      path.endsWith('.dart') ||
+      path.endsWith('.kt') ||
+      path.endsWith('.java') ||
+      path.endsWith('.swift') ||
+      path.endsWith('.cs') ||
+      path.endsWith('.php') ||
+      path.endsWith('.rb')
     ) {
-      codeSample += `\n// --- ${path} ---\n` + content.slice(0, 2000);
+      codeSample += `\n// --- ${path} ---\n` + content.slice(0, 3000);
     }
   }
 
@@ -271,20 +313,34 @@ export function detectCloudServices(
   }
 
   // ── 2. FIREBASE / GCP DETECTION ───────────────────────────────────────────
-  // Strict, precise detection of Firebase that never flags Cloud Functions unless
-  // real function packages/configs exist. Avoids matching generic 'onRequest' or React props.
+  // Strict, precise detection of Firebase supporting web, mobile (Flutter/iOS/Android), and Node.
   const hasFirebasePkg =
     depNames.has('firebase') ||
+    depNames.has('firebase-core') ||
+    depNames.has('firebase_core') ||
     depNames.has('firebase-admin') ||
+    depNames.has('firebase_admin') ||
     depNames.has('@firebase/app') ||
     depNames.has('@firebase/firestore') ||
+    depNames.has('cloud_firestore') ||
     depNames.has('@firebase/auth') ||
-    depNames.has('@firebase/storage');
+    depNames.has('firebase_auth') ||
+    depNames.has('@firebase/storage') ||
+    depNames.has('firebase_storage') ||
+    depNames.has('firebase_messaging') ||
+    depNames.has('firebase_analytics') ||
+    depNames.has('firebase_database') ||
+    depNames.has('firebase_remote_config') ||
+    depNames.has('firebase_crashlytics');
 
   const hasFirebaseFiles = allFilePathsLower.some(
     (p) =>
       p === 'firebase.json' ||
       p.endsWith('/firebase.json') ||
+      p === 'google-services.json' ||
+      p.endsWith('/google-services.json') ||
+      p === 'googleservice-info.plist' ||
+      p.endsWith('/googleservice-info.plist') ||
       p.includes('firestore.rules') ||
       p.includes('storage.rules') ||
       p.includes('.firebaserc')
@@ -295,6 +351,14 @@ export function detectCloudServices(
     codeSample.includes('from "firebase/') ||
     codeSample.includes("from 'firebase-admin") ||
     codeSample.includes('from "firebase-admin') ||
+    codeSample.includes('package:firebase_core') ||
+    codeSample.includes('package:cloud_firestore') ||
+    codeSample.includes('package:firebase_auth') ||
+    codeSample.includes('package:firebase_storage') ||
+    codeSample.includes('Firebase.initializeApp') ||
+    codeSample.includes('FirebaseFirestore') ||
+    codeSample.includes('FirebaseAuth') ||
+    codeSample.includes('FirebaseStorage') ||
     (codeSample.includes('initializeApp') && (codeSample.includes('firebase') || codeSample.includes('getFirestore')));
 
   if (hasFirebasePkg || hasFirebaseFiles || hasFirebaseCode) {
@@ -303,16 +367,29 @@ export function detectCloudServices(
     const endpoints: string[] = [];
 
     if (hasFirebasePkg) evidence.push('Firebase SDK in dependencies');
-    if (hasFirebaseFiles) evidence.push('Firebase configuration files (firebase.json / rules)');
+    if (hasFirebaseFiles) {
+      if (allFilePathsLower.some((p) => p.endsWith('google-services.json'))) {
+        evidence.push('Android Firebase configuration (google-services.json)');
+      }
+      if (allFilePathsLower.some((p) => p.endsWith('googleservice-info.plist'))) {
+        evidence.push('iOS Firebase configuration (GoogleService-Info.plist)');
+      }
+      if (allFilePathsLower.some((p) => p.endsWith('firebase.json') || p.includes('firestore.rules') || p.includes('storage.rules'))) {
+        evidence.push('Firebase configuration files (firebase.json / rules)');
+      }
+    }
 
     // 2a. Cloud Firestore
     const hasFirestore =
       depNames.has('@firebase/firestore') ||
+      depNames.has('cloud_firestore') ||
       allFilePathsLower.some((p) => p.includes('firestore.rules')) ||
       (contentsMap.get('firebase.json')?.includes('"firestore"') ?? false) ||
       codeSample.includes('getFirestore') ||
       codeSample.includes('firebase/firestore') ||
-      codeSample.includes('firebase-admin/firestore');
+      codeSample.includes('firebase-admin/firestore') ||
+      codeSample.includes('FirebaseFirestore') ||
+      codeSample.includes('cloud_firestore');
 
     if (hasFirestore) {
       features.push('Cloud Firestore NoSQL');
@@ -321,17 +398,19 @@ export function detectCloudServices(
         name: 'Cloud Firestore',
         type: 'document',
         provider: 'Google Cloud / Firebase',
-        description: 'NoSQL document database with realtime listeners and offline support',
-        evidence: ['getFirestore / Firestore configuration detected'],
+        description: 'Serverless cloud NoSQL document database with realtime listeners and offline sync',
+        evidence: ['cloud_firestore / Firestore configuration detected'],
       });
     }
 
     // 2b. Firebase Auth
     const hasAuth =
       depNames.has('@firebase/auth') ||
+      depNames.has('firebase_auth') ||
       codeSample.includes('getAuth') ||
       codeSample.includes('firebase/auth') ||
       codeSample.includes('firebase-admin/auth') ||
+      codeSample.includes('FirebaseAuth') ||
       codeSample.includes('signInWith') ||
       codeSample.includes('onAuthStateChanged');
 
@@ -341,14 +420,22 @@ export function detectCloudServices(
       endpoints.push('Firebase Auth');
     }
 
+    if (depNames.has('google_sign_in') || codeSample.includes('GoogleSignIn')) {
+      features.push('Google Sign-In / OAuth');
+      authProviders.add('Google Identity / Sign-In');
+      endpoints.push('Google OAuth');
+    }
+
     // 2c. Firebase Cloud Storage
     const hasStorage =
       depNames.has('@firebase/storage') ||
+      depNames.has('firebase_storage') ||
       allFilePathsLower.some((p) => p.includes('storage.rules')) ||
       (contentsMap.get('firebase.json')?.includes('"storage"') ?? false) ||
       codeSample.includes('getStorage') ||
       codeSample.includes('firebase/storage') ||
-      codeSample.includes('firebase-admin/storage');
+      codeSample.includes('firebase-admin/storage') ||
+      codeSample.includes('FirebaseStorage');
 
     if (hasStorage) {
       features.push('Firebase Cloud Storage');
@@ -357,16 +444,13 @@ export function detectCloudServices(
         name: 'Firebase Cloud Storage',
         type: 'object_storage',
         provider: 'Google Cloud / Firebase',
-        description: 'Object storage for user-generated content and binary files',
-        evidence: ['Firebase Storage rules or getStorage detected'],
+        description: 'Cloud object storage for user-generated content, media assets, and files',
+        evidence: ['Firebase Storage rules, getStorage, or firebase_storage detected'],
       });
     }
 
     // 2d. Firebase Cloud Functions
-    // STRICT: MUST have firebase-functions dependency OR firebase.json containing "functions"
-    // OR dedicated functions/package.json OR explicit import from 'firebase-functions'.
-    // NEVER match generic 'onRequest' (e.g. onRequestClose in React modals)!
-    const hasFunctionsPkg = depNames.has('firebase-functions');
+    const hasFunctionsPkg = depNames.has('firebase-functions') || depNames.has('cloud_functions');
     const hasFunctionsConfig = contentsMap.get('firebase.json')?.includes('"functions"') ?? false;
     const hasFunctionsDir =
       allFilePathsLower.some((p) => p === 'functions/package.json' || p.endsWith('/functions/package.json')) &&
@@ -374,7 +458,8 @@ export function detectCloudServices(
     const hasFunctionsCode =
       codeSample.includes("from 'firebase-functions'") ||
       codeSample.includes('require("firebase-functions")') ||
-      codeSample.includes("from 'firebase-admin/functions'");
+      codeSample.includes("from 'firebase-admin/functions'") ||
+      codeSample.includes('FirebaseFunctions');
 
     if (hasFunctionsPkg || hasFunctionsConfig || hasFunctionsDir || hasFunctionsCode) {
       features.push('Firebase Cloud Functions');
@@ -382,11 +467,45 @@ export function detectCloudServices(
       serverlessRuntimes.add('Firebase Cloud Functions (Node.js)');
     }
 
-    // 2e. Firebase Analytics / Telemetry
+    // 2e. Firebase Cloud Messaging (FCM)
+    const hasFcm =
+      depNames.has('firebase_messaging') ||
+      codeSample.includes('FirebaseMessaging') ||
+      codeSample.includes('firebase/messaging');
+
+    if (hasFcm) {
+      features.push('Cloud Messaging (FCM) & Push');
+      endpoints.push('FCM Push');
+    }
+
+    // 2f. Firebase Realtime Database
+    const hasRtdb =
+      depNames.has('firebase_database') ||
+      depNames.has('@firebase/database') ||
+      codeSample.includes('FirebaseDatabase') ||
+      codeSample.includes('firebase/database');
+
+    if (hasRtdb) {
+      features.push('Firebase Realtime Database');
+      endpoints.push('Realtime DB');
+      storageSystems.push({
+        name: 'Firebase Realtime Database',
+        type: 'document',
+        provider: 'Google Cloud / Firebase',
+        description: 'Cloud-hosted NoSQL JSON database syncing data in realtime across clients',
+        evidence: ['firebase_database detected'],
+      });
+    }
+
+    // 2g. Firebase Analytics / Telemetry
     const hasAnalytics =
       depNames.has('@firebase/analytics') ||
+      depNames.has('firebase_analytics') ||
+      depNames.has('firebase_crashlytics') ||
       codeSample.includes('getAnalytics') ||
       codeSample.includes('firebase/analytics') ||
+      codeSample.includes('FirebaseAnalytics') ||
+      codeSample.includes('FirebaseCrashlytics') ||
       codeSample.includes('logEvent(');
 
     if (hasAnalytics) {
@@ -395,7 +514,8 @@ export function detectCloudServices(
     }
 
     // Determine service archetype and badge based strictly on detected features
-    const hasBackendFeatures = hasFirestore || hasAuth || hasStorage || (features.includes('Firebase Cloud Functions'));
+    const hasBackendFeatures =
+      hasFirestore || hasAuth || hasStorage || hasRtdb || hasFcm || features.includes('Firebase Cloud Functions');
 
     if (!hasBackendFeatures && hasAnalytics) {
       // Pure client-side telemetry tracker (e.g. anonymous visitor counts in DomoNote)
@@ -420,7 +540,7 @@ export function detectCloudServices(
         badge: 'Google BaaS',
         description: 'Google application development platform for Firestore NoSQL, Authentication, and Storage.',
         detectedFeatures: features.length > 0 ? features : ['Firebase Cloud Services'],
-        evidence,
+        evidence: evidence.length > 0 ? evidence : ['Firebase configuration and SDK detected'],
         endpointsOrResources: endpoints.length > 0 ? endpoints : ['Firestore DB'],
       });
     } else {
@@ -950,7 +1070,142 @@ export function detectCloudServices(
     });
   }
 
-  // ── 10. AUTH PROVIDERS ────────────────────────────────────────────────────
+  // ── 10. AI & MACHINE LEARNING SERVICES ────────────────────────────────────
+  // 10a. Google Gemini AI & Generative Intelligence
+  const hasGemini =
+    depNames.has('google_generative_ai') ||
+    depNames.has('@google/genai') ||
+    depNames.has('@google/generative-ai') ||
+    depNames.has('google-generativeai') ||
+    codeSample.includes('GoogleGenerativeAI') ||
+    codeSample.includes('GenerativeModel') ||
+    codeSample.includes("model: 'gemini") ||
+    codeSample.includes('model: "gemini');
+
+  if (hasGemini) {
+    const geminiFeatures: string[] = ['Multimodal Generative AI', 'Google Generative AI SDK'];
+    if (codeSample.includes('gemini-1.5') || codeSample.includes('gemini-2.0') || codeSample.includes('gemini-pro')) {
+      geminiFeatures.push('Gemini Multimodal Models');
+    }
+    if (depNames.has('flutter_gemma') || codeSample.includes('flutter_gemma')) {
+      geminiFeatures.push('On-Device Gemma LLM');
+    }
+
+    addService({
+      id: 'google-gemini',
+      name: 'Google Gemini AI & Generative Intelligence',
+      provider: 'gcp',
+      category: 'ai',
+      badge: 'Google Gemini AI',
+      description: 'Google multimodal generative AI platform providing LLM reasoning, code synthesis, visual processing, and embeddings.',
+      detectedFeatures: geminiFeatures,
+      evidence: ['google_generative_ai / Gemini SDK detected in dependencies'],
+      endpointsOrResources: ['Gemini API', 'GenerativeModel'],
+    });
+  }
+
+  // 10b. Edge AI & On-Device Vision (ML Kit / Gemma / TFLite)
+  const hasOnDeviceAi =
+    depNames.has('flutter_gemma') ||
+    depNames.has('tflite_flutter') ||
+    depNames.has('google_mlkit_image_labeling') ||
+    depNames.has('google_mlkit_object_detection') ||
+    depNames.has('google_mlkit_face_detection') ||
+    depNames.has('google_mlkit_text_recognition') ||
+    depNames.has('@tensorflow/tfjs') ||
+    depNames.has('onnxruntime');
+
+  if (hasOnDeviceAi) {
+    const onDeviceFeatures: string[] = [];
+    if (depNames.has('flutter_gemma')) onDeviceFeatures.push('Google Gemma Local LLM');
+    if (depNames.has('tflite_flutter')) onDeviceFeatures.push('TensorFlow Lite Mobile Engine');
+    if (
+      depNames.has('google_mlkit_image_labeling') ||
+      depNames.has('google_mlkit_object_detection') ||
+      depNames.has('google_mlkit_face_detection') ||
+      depNames.has('google_mlkit_text_recognition')
+    ) {
+      onDeviceFeatures.push('Google ML Kit Vision & OCR');
+    }
+
+    addService({
+      id: 'on-device-ai',
+      name: 'Edge AI & On-Device Vision (ML Kit / TFLite)',
+      provider: 'other',
+      category: 'ai',
+      badge: 'On-Device AI',
+      description: 'On-device machine learning models running locally for low-latency visual analysis, OCR, object tracking, and edge inference.',
+      detectedFeatures: onDeviceFeatures.length > 0 ? onDeviceFeatures : ['Local Neural Inference'],
+      evidence: ['ML Kit / TFLite / Gemma packages detected in dependencies'],
+      endpointsOrResources: ['On-Device Neural Engine'],
+    });
+  }
+
+  // 10c. OpenAI Platform
+  const hasOpenAi =
+    depNames.has('openai') ||
+    depNames.has('openai-edge') ||
+    codeSample.includes('new OpenAI') ||
+    codeSample.includes('openai.chat.completions');
+
+  if (hasOpenAi) {
+    addService({
+      id: 'openai',
+      name: 'OpenAI Intelligence Platform',
+      provider: 'other',
+      category: 'ai',
+      badge: 'OpenAI API',
+      description: 'Cloud artificial intelligence service providing GPT reasoning models, embeddings, and code intelligence.',
+      detectedFeatures: ['GPT Language Models', 'Vector Embeddings', 'Function Calling'],
+      evidence: ['openai client library in dependencies'],
+      endpointsOrResources: ['/v1/chat/completions', 'OpenAI API'],
+    });
+  }
+
+  // 10d. Anthropic Claude
+  const hasAnthropic =
+    depNames.has('@anthropic-ai/sdk') ||
+    depNames.has('anthropic') ||
+    codeSample.includes('Anthropic(') ||
+    codeSample.includes('CLAUDE_API_KEY');
+
+  if (hasAnthropic) {
+    addService({
+      id: 'anthropic',
+      name: 'Anthropic Claude AI Platform',
+      provider: 'other',
+      category: 'ai',
+      badge: 'Anthropic Claude',
+      description: 'Advanced reasoning AI platform delivering Claude models with large context windows and safety guardrails.',
+      detectedFeatures: ['Claude 3.5 Sonnet / Opus', 'Vision & Document Analysis'],
+      evidence: ['@anthropic-ai/sdk in dependencies'],
+      endpointsOrResources: ['Claude API'],
+    });
+  }
+
+  // ── 11. GOOGLE MAPS PLATFORM ──────────────────────────────────────────────
+  const hasGoogleMaps =
+    depNames.has('google_maps_flutter') ||
+    depNames.has('@react-native-google-maps') ||
+    depNames.has('@googlemaps/google-maps-services-js') ||
+    depNames.has('@googlemaps/react-wrapper') ||
+    depNames.has('google-maps-react');
+
+  if (hasGoogleMaps) {
+    addService({
+      id: 'google-maps',
+      name: 'Google Maps Platform',
+      provider: 'gcp',
+      category: 'compute',
+      badge: 'Google Maps',
+      description: 'Geospatial mapping service providing dynamic vector tiles, route calculation, and geolocation APIs.',
+      detectedFeatures: ['Dynamic Map Rendering', 'Location & Geocoding Services', 'Spatial Overlays'],
+      evidence: ['google_maps_flutter / Google Maps SDK in dependencies'],
+      endpointsOrResources: ['Google Maps SDK', 'Geolocation API'],
+    });
+  }
+
+  // ── 12. AUTH PROVIDERS ────────────────────────────────────────────────────
   if (depNames.has('@clerk/clerk-react') || depNames.has('@clerk/nextjs') || depNames.has('@clerk/backend')) {
     authProviders.add('Clerk Authentication');
     addService({
@@ -976,7 +1231,38 @@ export function detectCloudServices(
     authProviders.add('Kinde Auth');
   }
 
-  // ── 11. GENERIC CLIENT-SIDE FALLBACK STORAGE ──────────────────────────────
+  // ── 13. MOBILE & CLIENT LOCAL STORAGE ─────────────────────────────────────
+  if (depNames.has('shared_preferences') || depNames.has('@react-native-async-storage/async-storage')) {
+    storageSystems.push({
+      name: 'SharedPreferences (Key-Value Store)',
+      type: 'local',
+      provider: 'Client Sandbox (Mobile OS)',
+      description: 'Persistent on-device key-value store for user sessions, auth state, and settings',
+      evidence: ['shared_preferences or async-storage in dependencies'],
+    });
+  }
+
+  if (depNames.has('sqflite') || depNames.has('drift') || depNames.has('floor')) {
+    storageSystems.push({
+      name: 'SQLite (Mobile Relational DB)',
+      type: 'relational',
+      provider: 'Client Sandbox (SQLite)',
+      description: 'Local embedded relational SQL database engine for structured mobile data caching',
+      evidence: ['sqflite or drift in dependencies'],
+    });
+  }
+
+  if (depNames.has('hive') || depNames.has('hive_flutter') || depNames.has('isar') || depNames.has('objectbox')) {
+    storageSystems.push({
+      name: 'Hive / Isar (Mobile NoSQL)',
+      type: 'document',
+      provider: 'Client Sandbox (NoSQL)',
+      description: 'High-performance local embedded binary document store for mobile applications',
+      evidence: ['hive or isar in dependencies'],
+    });
+  }
+
+  // ── 14. GENERIC CLIENT-SIDE FALLBACK STORAGE ──────────────────────────────
   // If zero storage systems detected, check if standard browser APIs are utilized.
   if (storageSystems.length === 0) {
     if (codeSample.includes('indexedDB') || codeSample.includes('localStorage') || depNames.has('localstorage')) {
@@ -990,24 +1276,31 @@ export function detectCloudServices(
     }
   }
 
-  // ── 12. ARCHITECTURAL CLASSIFICATION & TITLE SYNTHESIS ────────────────────
-  // Determine if the app is fundamentally Local-First, Serverless, BaaS, or Cloud Infra
+  // ── 15. ARCHITECTURAL CLASSIFICATION & TITLE SYNTHESIS ────────────────────
+  const hasLocalFirstClientDb = storageSystems.some(
+    (s) => s.type === 'local' && (s.name.includes('Dexie') || s.name.includes('RxDB') || s.name.includes('PouchDB') || s.name.includes('IndexedDB'))
+  );
   const hasLocalStore = storageSystems.some((s) => s.type === 'local');
   const hasServerlessCompute = serverlessRuntimes.size > 0;
   const hasAuthSystems = authProviders.size > 0;
-  const hasTrueCloudBackend =
-    (services.some((s) => s.category === 'cloud_baas' && s.badge !== 'Telemetry & Stats' && s.badge !== 'Client SDK') &&
-      (hasAuthSystems || !hasLocalStore)) ||
-    services.some((s) => s.category === 'compute') ||
-    hasServerlessCompute;
+  const hasCloudBaas = services.some(
+    (s) => s.category === 'cloud_baas' && s.badge !== 'Telemetry & Stats' && s.badge !== 'Client SDK'
+  );
+  const hasCompute = services.some((s) => s.category === 'compute');
+  const hasAi = services.some((s) => s.category === 'ai');
+
+  // If local-first database is used (e.g. DomoNote with Dexie) and NO external auth/serverless is present,
+  // classify as dedicated local-first and mark hasBackendCloud as false.
+  const isDedicatedLocalFirst = hasLocalFirstClientDb && !hasAuthSystems && !hasServerlessCompute;
+  const hasTrueCloudBackend = !isDedicatedLocalFirst && (hasCloudBaas || hasCompute || hasServerlessCompute);
 
   let architectureType: ArchitectureClassificationType = 'standalone';
   let architectureTitle = 'Self-Contained Client Architecture';
   let architectureBadge = 'LOCAL SANDBOX';
   let architectureDescription = 'Standalone client application operating without external cloud infrastructure.';
 
-  if (hasLocalStore && !hasServerlessCompute) {
-    // True Local-First / Offline-First Application (like DomoNote with Dexie.js / IndexedDB)
+  if (isDedicatedLocalFirst) {
+    // 1. True Local-First / Offline-First Application (like DomoNote with Dexie.js / IndexedDB)
     architectureType = 'local_first';
     const localStoreName = storageSystems.find((s) => s.type === 'local')?.name || 'Browser Storage';
     const baseName = localStoreName.includes('Dexie') ? 'Dexie.js / IndexedDB' : localStoreName.split(' ')[0];
@@ -1016,22 +1309,44 @@ export function detectCloudServices(
     architectureDescription =
       'Offline-capable client application persisting state locally in browser storage with zero external backend dependencies.';
   } else if (hasServerlessCompute) {
-    // Distributed serverless architecture
+    // 2. Distributed serverless architecture
     architectureType = 'serverless_fullstack';
     const runtimeList = Array.from(serverlessRuntimes).map((r) => r.split(' ')[0]);
     architectureTitle = `${runtimeList.join(' + ')} Serverless Architecture`;
     architectureBadge = 'SERVERLESS ARCHITECTURE';
     architectureDescription = 'Distributed event-driven serverless architecture running compute at the edge.';
-  } else if (services.some((s) => s.category === 'cloud_baas' && s.badge !== 'Telemetry & Stats')) {
-    // Full Backend-as-a-Service (Supabase or full Firebase)
+  } else if (hasCloudBaas) {
+    // 3. Full Backend-as-a-Service (Supabase or full Firebase)
     architectureType = 'cloud_baas';
     const baasSvc = services.find((s) => s.category === 'cloud_baas' && s.badge !== 'Telemetry & Stats');
-    architectureTitle = baasSvc?.name || 'Cloud BaaS Platform Architecture';
-    architectureBadge = 'CLOUD BAAS';
-    architectureDescription =
-      'Managed backend-as-a-service providing database, authentication, and realtime services.';
+    if (baasSvc?.provider === 'firebase') {
+      const isMobile = allFilePathsLower.some((p) => p.includes('android/') || p.includes('ios/') || p === 'pubspec.yaml');
+      if (hasAi) {
+        architectureTitle = isMobile
+          ? 'Firebase Mobile & Cloud AI Architecture'
+          : 'Google Firebase & Cloud AI Architecture';
+        architectureBadge = 'FIREBASE + AI BAAS';
+        architectureDescription =
+          'Multi-tier cloud application powered by Google Firebase (Cloud Firestore, Auth, Storage) integrated with generative AI and machine learning services.';
+      } else {
+        architectureTitle = isMobile
+          ? 'Firebase-Backed Mobile Cloud Architecture'
+          : 'Google Firebase BaaS Architecture';
+        architectureBadge = 'FIREBASE BAAS';
+        architectureDescription =
+          'Managed backend-as-a-service architecture providing Cloud Firestore NoSQL, Firebase Authentication, and Cloud Storage.';
+      }
+    } else if (baasSvc?.provider === 'supabase') {
+      architectureTitle = 'Supabase Cloud BaaS Architecture';
+      architectureBadge = 'SUPABASE BAAS';
+      architectureDescription =
+        'Managed backend-as-a-service architecture providing PostgreSQL, Row-Level Security, Auth, and Storage.';
+    } else {
+      architectureTitle = baasSvc?.name || 'Cloud BaaS Architecture';
+      architectureBadge = 'CLOUD BAAS';
+      architectureDescription = 'Managed backend-as-a-service providing database, auth, and realtime services.';
+    }
   } else if (services.some((s) => s.category === 'compute' || s.category === 'storage')) {
-    // Cloud infrastructure (AWS / GCP / Azure)
     architectureType = 'cloud_infrastructure';
     const providerList = Array.from(detectedProviders)
       .filter((p) => p !== 'other')
@@ -1039,8 +1354,21 @@ export function detectCloudServices(
     architectureTitle = `${providerList.join(' + ')} Cloud Infrastructure`;
     architectureBadge = 'CLOUD INFRASTRUCTURE';
     architectureDescription = 'Cloud infrastructure architecture with distributed computing and storage.';
+  } else if (hasAi) {
+    architectureType = 'standalone';
+    architectureTitle = 'AI-Powered Client Architecture';
+    architectureBadge = 'AI-POWERED';
+    architectureDescription = 'Client application integrating artificial intelligence APIs and neural inference models.';
+  } else if (hasLocalStore) {
+    architectureType = 'local_first';
+    const localStoreName = storageSystems.find((s) => s.type === 'local')?.name || 'Browser Storage';
+    const baseName = localStoreName.includes('Dexie') ? 'Dexie.js / IndexedDB' : localStoreName.split(' ')[0];
+    architectureTitle = `Local-First Client Architecture (${baseName})`;
+    architectureBadge = 'LOCAL-FIRST CLIENT';
+    architectureDescription =
+      'Offline-capable client application persisting state locally in browser storage with zero external backend dependencies.';
   } else if (services.some((s) => s.category === 'cdn')) {
-    // Static edge deployment (Vercel / Netlify static hosting)
+    // 6. Static edge deployment
     architectureType = 'static_edge';
     const cdnSvc = services.find((s) => s.category === 'cdn');
     architectureTitle = `Static Edge Frontend (${cdnSvc?.provider.toUpperCase() || 'CDN'} Deployed)`;

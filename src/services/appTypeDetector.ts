@@ -153,7 +153,9 @@ export function detectAppType(
   // ---------------------------------------------------------------------------
   // 2. MOBILE APPLICATION
   // ---------------------------------------------------------------------------
-  const hasFlutter = depMap.has('flutter') || paths.some((p) => p === 'pubspec.yaml' && (fileContents.get('pubspec.yaml') || '').includes('flutter:'));
+  const hasFlutter =
+    depMap.has('flutter') ||
+    paths.some((p) => p === 'pubspec.yaml' || p.endsWith('/pubspec.yaml') || p === 'lib/main.dart' || p.startsWith('lib/'));
   const hasReactNative = depMap.has('react-native') || depMap.has('expo') || paths.some((p) => p.includes('app.json') && (fileContents.get(p) || '').includes('expo'));
   const hasNativeIos = paths.some((p) => p.includes('ios/') || p.endsWith('.xcodeproj') || p.endsWith('.xcworkspace') || p.endsWith('.swift'));
   const hasNativeAndroid = paths.some((p) => p.includes('android/') || p.endsWith('androidmanifest.xml') || (p.endsWith('.kt') && paths.some((x) => x.includes('android'))));

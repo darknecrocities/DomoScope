@@ -425,47 +425,62 @@ export function OverviewTab({
                 Detected Cloud & BaaS Platforms
               </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {cloudResult.services.map((svc) => (
-                  <div
-                    key={svc.id}
-                    className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/70 hover:bg-zinc-50 transition-all space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="p-1.5 bg-zinc-900 text-white rounded-lg">
-                          <Cloud className="w-3.5 h-3.5" />
+                {cloudResult.services.map((svc) => {
+                  const SvcIcon =
+                    svc.category === 'ai'
+                      ? Sparkles
+                      : svc.category === 'auth'
+                      ? Key
+                      : svc.category === 'storage' || svc.category === 'database'
+                      ? HardDrive
+                      : svc.category === 'compute'
+                      ? Server
+                      : svc.category === 'messaging'
+                      ? Activity
+                      : Cloud;
+
+                  return (
+                    <div
+                      key={svc.id}
+                      className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/70 hover:bg-zinc-50 transition-all space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 bg-zinc-900 text-white rounded-lg">
+                            <SvcIcon className="w-3.5 h-3.5" />
+                          </span>
+                          <h4 className="text-xs font-extrabold text-zinc-900">{svc.name}</h4>
+                        </div>
+                        <span className="text-[10px] font-mono font-semibold bg-white border border-zinc-200 px-2 py-0.5 rounded-md text-zinc-700">
+                          {svc.badge}
                         </span>
-                        <h4 className="text-xs font-extrabold text-zinc-900">{svc.name}</h4>
                       </div>
-                      <span className="text-[10px] font-mono font-semibold bg-white border border-zinc-200 px-2 py-0.5 rounded-md text-zinc-700">
-                        {svc.badge}
-                      </span>
-                    </div>
 
-                    <p className="text-xs text-zinc-600 leading-relaxed font-sans">{svc.description}</p>
+                      <p className="text-xs text-zinc-600 leading-relaxed font-sans">{svc.description}</p>
 
-                    {/* Features list */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {svc.detectedFeatures.map((feat) => (
-                        <span
-                          key={feat}
-                          className="px-2 py-0.5 rounded-md bg-white border border-zinc-200 text-[11px] font-mono text-zinc-800 flex items-center gap-1 shadow-2xs"
-                        >
-                          <CheckCircle2 className="w-2.5 h-2.5 text-zinc-900" />
-                          <span>{feat}</span>
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Evidence */}
-                    {svc.evidence.length > 0 && (
-                      <div className="pt-2 border-t border-zinc-200/60 text-[10px] font-mono text-zinc-500 truncate">
-                        <span className="font-semibold text-zinc-700">Signal: </span>
-                        <span>{svc.evidence.join(' · ')}</span>
+                      {/* Features list */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {svc.detectedFeatures.map((feat) => (
+                          <span
+                            key={feat}
+                            className="px-2 py-0.5 rounded-md bg-white border border-zinc-200 text-[11px] font-mono text-zinc-800 flex items-center gap-1 shadow-2xs"
+                          >
+                            <CheckCircle2 className="w-2.5 h-2.5 text-zinc-900" />
+                            <span>{feat}</span>
+                          </span>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {/* Evidence */}
+                      {svc.evidence.length > 0 && (
+                        <div className="pt-2 border-t border-zinc-200/60 text-[10px] font-mono text-zinc-500 truncate">
+                          <span className="font-semibold text-zinc-700">Signal: </span>
+                          <span>{svc.evidence.join(' · ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -500,7 +515,7 @@ export function OverviewTab({
               </div>
             )}
 
-            {/* Serverless & Auth summary pills */}
+            {/* Serverless, Compute, Auth & AI summary pills */}
             <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-mono">
               <div className="flex items-center gap-1.5 text-zinc-700">
                 <Server className="w-3.5 h-3.5 text-zinc-900" />
@@ -508,6 +523,8 @@ export function OverviewTab({
                 <span className="font-bold text-zinc-900">
                   {cloudResult.serverlessRuntimes.length > 0
                     ? cloudResult.serverlessRuntimes.join(' · ')
+                    : appTypeResult.primary.category === 'Mobile Application'
+                    ? 'Mobile Platform Execution (Client-Side OS)'
                     : 'Client-Side Execution (Zero-Serverless)'}
                 </span>
               </div>
@@ -516,6 +533,18 @@ export function OverviewTab({
                   <Key className="w-3.5 h-3.5 text-zinc-900" />
                   <span className="text-zinc-500">Auth:</span>
                   <span className="font-bold text-zinc-900">{cloudResult.authProviders.join(' · ')}</span>
+                </div>
+              )}
+              {cloudResult.services.some((s) => s.category === 'ai') && (
+                <div className="flex items-center gap-1.5 text-zinc-700">
+                  <Sparkles className="w-3.5 h-3.5 text-zinc-900" />
+                  <span className="text-zinc-500">AI / ML:</span>
+                  <span className="font-bold text-zinc-900">
+                    {cloudResult.services
+                      .filter((s) => s.category === 'ai')
+                      .map((s) => s.badge)
+                      .join(' · ')}
+                  </span>
                 </div>
               )}
             </div>

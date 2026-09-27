@@ -231,4 +231,109 @@ describe('Cloud, BaaS, Infrastructure and Storage Detector', () => {
     expect(result.architectureType).toBe('standalone');
     expect(result.architectureBadge).toBe('LOCAL SANDBOX');
   });
+
+  it('accurately detects Flutter mobile app with Firebase BaaS, Google Gemini AI, ML Kit, and Maps (e.g. Easylens)', () => {
+    const files: RepoFile[] = [
+      { path: 'pubspec.yaml', name: 'pubspec.yaml', type: 'blob', extension: 'yaml', category: 'config' },
+      { path: 'android/app/google-services.json', name: 'google-services.json', type: 'blob', extension: 'json', category: 'config' },
+      { path: 'lib/main.dart', name: 'main.dart', type: 'blob', extension: 'dart', category: 'component' },
+      { path: 'lib/services/ai_service.dart', name: 'ai_service.dart', type: 'blob', extension: 'dart', category: 'service' },
+      { path: 'lib/services/firebase_service.dart', name: 'firebase_service.dart', type: 'blob', extension: 'dart', category: 'service' },
+    ];
+
+    const fileContents = new Map<string, string>([
+      [
+        'pubspec.yaml',
+        `name: easylens
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.1.1
+  firebase_auth: ^5.1.2
+  firebase_storage: ^12.1.1
+  cloud_firestore: ^5.0.2
+  google_sign_in: ^6.2.1
+  google_generative_ai: ^0.4.4
+  flutter_gemma: ^0.13.6
+  google_mlkit_image_labeling: ^0.14.2
+  google_mlkit_object_detection: ^0.15.1
+  tflite_flutter: ^0.12.1
+  google_maps_flutter: ^2.5.3
+  shared_preferences: ^2.2.3
+`,
+      ],
+      [
+        'lib/services/ai_service.dart',
+        `import 'package:google_generative_ai/google_generative_ai.dart';
+final model = GenerativeModel(model: 'gemini-1.5-pro', apiKey: 'key');`,
+      ],
+      [
+        'lib/services/firebase_service.dart',
+        `import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+final db = FirebaseFirestore.instance;
+final auth = FirebaseAuth.instance;
+final storage = FirebaseStorage.instance;`,
+      ],
+    ]);
+
+    const dependencies: RepoDependency[] = [
+      { name: 'firebase_core', version: '^3.1.1', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'firebase_auth', version: '^5.1.2', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'firebase_storage', version: '^12.1.1', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'cloud_firestore', version: '^5.0.2', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'google_sign_in', version: '^6.2.1', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'google_generative_ai', version: '^0.4.4', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'flutter_gemma', version: '^0.13.6', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'google_mlkit_object_detection', version: '^0.15.1', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'google_maps_flutter', version: '^2.5.3', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+      { name: 'shared_preferences', version: '^2.2.3', isDev: false, ecosystem: 'pub', manifestPath: 'pubspec.yaml' },
+    ];
+
+    const result = detectCloudServices(files, fileContents, dependencies);
+
+    // 1. Must detect cloud services
+    expect(result.hasCloudServices).toBe(true);
+    expect(result.hasBackendCloud).toBe(true);
+
+    // 2. Architecture must be classified as Firebase Mobile & Cloud AI
+    expect(result.architectureType).toBe('cloud_baas');
+    expect(result.architectureBadge).toBe('FIREBASE + AI BAAS');
+    expect(result.architectureTitle).toBe('Firebase Mobile & Cloud AI Architecture');
+
+    // 3. Must detect Firebase Platform with Firestore, Auth, Storage
+    const fb = result.services.find((s) => s.id === 'firebase');
+    expect(fb).toBeDefined();
+    expect(fb?.detectedFeatures).toContain('Cloud Firestore NoSQL');
+    expect(fb?.detectedFeatures).toContain('Firebase Authentication');
+    expect(fb?.detectedFeatures).toContain('Firebase Cloud Storage');
+    expect(fb?.detectedFeatures).toContain('Google Sign-In / OAuth');
+
+    // 4. Must detect Google Gemini Generative AI
+    const gemini = result.services.find((s) => s.id === 'google-gemini');
+    expect(gemini).toBeDefined();
+    expect(gemini?.category).toBe('ai');
+    expect(gemini?.badge).toBe('Google Gemini AI');
+
+    // 5. Must detect Edge AI / ML Kit
+    const edgeAi = result.services.find((s) => s.id === 'on-device-ai');
+    expect(edgeAi).toBeDefined();
+    expect(edgeAi?.category).toBe('ai');
+
+    // 6. Must detect Google Maps
+    const maps = result.services.find((s) => s.id === 'google-maps');
+    expect(maps).toBeDefined();
+
+    // 7. Must detect Cloud Storage Systems (Firestore, Firebase Storage, SharedPreferences)
+    expect(result.storageSystems.length).toBeGreaterThanOrEqual(3);
+    expect(result.storageSystems.some((s) => s.name === 'Cloud Firestore')).toBe(true);
+    expect(result.storageSystems.some((s) => s.name === 'Firebase Cloud Storage')).toBe(true);
+    expect(result.storageSystems.some((s) => s.name.includes('SharedPreferences'))).toBe(true);
+
+    // 8. Auth providers
+    expect(result.authProviders).toContain('Firebase Auth');
+    expect(result.authProviders).toContain('Google Identity / Sign-In');
+  });
 });

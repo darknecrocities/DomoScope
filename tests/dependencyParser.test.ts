@@ -48,4 +48,48 @@ describe('Dependency Parser', () => {
     expect(deps[0].version).toBe('0.104.1');
     expect(deps[0].ecosystem).toBe('python');
   });
+
+  it('parses Flutter / Dart pubspec.yaml with dependencies and dev_dependencies', () => {
+    const pubspec = `
+name: easylens
+description: An accessibility app
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.1.1
+  firebase_auth: ^5.1.2
+  firebase_storage: ^12.1.1
+  cloud_firestore: ^5.0.2
+  google_generative_ai: ^0.4.4
+  flutter_gemma: ^0.13.6
+  shared_preferences: ^2.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+`;
+
+    const sourceFiles = [
+      {
+        path: 'lib/main.dart',
+        content: "import 'package:firebase_core/firebase_core.dart';\nimport 'package:cloud_firestore/cloud_firestore.dart';",
+      },
+    ];
+
+    const deps = parseDependencies([{ path: 'pubspec.yaml', content: pubspec }], sourceFiles);
+
+    expect(deps.length).toBe(10);
+    const firestore = deps.find((d) => d.name === 'cloud_firestore');
+    expect(firestore).toBeDefined();
+    expect(firestore?.version).toBe('^5.0.2');
+    expect(firestore?.isDev).toBe(false);
+    expect(firestore?.ecosystem).toBe('pub');
+    expect(firestore?.usedInFiles).toContain('lib/main.dart');
+
+    const lints = deps.find((d) => d.name === 'flutter_lints');
+    expect(lints).toBeDefined();
+    expect(lints?.isDev).toBe(true);
+  });
 });
