@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { RepoAnalysis, RepoFile, DatabaseSchema, SecurityFinding, BranchInfo } from '../types';
+import { RepoAnalysis, RepoFile, DatabaseSchema, SecurityFinding, BranchInfo, RepoDependency } from '../types';
 import { CryptoService } from './cryptoService';
 
 interface DomoScopeDB extends DBSchema {
@@ -267,11 +267,43 @@ export const StorageService = {
     }
   },
 
+  async getDependencies(owner: string, repo: string, branch: string): Promise<RepoDependency[] | null> {
+    try {
+      const key = `deps:${owner.toLowerCase()}/${repo.toLowerCase()}@${branch.toLowerCase()}`;
+      return await this.getSetting<RepoDependency[] | null>(key, null);
+    } catch {
+      return null;
+    }
+  },
+
+  async saveDependencies(owner: string, repo: string, branch: string, dependencies: RepoDependency[]): Promise<void> {
+    try {
+      const key = `deps:${owner.toLowerCase()}/${repo.toLowerCase()}@${branch.toLowerCase()}`;
+      await this.setSetting(key, dependencies);
+    } catch (e) {
+      console.warn('Storage saveDependencies error:', e);
+    }
+  },
+
   async clearRepoCache(owner: string, repo: string): Promise<void> {
     try {
       const db = await getDB();
-      await db.delete('repositories', `${owner.toLowerCase()}/${repo.toLowerCase()}`);
-      await db.delete('branches', `${owner.toLowerCase()}/${repo.toLowerCase()}`);
+      const prefix = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
+      await db.delete('repositories', prefix);
+      await db.delete('branches', prefix);
+
+      // Also clean matching branch keys from all stores
+      const stores = ['repositories', 'fileTrees', 'databaseSchemas', 'securityFindings'] as const;
+      for (const storeName of stores) {
+        try {
+          const keys = await db.getAllKeys(storeName);
+          for (const k of keys) {
+            if (typeof k === 'string' && (k === prefix || k.startsWith(`${prefix}@`))) {
+              await db.delete(storeName, k);
+            }
+          }
+        } catch {}
+      }
     } catch (e) {
       console.warn('Storage clearRepoCache error:', e);
     }

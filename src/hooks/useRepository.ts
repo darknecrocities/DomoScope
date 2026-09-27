@@ -46,6 +46,8 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   const isMounted = useRef(true);
+  const activeRepoRef = useRef<string>('');
+  const requestIdRef = useRef<number>(0);
 
   useEffect(() => {
     isMounted.current = true;
@@ -58,6 +60,8 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
     async (ownerName: string, repoName: string, branchName?: string, forceRefresh: boolean = false) => {
       if (!ownerName || !repoName) return;
 
+      const currentRequestId = ++requestIdRef.current;
+
       setStatus('loading');
       setErrorMessage(null);
       setIsRateLimited(false);
@@ -69,43 +73,66 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         const cachedAnalysis = await StorageService.getAnalysis(ownerName, repoName, branchName);
         const { hasToken } = await getAuthHeaders();
 
+        // Validate that cached analysis matches the requested repository
+        const cacheMatchesRepo = Boolean(
+          cachedAnalysis?.metadata &&
+          (cachedAnalysis.metadata.fullName?.toLowerCase() === `${ownerName}/${repoName}`.toLowerCase() ||
+           (cachedAnalysis.metadata.owner?.toLowerCase() === ownerName.toLowerCase() &&
+            cachedAnalysis.metadata.repo?.toLowerCase() === repoName.toLowerCase()))
+        );
+
+        if (cachedAnalysis && !cacheMatchesRepo) {
+          console.warn(`[DomoScope] Stale/mismatched cache detected for ${ownerName}/${repoName}. Invalidating.`);
+          await StorageService.clearRepoCache(ownerName, repoName);
+        }
+
+        const validCache = cacheMatchesRepo ? cachedAnalysis : null;
+
         // Check if cache was a fallback 2-file probe
         const isFallbackCache =
-          cachedAnalysis?.metadata.description?.includes('Stream') ||
-          (cachedAnalysis?.files && cachedAnalysis.files.length <= 2);
+          validCache?.metadata.description?.includes('Stream') ||
+          (validCache?.files && validCache.files.length <= 2);
 
         // Check if the requested branch matches the cached analysis
-        const isTargetingDefault = !branchName || (cachedAnalysis && branchName === cachedAnalysis.metadata.defaultBranch);
-        const isMatchingBranch = branchName ? Boolean(cachedAnalysis) : isTargetingDefault;
+        const isTargetingDefault = !branchName || (validCache && branchName === validCache.metadata.defaultBranch);
+        const isMatchingBranch = branchName ? Boolean(validCache) : isTargetingDefault;
 
         // If authenticated with token, ignore stale fallback cache and fetch live API!
         if (
           !forceRefresh &&
           isMatchingBranch &&
-          cachedAnalysis &&
-          (!hasToken || !isFallbackCache) &&
-          isMounted.current
+          validCache &&
+          (!hasToken || !isFallbackCache)
         ) {
-          const resolvedBranch = branchName || cachedAnalysis.metadata.defaultBranch;
-          setMetadata(cachedAnalysis.metadata);
-          setAnalysis(cachedAnalysis);
-          setFiles(cachedAnalysis.files);
+          if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
+
+          const resolvedBranch = branchName || validCache.metadata.defaultBranch;
+          setMetadata(validCache.metadata);
+          setAnalysis(validCache);
+          setFiles(validCache.files);
           setCurrentBranch(resolvedBranch);
 
-          // Load cached branches, database, security
+          // Load cached branches, database, security, and dependencies
           const cachedBranches = await StorageService.getBranches(ownerName, repoName);
-          if (cachedBranches) setBranches(cachedBranches);
+          if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
+          setBranches(cachedBranches || []);
 
           const cachedSchema = await StorageService.getDatabaseSchema(ownerName, repoName, resolvedBranch);
-          if (cachedSchema) setDatabaseSchema(cachedSchema);
+          if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
+          setDatabaseSchema(cachedSchema || null);
 
           const cachedSec = await StorageService.getSecurityFindings(ownerName, repoName, resolvedBranch);
-          if (cachedSec) setSecurityFindings(cachedSec);
+          if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
+          setSecurityFindings(cachedSec || []);
 
-          if (cachedAnalysis.entryPoints.length > 0) {
-            setSelectedFile(cachedAnalysis.entryPoints[0]);
-          } else if (cachedAnalysis.files.length > 0) {
-            const firstBlob = cachedAnalysis.files.find((f) => f.type === 'blob');
+          const cachedDeps = await StorageService.getDependencies(ownerName, repoName, resolvedBranch);
+          if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
+          setDependencies(cachedDeps || []);
+
+          if (validCache.entryPoints.length > 0) {
+            setSelectedFile(validCache.entryPoints[0]);
+          } else if (validCache.files.length > 0) {
+            const firstBlob = validCache.files.find((f) => f.type === 'blob');
             if (firstBlob) setSelectedFile(firstBlob.path);
           }
 
@@ -119,19 +146,18 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
           ? await StorageService.getFileTree(ownerName, repoName, branchName)
           : null;
 
-        let meta: RepoMetadata | null = metadata;
+        let meta: RepoMetadata | null = null;
         let repoFiles: RepoFile[] = [];
         let isFallback = false;
         let preloadedContents = new Map<string, string>();
-        let activeBranch = branchName || metadata?.defaultBranch || 'main';
+        let activeBranch = branchName || 'main';
 
         // Step 2: Try fetching metadata & file tree via GitHub REST API
         try {
-          if (!meta) {
-            meta = await GitHubService.fetchRepoMetadata(ownerName, repoName);
-          }
-          activeBranch = branchName || meta.defaultBranch;
+          meta = await GitHubService.fetchRepoMetadata(ownerName, repoName);
+          activeBranch = branchName || meta.defaultBranch || 'main';
 
+          if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
           setLoadingStep('Reading files');
           if (cachedBranchTree && cachedBranchTree.length > 0) {
             repoFiles = cachedBranchTree;
@@ -142,6 +168,7 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         } catch (err: any) {
           // If GitHub REST API throws RateLimit, 403, 404 or network error -> engage Zero-Rate-Limit Fallback Engine!
           console.warn('[DomoScope] REST API blocked/failed. Engaging High-Availability Direct Stream Engine...', err);
+          if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
           isFallback = true;
           setIsFallbackMode(true);
           setIsRateLimited(true);
@@ -156,7 +183,7 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
           activeBranch = fallbackData.branch;
         }
 
-        if (!isMounted.current) return;
+        if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
         setMetadata(meta);
         setCurrentBranch(activeBranch);
         setFiles(repoFiles);
@@ -206,9 +233,10 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         await Promise.all(fetchPromises);
 
         // Step 5: Analyze repository
+        if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
         setLoadingStep('Building project map');
         const analyzed = analyzeRepository(meta, repoFiles);
-        if (!isMounted.current) return;
+        if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
         setAnalysis(analyzed);
         setFileContents(new Map(contentsMap));
 
@@ -231,6 +259,7 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         });
 
         const schema = parseDatabaseFiles(schemaFilesToParse.length > 0 ? schemaFilesToParse : allFetchedFiles);
+        if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
         setDatabaseSchema(schema);
         await StorageService.saveDatabaseSchema(ownerName, repoName, activeBranch, schema);
 
@@ -246,10 +275,13 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
           .map(([path, content]) => ({ path, content }));
         const sourceCandidates = Array.from(contentsMap.entries()).map(([path, content]) => ({ path, content }));
         const deps = parseDependencies(manifestFiles, sourceCandidates);
+        if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
         setDependencies(deps);
+        await StorageService.saveDependencies(ownerName, repoName, activeBranch, deps);
 
         // Step 8: Run security checks
         const secFindings = runSecurityChecks(sourceCandidates);
+        if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
         setSecurityFindings(secFindings);
         await StorageService.saveSecurityFindings(ownerName, repoName, activeBranch, secFindings);
 
@@ -257,7 +289,7 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         if (!isFallback) {
           GitHubService.fetchBranches(ownerName, repoName)
             .then((bList) => {
-              if (isMounted.current && bList.length > 0) {
+              if (isMounted.current && requestIdRef.current === currentRequestId && bList.length > 0) {
                 const enriched = bList.map((b) => ({
                   ...b,
                   isDefault: b.name === meta.defaultBranch,
@@ -270,10 +302,12 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
         } else {
           // If fallback mode, preserve existing branches or load from cache
           const cachedBranches = await StorageService.getBranches(ownerName, repoName);
-          if (cachedBranches && cachedBranches.length > 0) {
-            setBranches(cachedBranches);
-          } else {
-            setBranches([{ name: activeBranch, sha: 'latest', isDefault: true }]);
+          if (isMounted.current && requestIdRef.current === currentRequestId) {
+            if (cachedBranches && cachedBranches.length > 0) {
+              setBranches(cachedBranches);
+            } else {
+              setBranches([{ name: activeBranch, sha: 'latest', isDefault: true }]);
+            }
           }
         }
 
@@ -288,15 +322,16 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
           if (firstBlob) setSelectedFile(firstBlob.path);
         }
 
+        if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
         setLoadingStep('Preparing workspace');
         setTimeout(() => {
-          if (isMounted.current) {
+          if (isMounted.current && requestIdRef.current === currentRequestId) {
             setStatus('success');
             setLoadingStep('done');
           }
         }, 150);
       } catch (err: any) {
-        if (!isMounted.current) return;
+        if (!isMounted.current || requestIdRef.current !== currentRequestId) return;
         setStatus('error');
         if (err instanceof GitHubError) {
           setErrorMessage(err.message);
@@ -365,6 +400,28 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
 
   useEffect(() => {
     if (owner && repo) {
+      const repoKey = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
+      if (activeRepoRef.current !== repoKey) {
+        activeRepoRef.current = repoKey;
+        // Clean reset of all state for the newly selected repository
+        setMetadata(null);
+        setAnalysis(null);
+        setFiles([]);
+        setFileContents(new Map());
+        setDatabaseSchema(null);
+        setDependencies([]);
+        setBranches([]);
+        setSecurityFindings([]);
+        setSelectedFile(null);
+        setSelectedNode(null);
+        setCurrentBranch(initialBranch || '');
+        setIsRateLimited(false);
+        setIsFallbackMode(false);
+        setErrorMessage(null);
+        setStatus('loading');
+        setLoadingStep('Checking repository');
+      }
+
       loadRepository(owner, repo, initialBranch);
     }
   }, [owner, repo, initialBranch, loadRepository]);

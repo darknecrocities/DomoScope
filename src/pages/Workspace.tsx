@@ -117,13 +117,26 @@ export function WorkspacePage() {
     [currentBranch, metadata?.defaultBranch, setSearchParams, loadRepository, owner, repo]
   );
 
-  // Sync tab with URL if needed
-  const handleTabChange = (newTab: WorkspaceTab) => {
-    setActiveTab(newTab);
-    if (newTab === 'ask') {
-      setIsAskPanelOpen(true);
+  // Keep activeTab in sync with route param tab
+  useEffect(() => {
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab as WorkspaceTab);
     }
-  };
+  }, [tab]);
+
+  // Sync tab with URL when changed
+  const handleTabChange = useCallback(
+    (newTab: WorkspaceTab) => {
+      setActiveTab(newTab);
+      if (newTab === 'ask') {
+        setIsAskPanelOpen(true);
+      }
+      const tabSegment = newTab === 'overview' ? '' : `/${newTab}`;
+      const branchParam = urlBranch ? `?branch=${encodeURIComponent(urlBranch)}` : '';
+      navigate(`/repository/${owner}/${repo}${tabSegment}${branchParam}`, { replace: true });
+    },
+    [navigate, owner, repo, urlBranch]
+  );
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -169,16 +182,17 @@ export function WorkspacePage() {
     return fileContents.get(selectedFile) || '';
   }, [selectedFile, fileContents]);
 
-  // Meaningful Loading Experience (initial load only)
-  if (status === 'loading' && files.length === 0) {
-    const steps = [
-      'Checking repository',
-      'Reading files',
-      'Understanding structure',
-      'Building project map',
-      'Preparing workspace',
-    ];
-    const currentStepIndex = steps.indexOf(loadingStep);
+  const LOADING_STEPS = [
+    'Checking repository',
+    'Reading files',
+    'Understanding structure',
+    'Building project map',
+    'Preparing workspace',
+  ];
+
+  // Full-page Meaningful Loading Experience (initial landing or single-repo view)
+  if (openRepos.length <= 1 && status === 'loading' && files.length === 0) {
+    const currentStepIndex = LOADING_STEPS.indexOf(loadingStep);
 
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 select-none">
@@ -197,7 +211,7 @@ export function WorkspacePage() {
           </div>
 
           <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-2.5 text-left text-xs font-mono">
-            {steps.map((step, idx) => {
+            {LOADING_STEPS.map((step, idx) => {
               const isPast = idx < currentStepIndex;
               const isCurrent = idx === currentStepIndex;
               return (
@@ -229,8 +243,8 @@ export function WorkspacePage() {
     );
   }
 
-  // Error State Experience
-  if (status === 'error') {
+  // Full-page Error State Experience (initial landing or single-repo view)
+  if (openRepos.length <= 1 && status === 'error') {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
         <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-800 mb-4 border border-zinc-200">
@@ -361,167 +375,258 @@ export function WorkspacePage() {
           }}
         />
 
-        {/* Center Workspace Body (Independent vertical scroll for main area) */}
-        <main className="flex-1 flex flex-col overflow-y-auto relative min-w-0 bg-white">
-          {activeTab === 'overview' && analysis && (
-            <OverviewTab
-              analysis={analysis}
-              databaseSchema={databaseSchema}
-              dependencies={dependencies}
-              branches={branches}
-              securityFindings={securityFindings}
-              onNavigateTab={handleTabChange}
-              files={files}
-              fileContents={fileContents}
-              onOpenFile={(path) => {
-                setSelectedFile(path);
-                setActiveTab('files');
-              }}
-            />
-          )}
-
-          {activeTab === 'architecture' && (
-            <ArchitectureGraph
-              files={files}
-              fileContents={fileContents}
-              selectedNodeId={selectedNode}
-              onSelectNode={setSelectedNode}
-              onOpenFile={(path) => {
-                setSelectedFile(path);
-                setActiveTab('files');
-              }}
-              onAskExplain={handleAskExplain}
-              rankDirection={graphDirection}
-            />
-          )}
-
-          {activeTab === 'files' && (
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-4 gap-4 bg-zinc-50">
-              <div className="w-full md:w-72 h-64 md:h-full shrink-0">
-                <FileExplorer
-                  files={files}
-                  selectedFile={selectedFile}
-                  onSelectFile={(path) => {
-                    setSelectedFile(path);
-                    loadFileContent(path);
-                  }}
-                />
-              </div>
-              <div className="flex-1 h-full min-w-0">
-                <SourceViewer
-                  filePath={selectedFile || ''}
-                  content={activeFileContent}
-                  onAskExplain={handleAskExplain}
-                />
+        {/* Center Workspace Body (Independent vertical scroll for main area, keyed by active repo) */}
+        <main
+          key={`${owner}/${repo}`}
+          className="flex-1 flex flex-col overflow-y-auto relative min-w-0 bg-white"
+        >
+          {status === 'loading' && files.length === 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 select-none bg-white">
+              <div className="w-full max-w-sm space-y-6 text-center">
+                <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-bold text-sm mx-auto shadow-md">
+                  D
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-900">
+                    Exploring {owner}/{repo}
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-1 font-mono">
+                    Retrieving repository data from GitHub...
+                  </p>
+                </div>
+                <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-2.5 text-left text-xs font-mono">
+                  {LOADING_STEPS.map((step, idx) => {
+                    const currentStepIndex = LOADING_STEPS.indexOf(loadingStep);
+                    const isPast = idx < currentStepIndex;
+                    const isCurrent = idx === currentStepIndex;
+                    return (
+                      <div key={step} className="flex items-center justify-between">
+                        <span
+                          className={
+                            isCurrent
+                              ? 'text-zinc-900 font-semibold'
+                              : isPast
+                              ? 'text-zinc-500 line-through'
+                              : 'text-zinc-300'
+                          }
+                        >
+                          {step}
+                        </span>
+                        {isPast ? (
+                          <span className="text-zinc-800 font-bold">✓</span>
+                        ) : isCurrent ? (
+                          <span className="w-2 h-2 rounded-full bg-zinc-900 animate-ping" />
+                        ) : (
+                          <span className="text-zinc-300">○</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
 
-          {activeTab === 'database' && (
-            <DatabaseERD
-              schema={databaseSchema}
-              onOpenFile={(path) => {
-                setSelectedFile(path);
-                setActiveTab('files');
-              }}
-            />
+          {status === 'error' && (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
+              <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-800 mb-4 border border-zinc-200">
+                <AlertCircle className="w-6 h-6 stroke-[1.5]" />
+              </div>
+              <h2 className="text-base font-semibold text-zinc-900 mb-1">
+                We couldn't open {owner}/{repo}
+              </h2>
+              <p className="text-xs text-zinc-600 max-w-md mb-6 leading-relaxed">
+                {errorMessage || 'An error occurred while fetching the repository.'}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => refresh()}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Try Again</span>
+                </button>
+                <button
+                  onClick={() => setIsAddRepoOpen(true)}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Open Another Repo
+                </button>
+                {isRateLimited && (
+                  <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="px-4 py-2 bg-white hover:bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-800 transition-colors cursor-pointer"
+                  >
+                    Add GitHub Token
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
-          {activeTab === 'dependencies' && (
-            <DependenciesTab
-              dependencies={dependencies}
-              onOpenFile={(path) => {
-                setSelectedFile(path);
-                setActiveTab('files');
-              }}
-            />
-          )}
-
-          {activeTab === 'branches' && (
-            <BranchesTab
-              owner={owner}
-              repo={repo}
-              currentBranch={currentBranch}
-              branches={branches}
-              onSelectBranch={handleSelectBranch}
-            />
-          )}
-
-          {activeTab === 'security' && (
-            <SecurityTab
-              findings={securityFindings}
-              onOpenFile={(path) => {
-                setSelectedFile(path);
-                setActiveTab('files');
-              }}
-            />
-          )}
-
-          {activeTab === 'api_catalog' && (
-            <ApiCatalogTab
-              fileContents={fileContents}
-              files={files}
-              onOpenFile={(path) => {
-                setSelectedFile(path);
-                setActiveTab('files');
-              }}
-            />
-          )}
-
-          {activeTab === 'audit_report' && (
-            <AuditReportTab
-              owner={owner}
-              repo={repo}
-              analysis={analysis}
-              files={files}
-              databaseSchema={databaseSchema}
-              securityFindings={securityFindings}
-            />
-          )}
-
-          {activeTab === 'reverse_engineer' && (
-            <ReverseEngineerTab
-              repoName={`${owner}/${repo}`}
-              analysis={analysis}
-              files={files}
-              fileContents={fileContents}
-              databaseSchema={databaseSchema}
-              dependencies={dependencies}
-            />
-          )}
-
-          {activeTab === 'suggestions' && analysis && (
-            <SuggestionsTab
-              analysis={analysis}
-              onOpenFile={(path) => {
-                setSelectedFile(path);
-                setActiveTab('files');
-              }}
-            />
-          )}
-
-          {activeTab === 'ask' && analysis && (
-            <div className="flex-1 p-3 sm:p-5 bg-zinc-50 flex items-center justify-center overflow-hidden">
-              <div className="w-full max-w-5xl h-full bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
-                <AskPanel
+          {!(status === 'loading' && files.length === 0) && status !== 'error' && (
+            <>
+              {activeTab === 'overview' && analysis && (
+                <OverviewTab
                   analysis={analysis}
+                  databaseSchema={databaseSchema}
+                  dependencies={dependencies}
+                  branches={branches}
+                  securityFindings={securityFindings}
+                  onNavigateTab={handleTabChange}
                   files={files}
                   fileContents={fileContents}
-                  selectedFile={selectedFile}
                   onOpenFile={(path) => {
                     setSelectedFile(path);
-                    setActiveTab('files');
+                    handleTabChange('files');
                   }}
-                  onClose={() => setActiveTab('overview')}
-                  onOpenSettings={() => setIsSettingsOpen(true)}
-                  initialPrompt={explainPrompt}
-                  onClearInitialPrompt={() => setExplainPrompt(null)}
+                />
+              )}
+
+              {activeTab === 'architecture' && (
+                <ArchitectureGraph
+                  files={files}
+                  fileContents={fileContents}
+                  selectedNodeId={selectedNode}
+                  onSelectNode={setSelectedNode}
+                  onOpenFile={(path) => {
+                    setSelectedFile(path);
+                    handleTabChange('files');
+                  }}
+                  onAskExplain={handleAskExplain}
+                  rankDirection={graphDirection}
+                />
+              )}
+
+              {activeTab === 'files' && (
+                <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-4 gap-4 bg-zinc-50">
+                  <div className="w-full md:w-72 h-64 md:h-full shrink-0">
+                    <FileExplorer
+                      files={files}
+                      selectedFile={selectedFile}
+                      onSelectFile={(path) => {
+                        setSelectedFile(path);
+                        loadFileContent(path);
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1 h-full min-w-0">
+                    <SourceViewer
+                      filePath={selectedFile || ''}
+                      content={activeFileContent}
+                      onAskExplain={handleAskExplain}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'database' && (
+                <DatabaseERD
+                  schema={databaseSchema}
+                  onOpenFile={(path) => {
+                    setSelectedFile(path);
+                    handleTabChange('files');
+                  }}
+                />
+              )}
+
+              {activeTab === 'dependencies' && (
+                <DependenciesTab
                   dependencies={dependencies}
+                  onOpenFile={(path) => {
+                    setSelectedFile(path);
+                    handleTabChange('files');
+                  }}
+                />
+              )}
+
+              {activeTab === 'branches' && (
+                <BranchesTab
+                  owner={owner}
+                  repo={repo}
+                  currentBranch={currentBranch}
+                  branches={branches}
+                  onSelectBranch={handleSelectBranch}
+                />
+              )}
+
+              {activeTab === 'security' && (
+                <SecurityTab
+                  findings={securityFindings}
+                  onOpenFile={(path) => {
+                    setSelectedFile(path);
+                    handleTabChange('files');
+                  }}
+                />
+              )}
+
+              {activeTab === 'api_catalog' && (
+                <ApiCatalogTab
+                  fileContents={fileContents}
+                  files={files}
+                  onOpenFile={(path) => {
+                    setSelectedFile(path);
+                    handleTabChange('files');
+                  }}
+                />
+              )}
+
+              {activeTab === 'audit_report' && (
+                <AuditReportTab
+                  owner={owner}
+                  repo={repo}
+                  analysis={analysis}
+                  files={files}
                   databaseSchema={databaseSchema}
                   securityFindings={securityFindings}
                 />
-              </div>
-            </div>
+              )}
+
+              {activeTab === 'reverse_engineer' && (
+                <ReverseEngineerTab
+                  repoName={`${owner}/${repo}`}
+                  analysis={analysis}
+                  files={files}
+                  fileContents={fileContents}
+                  databaseSchema={databaseSchema}
+                  dependencies={dependencies}
+                />
+              )}
+
+              {activeTab === 'suggestions' && analysis && (
+                <SuggestionsTab
+                  analysis={analysis}
+                  onOpenFile={(path) => {
+                    setSelectedFile(path);
+                    handleTabChange('files');
+                  }}
+                />
+              )}
+
+              {activeTab === 'ask' && analysis && (
+                <div className="flex-1 p-3 sm:p-5 bg-zinc-50 flex items-center justify-center overflow-hidden">
+                  <div className="w-full max-w-5xl h-full bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
+                    <AskPanel
+                      analysis={analysis}
+                      files={files}
+                      fileContents={fileContents}
+                      selectedFile={selectedFile}
+                      onOpenFile={(path) => {
+                        setSelectedFile(path);
+                        handleTabChange('files');
+                      }}
+                      onClose={() => handleTabChange('overview')}
+                      onOpenSettings={() => setIsSettingsOpen(true)}
+                      initialPrompt={explainPrompt}
+                      onClearInitialPrompt={() => setExplainPrompt(null)}
+                      dependencies={dependencies}
+                      databaseSchema={databaseSchema}
+                      securityFindings={securityFindings}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
 
