@@ -7,6 +7,7 @@ import { InteractiveDemo } from '../components/landing/InteractiveDemo';
 import { ScrapingSimulator } from '../components/landing/ScrapingSimulator';
 import { VerticalCarousel } from '../components/landing/VerticalCarousel';
 import { ArchitectureLens } from '../components/landing/ArchitectureLens';
+import { ReverseEngineerSection } from '../components/landing/ReverseEngineerSection';
 import { HowItWorks } from '../components/landing/HowItWorks';
 import { FeaturesGrid } from '../components/landing/FeaturesGrid';
 import { ComparisonAndFAQ } from '../components/landing/ComparisonAndFAQ';
@@ -123,16 +124,19 @@ export function LandingPage() {
         {/* 6. Interactive Code vs Visual Architecture Split Lens */}
         <ArchitectureLens />
 
-        {/* 7. How It Works Pipeline */}
+        {/* 7. Reverse Engineering Blueprints */}
+        <ReverseEngineerSection />
+
+        {/* 8. How It Works Pipeline */}
         <HowItWorks />
 
-        {/* 8. Core Features Grid */}
+        {/* 9. Core Features Grid */}
         <FeaturesGrid />
 
-        {/* 9. Comparison Matrix & Developer FAQ */}
+        {/* 10. Comparison Matrix & Developer FAQ */}
         <ComparisonAndFAQ />
 
-        {/* 10. Final Call to Action */}
+        {/* 11. Final Call to Action */}
         <FinalCTA />
       </main>
 
