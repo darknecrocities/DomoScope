@@ -1,22 +1,183 @@
-import { useState, useMemo } from 'react';
-import { Database, Key, ArrowRight, FileCode, Search, Copy, Check, TableProperties, Network } from 'lucide-react';
-import { DatabaseSchema } from '../../types';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import {
+  ReactFlow,
+  Controls,
+  Background,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  Node,
+  Edge,
+  MarkerType,
+  BackgroundVariant,
+  useReactFlow,
+  ReactFlowProvider,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import dagre from 'dagre';
+import {
+  Database,
+  Search,
+  Copy,
+  Check,
+  TableProperties,
+  Network,
+  Maximize2,
+  Minimize2,
+  FileCode,
+  Download,
+  RotateCcw,
+  SlidersHorizontal,
+  Zap,
+  ArrowRight,
+  Eye,
+  Key,
+} from 'lucide-react';
+import { DatabaseSchema, DatabaseTable, TableRelationship } from '../../types';
 import { EmptyState } from '../common/EmptyState';
+import { DatabaseTableNode, DatabaseTableNodeData } from './DatabaseTableNode';
+import { DatabaseInspectorDrawer } from './DatabaseInspectorDrawer';
 
 interface DatabaseERDProps {
   schema?: DatabaseSchema | null;
   onOpenFile: (path: string) => void;
 }
 
-export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
+const NODE_TYPES = {
+  databaseTable: DatabaseTableNode,
+};
+
+type ViewMode = 'flow' | 'grid' | 'relationships';
+type LayoutDirection = 'LR' | 'TB';
+
+/**
+ * Calculates automated Dagre coordinates for Database ERD tables and edges
+ */
+function layoutDatabaseERD(
+  tables: DatabaseTable[],
+  relationships: TableRelationship[],
+  direction: LayoutDirection = 'LR'
+): { nodes: Node<DatabaseTableNodeData>[]; edges: Edge[] } {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({
+    rankdir: direction,
+    nodesep: 70,
+    ranksep: direction === 'LR' ? 140 : 100,
+    marginx: 40,
+    marginy: 40,
+  });
+
+  const nodeWidth = 288; // 18rem (w-72)
+  for (const table of tables) {
+    const nodeHeight = Math.min(420, 52 + table.columns.length * 34 + 32);
+    g.setNode(table.name, { width: nodeWidth, height: nodeHeight });
+  }
+
+  // Connect edges where both source and target table exist
+  const tableNamesSet = new Set(tables.map((t) => t.name.toLowerCase()));
+  const validRels = relationships.filter(
+    (r) =>
+      tableNamesSet.has(r.fromTable.toLowerCase()) &&
+      tableNamesSet.has(r.toTable.toLowerCase())
+  );
+
+  for (const rel of validRels) {
+    g.setEdge(rel.fromTable, rel.toTable);
+  }
+
+  dagre.layout(g);
+
+  const nodes: Node<DatabaseTableNodeData>[] = tables.map((table) => {
+    const nodeWithPos = g.node(table.name) || { x: 0, y: 0 };
+    const nodeHeight = Math.min(420, 52 + table.columns.length * 34 + 32);
+
+    return {
+      id: table.name,
+      type: 'databaseTable',
+      position: {
+        x: nodeWithPos.x - nodeWidth / 2,
+        y: nodeWithPos.y - nodeHeight / 2,
+      },
+      data: {
+        table,
+        rankDirection: direction,
+      },
+    };
+  });
+
+  const edges: Edge[] = validRels.map((rel) => {
+    return {
+      id: rel.id,
+      source: rel.fromTable,
+      sourceHandle: `${rel.fromColumn}-source`,
+      target: rel.toTable,
+      targetHandle: `${rel.toColumn}-target`,
+      type: 'smoothstep',
+      animated: true,
+      data: { relationship: rel },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        width: 14,
+        height: 14,
+        color: '#71717A',
+      },
+      style: {
+        stroke: '#71717A',
+        strokeWidth: 1.8,
+        strokeDasharray: rel.isInferred ? '5 5' : undefined,
+      },
+      label: `${rel.fromColumn} ➔ ${rel.toColumn}`,
+      labelStyle: {
+        fill: '#18181B',
+        fontWeight: 600,
+        fontSize: 10,
+        fontFamily: 'monospace',
+      },
+      labelBgStyle: {
+        fill: '#FFFFFF',
+        fillOpacity: 0.95,
+        stroke: '#E4E4E7',
+        strokeWidth: 1,
+        rx: 6,
+        ry: 6,
+      },
+      labelBgPadding: [6, 3] as [number, number],
+    };
+  });
+
+  return { nodes, edges };
+}
+
+function DatabaseERDInner({ schema, onOpenFile }: DatabaseERDProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>('flow');
+  const [direction, setDirection] = useState<LayoutDirection>('LR');
+  const [isFlowAnimated, setIsFlowAnimated] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'relationships'>('grid');
-  const [copied, setCopied] = useState(false);
+  const [selectedTableName, setSelectedTableName] = useState<string | null>(null);
+  const [copiedType, setCopiedType] = useState<string | null>(null);
+
+  const reactFlowInstance = useReactFlow();
 
   const tables = useMemo(() => schema?.tables || [], [schema]);
   const relationships = useMemo(() => schema?.relationships || [], [schema]);
 
+  // Compute Layout Elements
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
+    if (!schema || tables.length === 0) return { nodes: [], edges: [] };
+    return layoutDatabaseERD(tables, relationships, direction);
+  }, [schema, tables, relationships, direction]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<DatabaseTableNodeData>>(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Sync nodes and edges whenever initial elements change
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+  // Filter tables for grid view or search
   const filteredTables = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return tables;
@@ -27,6 +188,123 @@ export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
     );
   }, [tables, searchQuery]);
 
+  // Map of connected tables for highlighting
+  const connectionsMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const rel of relationships) {
+      if (!map.has(rel.fromTable)) map.set(rel.fromTable, new Set());
+      if (!map.has(rel.toTable)) map.set(rel.toTable, new Set());
+      map.get(rel.fromTable)!.add(rel.toTable);
+      map.get(rel.toTable)!.add(rel.fromTable);
+    }
+    return map;
+  }, [relationships]);
+
+  // Handle table selection and line flow highlighting
+  useEffect(() => {
+    const defaultStroke = '#71717A';
+    const selectedStroke = '#18181B';
+
+    if (!selectedTableName) {
+      setNodes((nds) =>
+        nds.map((n) => ({
+          ...n,
+          data: {
+            ...n.data,
+            isSelected: false,
+            isDimmed: false,
+            onOpenFile,
+            onSelectTable: (name: string) => setSelectedTableName(name),
+          },
+        }))
+      );
+
+      setEdges((eds) =>
+        eds.map((e) => {
+          const rel = e.data?.relationship as TableRelationship | undefined;
+          return {
+            ...e,
+            animated: isFlowAnimated,
+            style: {
+              ...e.style,
+              stroke: defaultStroke,
+              strokeWidth: 1.8,
+              opacity: 1,
+              strokeDasharray: rel?.isInferred ? '5 5' : undefined,
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 14,
+              height: 14,
+              color: defaultStroke,
+            },
+          };
+        })
+      );
+      return;
+    }
+
+    const connectedTables = connectionsMap.get(selectedTableName) || new Set();
+
+    setNodes((nds) =>
+      nds.map((n) => {
+        const isSelf = n.id.toLowerCase() === selectedTableName.toLowerCase();
+        const isConnected = connectedTables.has(n.id);
+
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            isSelected: isSelf,
+            isDimmed: !isSelf && !isConnected,
+            onOpenFile,
+            onSelectTable: (name: string) => setSelectedTableName(name),
+          },
+        };
+      })
+    );
+
+    setEdges((eds) =>
+      eds.map((e) => {
+        const isRelated =
+          e.source.toLowerCase() === selectedTableName.toLowerCase() ||
+          e.target.toLowerCase() === selectedTableName.toLowerCase();
+
+        return {
+          ...e,
+          animated: isRelated ? true : isFlowAnimated,
+          style: {
+            ...e.style,
+            stroke: isRelated ? selectedStroke : defaultStroke,
+            strokeWidth: isRelated ? 2.8 : 1,
+            opacity: isRelated ? 1 : 0.15,
+            transition: 'all 0.2s ease',
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: isRelated ? 16 : 12,
+            height: isRelated ? 16 : 12,
+            color: isRelated ? selectedStroke : '#A1A1AA',
+          },
+        };
+      })
+    );
+  }, [selectedTableName, connectionsMap, isFlowAnimated, onOpenFile, setNodes, setEdges]);
+
+  // Selected table object for inspector drawer
+  const selectedTableObj = useMemo(() => {
+    if (!selectedTableName) return null;
+    return tables.find((t) => t.name.toLowerCase() === selectedTableName.toLowerCase()) || null;
+  }, [selectedTableName, tables]);
+
+  // Fit view helper
+  const handleFitView = useCallback(() => {
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2, duration: 400 });
+    }, 50);
+  }, [reactFlowInstance]);
+
+  // Copy Mermaid ERD
   const handleCopyMermaidERD = () => {
     let mermaid = 'erDiagram\n';
     for (const table of tables) {
@@ -44,8 +322,28 @@ export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
     }
 
     navigator.clipboard.writeText(mermaid);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedType('mermaid');
+    setTimeout(() => setCopiedType(null), 2000);
+  };
+
+  // Copy SQL DDL
+  const handleCopySqlDDL = () => {
+    const sqlStatements = tables
+      .map((table) => {
+        const cols = table.columns.map((c) => {
+          let line = `  ${c.name} ${c.type.toUpperCase()}`;
+          if (c.isPrimary) line += ' PRIMARY KEY';
+          if (!c.isNullable && !c.isPrimary) line += ' NOT NULL';
+          if (c.references) line += ` REFERENCES ${c.references.table}(${c.references.column})`;
+          return line;
+        });
+        return `CREATE TABLE ${table.name.toLowerCase()} (\n${cols.join(',\n')}\n);`;
+      })
+      .join('\n\n');
+
+    navigator.clipboard.writeText(sqlStatements);
+    setCopiedType('sql');
+    setTimeout(() => setCopiedType(null), 2000);
   };
 
   if (!schema || tables.length === 0) {
@@ -59,89 +357,213 @@ export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-zinc-50 overflow-hidden font-sans">
+    <div className="h-full flex flex-col bg-zinc-50 overflow-hidden font-sans select-none">
       {/* Top Database Sub-header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-3 bg-white border-b border-zinc-200 shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-2.5 bg-white border-b border-zinc-200 shrink-0 z-10 shadow-2xs">
+        {/* Left: Title, Stats & Schema Badges */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-zinc-900" />
-            <h2 className="text-sm font-bold text-zinc-900">Entity Relationship Diagram</h2>
+            <div className="w-6 h-6 rounded-lg bg-zinc-900 text-white flex items-center justify-center shadow-2xs">
+              <Database className="w-3.5 h-3.5" />
+            </div>
+            <h2 className="text-sm font-bold text-zinc-900">Database ERD</h2>
           </div>
-          <span className="text-xs font-mono px-2 py-0.5 rounded border border-zinc-200 bg-zinc-50 text-zinc-700 font-semibold">
-            {tables.length} tables
-          </span>
-          <span className="text-xs font-mono px-2 py-0.5 rounded border border-zinc-200 bg-zinc-50 text-zinc-700 font-semibold">
-            {relationships.length} connections
-          </span>
-          {schema.detectedTypes.map((t) => (
-            <span
-              key={t}
-              className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 text-white font-bold"
-            >
-              {t}
+
+          <div className="flex items-center gap-1.5 font-mono text-xs">
+            <span className="px-2 py-0.5 rounded border border-zinc-200 bg-zinc-50 text-zinc-800 font-semibold">
+              {tables.length} tables
             </span>
-          ))}
+            <span className="px-2 py-0.5 rounded border border-zinc-200 bg-zinc-50 text-zinc-800 font-semibold">
+              {relationships.length} connections
+            </span>
+            {schema.detectedTypes.map((t) => (
+              <span
+                key={t}
+                className="text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-white font-bold"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
         </div>
 
-        {/* Right Tools: View Toggle, Search, Export */}
+        {/* Right Tools: View Toggle, Layout, Animation, Search, Export */}
         <div className="flex items-center gap-2">
           {/* View Mode Toggle */}
           <div className="flex items-center bg-zinc-100 p-0.5 rounded-xl border border-zinc-200 text-xs font-mono">
             <button
+              onClick={() => setViewMode('flow')}
+              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'flow'
+                  ? 'bg-white text-zinc-900 font-bold shadow-xs'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+              title="Interactive Diagram with animated relationship line flows"
+            >
+              <Zap className="w-3.5 h-3.5 text-zinc-800" />
+              <span>ERD Flow</span>
+            </button>
+            <button
               onClick={() => setViewMode('grid')}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'grid'
                   ? 'bg-white text-zinc-900 font-bold shadow-xs'
                   : 'text-zinc-600 hover:text-zinc-900'
               }`}
+              title="Card Grid view"
             >
               <TableProperties className="w-3.5 h-3.5" />
               <span>Tables</span>
             </button>
             <button
               onClick={() => setViewMode('relationships')}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'relationships'
                   ? 'bg-white text-zinc-900 font-bold shadow-xs'
                   : 'text-zinc-600 hover:text-zinc-900'
               }`}
+              title="Relationship connections catalog"
             >
               <Network className="w-3.5 h-3.5" />
               <span>Relations ({relationships.length})</span>
             </button>
           </div>
 
-          {/* Copy Mermaid ERD */}
-          <button
-            onClick={handleCopyMermaidERD}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-            title="Copy Mermaid.js ERD schema definition"
-          >
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Copied' : 'Export ERD'}</span>
-          </button>
+          {/* Flow Controls (Visible in Flow Mode) */}
+          {viewMode === 'flow' && (
+            <div className="flex items-center gap-1 bg-zinc-100 p-0.5 rounded-xl border border-zinc-200 text-xs font-mono">
+              {/* Direction Switcher (LR vs TB) */}
+              <button
+                onClick={() => setDirection((d) => (d === 'LR' ? 'TB' : 'LR'))}
+                className="px-2 py-1 rounded-lg bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200 shadow-2xs transition-colors cursor-pointer text-[11px] font-bold"
+                title="Toggle Diagram Orientation (Left-to-Right or Top-to-Bottom)"
+              >
+                {direction === 'LR' ? 'LR Layout' : 'TB Layout'}
+              </button>
 
-          {/* Search Tables */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs w-44">
+              {/* Line Flow Animation Toggle */}
+              <button
+                onClick={() => setIsFlowAnimated((v) => !v)}
+                className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  isFlowAnimated
+                    ? 'bg-zinc-900 text-white shadow-2xs'
+                    : 'bg-white text-zinc-600 border border-zinc-200 hover:text-zinc-900'
+                }`}
+                title="Toggle animated pulse on relationship lines"
+              >
+                <Zap className="w-3 h-3" />
+                <span>{isFlowAnimated ? 'Flow' : 'Static'}</span>
+              </button>
+
+              {/* Fit View Button */}
+              <button
+                onClick={handleFitView}
+                className="p-1 rounded-lg bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-200 shadow-2xs transition-colors cursor-pointer"
+                title="Fit all tables to view"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Export Actions */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleCopySqlDDL}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-200 rounded-xl text-xs font-mono font-semibold shadow-2xs transition-colors cursor-pointer"
+              title="Copy complete SQL CREATE TABLE statements"
+            >
+              {copiedType === 'sql' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-zinc-500" />}
+              <span>{copiedType === 'sql' ? 'Copied' : 'SQL DDL'}</span>
+            </button>
+
+            <button
+              onClick={handleCopyMermaidERD}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-mono font-semibold shadow-xs transition-colors cursor-pointer"
+              title="Copy Mermaid.js ERD schema definition"
+            >
+              {copiedType === 'mermaid' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedType === 'mermaid' ? 'Copied' : 'Mermaid ERD'}</span>
+            </button>
+          </div>
+
+          {/* Search Filter Input */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs w-40">
             <Search className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter tables & fields..."
+              placeholder="Filter tables..."
               className="w-full bg-transparent outline-none text-zinc-800 placeholder:text-zinc-400 font-mono text-xs"
             />
           </div>
         </div>
       </div>
 
-      {/* Main ERD Surface */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+      {/* Main Workspace Viewport */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* VIEW 1: Interactive React Flow ERD Canvas with Line Flows */}
+        {viewMode === 'flow' && (
+          <div className="flex-1 h-full w-full relative bg-zinc-50/60">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              nodeTypes={NODE_TYPES}
+              onNodeClick={(_, node) => setSelectedTableName(node.id)}
+              onPaneClick={() => setSelectedTableName(null)}
+              fitView
+              fitViewOptions={{ padding: 0.2 }}
+              minZoom={0.15}
+              maxZoom={1.8}
+              proOptions={{ hideAttribution: true }}
+              className="bg-zinc-50"
+            >
+              {/* Dot Grid Background */}
+              <Background
+                variant={BackgroundVariant.Dots}
+                gap={20}
+                size={1.5}
+                color="#D4D4D8"
+              />
+
+              {/* Styled Minimal Controls */}
+              <Controls
+                showInteractive={false}
+                className="!bg-white !border !border-zinc-200 !rounded-xl !shadow-xs !overflow-hidden"
+              />
+
+              {/* Clean Minimap */}
+              <MiniMap
+                nodeColor="#E4E4E7"
+                maskColor="rgba(244, 244, 245, 0.75)"
+                className="!border !border-zinc-200 !bg-white !rounded-xl !shadow-xs !overflow-hidden"
+              />
+            </ReactFlow>
+
+            {/* Canvas Bottom Floating Helper */}
+            <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2 text-[11px] font-mono bg-white/90 backdrop-blur-xs border border-zinc-200 px-3 py-1.5 rounded-xl shadow-xs text-zinc-600">
+              <span className="flex items-center gap-1 font-semibold text-zinc-900">
+                <span className="w-2 h-2 rounded-full bg-zinc-900" /> PK
+              </span>
+              <span>➔</span>
+              <span className="flex items-center gap-1 font-semibold text-zinc-700">
+                <span className="w-2 h-2 rounded-full bg-zinc-400" /> FK
+              </span>
+              <span className="text-zinc-300">|</span>
+              <span>Click any table to trace relationships</span>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: Traditional Table Cards Grid */}
+        {viewMode === 'grid' && (
+          <div className="flex-1 overflow-auto p-6 bg-zinc-50">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
               {filteredTables.map((table) => {
-                const isSelected = selectedTable === table.name;
+                const isSelected = selectedTableName === table.name;
                 const relatedRels = relationships.filter(
                   (r) => r.fromTable === table.name || r.toTable === table.name
                 );
@@ -149,7 +571,7 @@ export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
                 return (
                   <div
                     key={table.name}
-                    onClick={() => setSelectedTable(isSelected ? null : table.name)}
+                    onClick={() => setSelectedTableName(isSelected ? null : table.name)}
                     className={`rounded-2xl border bg-white shadow-xs overflow-hidden transition-all cursor-pointer ${
                       isSelected
                         ? 'border-zinc-900 ring-2 ring-zinc-900/10 shadow-md scale-[1.01]'
@@ -190,15 +612,15 @@ export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
                           <div className="flex items-center gap-2 min-w-0">
                             {col.isPrimary ? (
                               <span
-                                className="w-4 h-4 rounded bg-zinc-900 text-white flex items-center justify-center text-[9px] font-bold shrink-0"
-                                title="Primary Key"
+                                className="px-1.5 py-0.5 rounded bg-zinc-900 text-white flex items-center gap-1 text-[9px] font-bold shrink-0 shadow-2xs"
+                                title="Primary Key (PK)"
                               >
-                                PK
+                                <Key className="w-2.5 h-2.5 text-amber-400" /> PK
                               </span>
                             ) : col.isForeignKey ? (
                               <span
-                                className="w-4 h-4 rounded bg-zinc-200 text-zinc-800 flex items-center justify-center text-[9px] font-bold shrink-0 border border-zinc-300"
-                                title={`Foreign Key: ${col.references?.table || 'Inferred'}`}
+                                className="px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-800 border border-zinc-300 flex items-center justify-center text-[9px] font-bold shrink-0"
+                                title={`Foreign Key: references ${col.references?.table || 'Inferred'}`}
                               >
                                 FK
                               </span>
@@ -252,17 +674,19 @@ export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
                 );
               })}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Relationships View Section */}
-          {viewMode === 'relationships' && (
-            <div className="p-6 bg-white border border-zinc-200 rounded-2xl shadow-xs space-y-4">
+        {/* VIEW 3: Relationships Catalog */}
+        {viewMode === 'relationships' && (
+          <div className="flex-1 overflow-auto p-6 bg-zinc-50">
+            <div className="max-w-5xl mx-auto p-6 bg-white border border-zinc-200 rounded-2xl shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
-                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-600">
-                  Detected Table Relationships ({relationships.length})
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-700">
+                  Detected Foreign Key Relationships ({relationships.length})
                 </h3>
                 <span className="text-xs font-mono text-zinc-500">
-                  Foreign key connections between domain models
+                  Line flows between primary keys (PK) and foreign keys (FK)
                 </span>
               </div>
 
@@ -270,7 +694,11 @@ export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
                 {relationships.map((rel) => (
                   <div
                     key={rel.id}
-                    className="p-3.5 bg-zinc-50 border border-zinc-200 rounded-xl flex items-center justify-between text-xs font-mono"
+                    onClick={() => {
+                      setSelectedTableName(rel.fromTable);
+                      setViewMode('flow');
+                    }}
+                    className="p-3.5 bg-zinc-50 hover:bg-white border border-zinc-200 hover:border-zinc-400 rounded-xl flex items-center justify-between text-xs font-mono transition-all cursor-pointer shadow-2xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-bold text-zinc-900 truncate">
@@ -295,9 +723,28 @@ export function DatabaseERD({ schema, onOpenFile }: DatabaseERDProps) {
                 ))}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Right Slide-Over Inspector Drawer */}
+        {selectedTableObj && (
+          <DatabaseInspectorDrawer
+            table={selectedTableObj}
+            relationships={relationships}
+            onClose={() => setSelectedTableName(null)}
+            onOpenFile={onOpenFile}
+            onSelectTable={(name) => setSelectedTableName(name)}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+export function DatabaseERD(props: DatabaseERDProps) {
+  return (
+    <ReactFlowProvider>
+      <DatabaseERDInner {...props} />
+    </ReactFlowProvider>
   );
 }
