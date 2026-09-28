@@ -121,6 +121,22 @@
   animation: cursor-blink 0.75s infinite ease-in-out;
 }
 
+/* Dynamic workspace results entrance */
+@keyframes dynamic-entrance {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-entrance {
+  animation: dynamic-entrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

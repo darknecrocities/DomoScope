@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, Clipboard, Loader2 } from 'lucide-react';
 import { GitHubIcon } from '../common/Icons';
 import { parseGitHubUrl } from '../../services/github';
 
@@ -22,6 +22,7 @@ export function Hero() {
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const [inputUrl, setInputUrl] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +35,24 @@ export function Hero() {
     return () => clearInterval(interval);
   }, []);
 
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const trimmed = text.trim();
+        const parsed = parseGitHubUrl(trimmed);
+        if (parsed) {
+          setInputUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
+        } else {
+          setInputUrl(trimmed);
+        }
+        if (errorMessage) setErrorMessage(null);
+      }
+    } catch {
+      // Clipboard API might be restricted
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -44,12 +63,14 @@ export function Hero() {
       return;
     }
 
+    setIsChecking(true);
     navigate(`/repository/${parsed.owner}/${parsed.repo}`);
   };
 
   const handleSelectSample = (sample: string) => {
     const parsed = parseGitHubUrl(sample);
     if (parsed) {
+      setIsChecking(true);
       navigate(`/repository/${parsed.owner}/${parsed.repo}`);
     }
   };
@@ -117,17 +138,52 @@ export function Hero() {
                 setInputUrl(e.target.value);
                 if (errorMessage) setErrorMessage(null);
               }}
+              onPaste={(e) => {
+                e.preventDefault();
+                const pasted = e.clipboardData.getData('text');
+                if (pasted) {
+                  const trimmed = pasted.trim();
+                  const parsed = parseGitHubUrl(trimmed);
+                  if (parsed) {
+                    setInputUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
+                  } else {
+                    setInputUrl(trimmed);
+                  }
+                  if (errorMessage) setErrorMessage(null);
+                }
+              }}
               placeholder="https://github.com/owner/repository"
               className="w-full py-2.5 text-sm bg-transparent outline-none placeholder:text-zinc-400 text-zinc-900 font-mono"
             />
+            {!inputUrl && (
+              <button
+                type="button"
+                onClick={handlePaste}
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono font-medium text-zinc-600 hover:text-zinc-950 bg-zinc-100 hover:bg-zinc-200 rounded-lg transition-colors cursor-pointer shrink-0"
+                title="Paste from clipboard"
+              >
+                <Clipboard className="w-3 h-3 text-zinc-500" />
+                <span>Paste</span>
+              </button>
+            )}
           </div>
 
           <button
             type="submit"
-            className="w-full sm:w-auto px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 shadow-md cursor-pointer active:scale-98"
+            disabled={isChecking}
+            className="w-full sm:w-auto px-6 py-3 bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-700 text-white text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 shadow-md cursor-pointer active:scale-98"
           >
-            <span>Explore project</span>
-            <ArrowRight className="w-4 h-4" />
+            {isChecking ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <span>Checking repository...</span>
+              </>
+            ) : (
+              <>
+                <span>Explore project</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </div>
 

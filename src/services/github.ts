@@ -83,26 +83,105 @@ const BINARY_EXTENSIONS = new Set([
   'wasm', 'pyc', 'class', 'o',
 ]);
 
-export function parseGitHubUrl(input: string): RepoIdentifier | null {
-  if (!input) return null;
-  let cleaned = input.trim().replace(/^git@github\.com:/, 'https://github.com/').replace(/\/+$/, '');
-  cleaned = cleaned.replace(/\.git$/, '');
+/**
+ * Sanitizes an owner, repo slug, or branch string by stripping trailing query strings,
+ * fragments, trailing slashes, .git extensions, and accidental trailing protocol artifacts
+ * (e.g. "Easylenshttps", "Easylenshttp", "Easylenshttps://", "Easylens/").
+ */
+export function sanitizeRepoSlug(str: string): string {
+  if (!str) return '';
+  let cleaned = str.trim();
 
-  const urlMatch = cleaned.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(?:\/tree\/([a-zA-Z0-9_./-]+))?/);
-  if (urlMatch) {
-    return {
-      owner: urlMatch[1],
-      repo: urlMatch[2],
-      branch: urlMatch[3],
-    };
+  // Strip query parameters and fragments (e.g. ?tab=readme or #readme)
+  cleaned = cleaned.split(/[?#]/)[0];
+
+  // Strip trailing slashes
+  cleaned = cleaned.replace(/\/+$/, '');
+
+  // Strip trailing .git
+  cleaned = cleaned.replace(/\.git$/i, '');
+
+  // If the entire slug is literally "http" or "https" (e.g. dart-lang/http), keep it
+  if (/^https?$/i.test(cleaned)) {
+    return cleaned;
   }
 
-  const shortMatch = cleaned.match(/^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/);
+  // Strip accidental trailing protocol or duplicated prefix artifacts glued to the slug
+  // e.g. "Easylenshttps", "Easylenshttp", "Easylenshttps://", "Easylenshttps:", etc.
+  if (/https?:\/\/?$/i.test(cleaned)) {
+    cleaned = cleaned.replace(/https?:\/\/?$/i, '');
+  } else if (/https:?$/i.test(cleaned)) {
+    // "https" or "https:" at the end of a slug (like "Easylenshttps")
+    cleaned = cleaned.replace(/https:?$/i, '');
+  } else if (/[a-zA-Z0-9]http:?$/i.test(cleaned) && !/-(?:http|https)$/i.test(cleaned)) {
+    // e.g. "Easylenshttp" but not "my-http"
+    cleaned = cleaned.replace(/http:?$/i, '');
+  }
+
+  // Strip trailing slashes again if protocol was stripped
+  cleaned = cleaned.replace(/\/+$/, '');
+
+  // Strip any accidental leading protocols if somehow part of the slug (e.g. "https://foo")
+  cleaned = cleaned.replace(/^(?:https?:\/\/)+/i, '');
+
+  return cleaned.trim();
+}
+
+export function parseGitHubUrl(input: string): RepoIdentifier | null {
+  if (!input) return null;
+  let cleaned = input.trim();
+
+  // 1. Unwrap markdown links: e.g. [Title](https://github.com/owner/repo)
+  const mdMatch = cleaned.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/);
+  if (mdMatch) {
+    cleaned = mdMatch[1].trim();
+  }
+
+  // 2. Strip surrounding angle brackets <...>, quotes "...", '...', or backticks `...`
+  cleaned = cleaned.replace(/^[<"`']+|[>"'`]+$/g, '').trim();
+
+  // 3. Normalize duplicated protocol prefixes (e.g. httpshttps:// or https://https://)
+  cleaned = cleaned.replace(/^(?:https?:\/\/)+/i, 'https://');
+  cleaned = cleaned.replace(/^httpshttps:\/\//i, 'https://');
+
+  // 4. Convert SSH format to HTTPS
+  cleaned = cleaned.replace(/^git@github\.com:/, 'https://github.com/');
+
+  // 5. If input contains multiple "github.com/", extract from the last occurrence
+  const lastGhIdx = cleaned.lastIndexOf('github.com/');
+  if (lastGhIdx !== -1) {
+    cleaned = 'https://' + cleaned.substring(lastGhIdx);
+  }
+
+  // 6. Match github.com URL: owner, repo, optional branch
+  const urlMatch = cleaned.match(
+    /(?:https?:\/\/)?(?:www\.)?github\.com\/([^/?#\s]+)\/([^/?#\s]+)(?:\/tree\/([^?#\s]+))?/i
+  );
+  if (urlMatch) {
+    const owner = sanitizeRepoSlug(urlMatch[1]);
+    const repo = sanitizeRepoSlug(urlMatch[2]);
+    const branch = urlMatch[3] ? sanitizeRepoSlug(urlMatch[3]) : undefined;
+
+    if (owner && repo) {
+      return {
+        owner,
+        repo,
+        ...(branch ? { branch } : {}),
+      };
+    }
+  }
+
+  // 7. Match short owner/repo format
+  const shortMatch = cleaned.match(/^([^/?#\s]+)\/([^/?#\s]+)$/);
   if (shortMatch) {
-    return {
-      owner: shortMatch[1],
-      repo: shortMatch[2],
-    };
+    const owner = sanitizeRepoSlug(shortMatch[1]);
+    const repo = sanitizeRepoSlug(shortMatch[2]);
+    if (owner && repo) {
+      return {
+        owner,
+        repo,
+      };
+    }
   }
 
   return null;

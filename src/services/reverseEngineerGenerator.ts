@@ -104,7 +104,7 @@ export function generateReverseEngineerSpec(
 }
 
 // =============================================================================
-// 1. FULL-STACK ARCHITECTURAL BLUEPRINT (1,000+ Lines)
+// 1. FULL-STACK ARCHITECTURAL BLUEPRINT
 // =============================================================================
 function generateFullStackBlueprint(
   repoName: string,
@@ -129,7 +129,7 @@ function generateFullStackBlueprint(
 
   lines.push(`# Complete Full-Stack Architectural Blueprint: ${repoName}`);
   lines.push(`> **Target System**: \`${repoName}\` | **Architecture Specification**: \`PRODUCTION MASTER BLUEPRINT\``);
-  lines.push(`> **Specification Density**: \`1,000+ Lines Detailed Breakdown\` | **Date**: \`${dateStr}\``);
+  lines.push(`> **Specification Density**: \`Comprehensive Master Blueprint\` | **Date**: \`${dateStr}\``);
   lines.push(`> **Primary Runtime**: \`${primaryFramework.name}\` (${primaryFramework.category}) | **Ecosystem**: \`${primaryLang}\``);
   lines.push(`> **Cloud & Infrastructure**: \`${cloud.hasCloudServices ? cloud.providers.join(', ').toUpperCase() : 'ZERO-CLOUD / LOCAL CLIENT RUNTIME'}\` (${cloud.architectureTitle})`);
   lines.push(`> *Use this blueprint to understand, rebuild, adapt, or autonomously generate this complete system with 100% architectural fidelity.*`);
@@ -313,7 +313,7 @@ function generateFullStackBlueprint(
 }
 
 // =============================================================================
-// 2. AI AGENT SKILL.md PACK (1,000+ Lines)
+// 2. AI AGENT SKILL.md PACK
 // =============================================================================
 export function generateAgentSkillPack(
   repoName: string,
@@ -352,7 +352,7 @@ export function generateAgentSkillPack(
   lines.push(`# AI Agent Engineering Skill Pack: Replicating \`${repoName}\``);
   lines.push(`> **Agent Role**: Autonomous Systems Engineer & Full-Stack Architect`);
   lines.push(`> **Mission**: Autonomously reproduce, extend, or refactor ${repoName} with zero architectural drift.`);
-  lines.push(`> **Specification Density**: 1,000+ Lines Exhaustive Operational Guide`);
+  lines.push(`> **Specification Level**: Autonomous AI Engineering Skill Specification`);
   lines.push(``);
 
   lines.push(`## 1. Agent Operational Mandate`);
@@ -443,7 +443,7 @@ export function generateAgentSkillPack(
 }
 
 // =============================================================================
-// 3. UI / UX & DESIGN SYSTEM SPECIFICATION (1,000+ Lines)
+// 3. UI / UX & DESIGN SYSTEM SPECIFICATION
 // =============================================================================
 function generateUiUxBlueprint(
   repoName: string,
@@ -459,7 +459,7 @@ function generateUiUxBlueprint(
 
   lines.push(`# UI/UX & Design System Architecture: ${repoName}`);
   lines.push(`> **Design Philosophy**: Strict High-Contrast Monochrome Discipline`);
-  lines.push(`> **Specification Density**: 1,000+ Lines Comprehensive Design System`);
+  lines.push(`> **Specification Level**: Complete Design System & UI Architecture`);
   lines.push(`> **Scope**: Color tokens, typography, component geometry, interactive states, and accessibility`);
   lines.push(``);
   lines.push(`---`);
@@ -555,7 +555,7 @@ function generateUiUxBlueprint(
 }
 
 // =============================================================================
-// 4. FRONTEND COMPONENTS & STATE ARCHITECTURE (1,000+ Lines)
+// 4. FRONTEND COMPONENTS & STATE ARCHITECTURE
 // =============================================================================
 function generateFrontendBlueprint(
   repoName: string,
@@ -571,7 +571,7 @@ function generateFrontendBlueprint(
 
   lines.push(`# Frontend Component & State Architecture: ${repoName}`);
   lines.push(`> **Architecture**: Modular Component Tree & Unidirectional Reactive State`);
-  lines.push(`> **Specification Density**: 1,000+ Lines Frontend Engineering Master Guide`);
+  lines.push(`> **Specification Level**: Complete Frontend State & Component Hierarchy`);
   lines.push(`> **Component Count**: ${components.length} UI Components | **Services**: ${services.length} Client Modules`);
   lines.push(``);
   lines.push(`---`);
@@ -627,7 +627,7 @@ function generateFrontendBlueprint(
 }
 
 // =============================================================================
-// 5. BACKEND APIS & LOGIC ADAPTERS (1,000+ Lines)
+// 5. BACKEND APIS & LOGIC ADAPTERS
 // =============================================================================
 function generateBackendBlueprint(
   repoName: string,
@@ -643,7 +643,7 @@ function generateBackendBlueprint(
 
   lines.push(`# Backend APIs, Services & Logic Adapters: ${repoName}`);
   lines.push(`> **Architecture**: Polyglot API Engine, Serverless Endpoints & Cloud BaaS Adapters`);
-  lines.push(`> **Specification Density**: 1,000+ Lines Exhaustive Backend Specification`);
+  lines.push(`> **Specification Level**: Complete API Route Contracts & Service Architecture`);
   lines.push(`> **Discovered Endpoints**: ${apiRoutes.length} Routes | **Cloud Providers**: ${cloud.providers.join(', ') || 'Local / None'}`);
   lines.push(``);
   lines.push(`---`);
@@ -694,7 +694,7 @@ function generateBackendBlueprint(
 }
 
 // =============================================================================
-// 6. DATABASE & DATA MODELS SPECIFICATION (1,000+ Lines)
+// 6. DATABASE & DATA MODELS SPECIFICATION
 // =============================================================================
 function generateDatabaseBlueprint(
   repoName: string,
@@ -710,7 +710,7 @@ function generateDatabaseBlueprint(
 
   lines.push(`# Database Schema & Data Models Specification: ${repoName}`);
   lines.push(`> **Architecture**: Relational & Document Entity Models`);
-  lines.push(`> **Specification Density**: 1,000+ Lines Data Architecture Specification`);
+  lines.push(`> **Specification Level**: Complete Entity Schema & Relational Architecture`);
   lines.push(`> **Entity Count**: ${tables.length} Tables/Models | **Cloud Storage**: ${cloud.storageSystems.map((s) => s.name).join(', ') || 'Local / In-Memory'}`);
   lines.push(``);
   lines.push(`---`);

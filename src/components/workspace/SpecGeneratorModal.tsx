@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { RepoAnalysis, RepoFile, DatabaseSchema, RepoDependency, SecurityFinding } from '../../types';
 import { MarkdownSpecGenerator, SpecGeneratorOptions } from '../../services/markdownSpecGenerator';
+import { StreamingText } from '../common/StreamingText';
+import { AnimatedCounter } from '../common/AnimatedCounter';
 
 interface SpecGeneratorModalProps {
   isOpen: boolean;
@@ -92,7 +94,7 @@ const FEATURE_MODULES: FeatureModuleConfig[] = [
   },
   {
     id: 'includeInstructions',
-    title: '8. Step-by-Step Reconstruction (1000+ Lines)',
+    title: '8. Step-by-Step Reconstruction Blueprint',
     description: 'Exhaustive 10-phase engineering roadmap with full file scaffolding & boilerplate code.',
     icon: BookOpen,
     badge: '10-Phase Guide',
@@ -201,7 +203,7 @@ export function SpecGeneratorModal({
                   Reverse Engineering Spec & Prompt Generator (.md)
                 </h2>
                 <span className="px-2 py-0.5 bg-zinc-100 border border-zinc-300 text-black text-[11px] font-mono font-bold rounded-md">
-                  {lineCount.toLocaleString()} Lines
+                  <AnimatedCounter value={lineCount} /> Lines
                 </span>
               </div>
               <p className="text-xs text-zinc-500 font-mono mt-0.5">
@@ -297,7 +299,15 @@ export function SpecGeneratorModal({
 
         {/* Markdown Content Preview */}
         <div className="flex-1 overflow-y-auto p-6 bg-zinc-950 text-zinc-100 font-mono text-xs leading-relaxed selection:bg-zinc-700 selection:text-white">
-          <pre className="whitespace-pre-wrap font-mono break-words">{markdownContent}</pre>
+          <StreamingText
+            key={`${analysis.metadata.repo}-${Object.values(options).join('-')}`}
+            text={markdownContent}
+            speed="fast"
+            as="pre"
+            cursorClassName="w-1.5 h-3.5 bg-zinc-200"
+            className="whitespace-pre-wrap font-mono break-words text-xs text-zinc-100"
+            sessionKey={`spec-modal-${analysis.metadata.repo}-${Object.values(options).join('-')}`}
+          />
         </div>
 
         {/* Footer Actions - Pure Black Icons Only */}

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { sanitizeRepoSlug } from '../services/github';
 
 export interface OpenRepoItem {
   owner: string;
@@ -14,13 +15,28 @@ function loadStoredRepos(): OpenRepoItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.filter(
-        (item): item is OpenRepoItem =>
-          typeof item?.owner === 'string' &&
-          typeof item?.repo === 'string' &&
-          item.owner.trim().length > 0 &&
-          item.repo.trim().length > 0
-      );
+      const sanitizedList: OpenRepoItem[] = [];
+      const seen = new Set<string>();
+
+      for (const item of parsed) {
+        if (typeof item?.owner === 'string' && typeof item?.repo === 'string') {
+          const owner = sanitizeRepoSlug(item.owner);
+          const repo = sanitizeRepoSlug(item.repo);
+          if (owner && repo) {
+            const key = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              sanitizedList.push({ owner, repo });
+            }
+          }
+        }
+      }
+
+      // If any entries were repaired or pruned, update localStorage immediately
+      if (sanitizedList.length !== parsed.length) {
+        saveStoredRepos(sanitizedList);
+      }
+      return sanitizedList;
     }
   } catch (e) {
     console.warn('Failed to parse open repositories from storage', e);
@@ -36,8 +52,10 @@ function saveStoredRepos(repos: OpenRepoItem[]) {
   }
 }
 
-export function useOpenRepositories(currentOwner: string, currentRepo: string, activeTab?: string) {
+export function useOpenRepositories(rawOwner: string, rawRepo: string, activeTab?: string) {
   const navigate = useNavigate();
+  const currentOwner = useMemo(() => sanitizeRepoSlug(rawOwner), [rawOwner]);
+  const currentRepo = useMemo(() => sanitizeRepoSlug(rawRepo), [rawRepo]);
 
   const [openRepos, setOpenRepos] = useState<OpenRepoItem[]>(() => {
     const stored = loadStoredRepos();
@@ -79,8 +97,8 @@ export function useOpenRepositories(currentOwner: string, currentRepo: string, a
   // Add a repository and switch to it
   const addRepository = useCallback(
     (newOwner: string, newRepo: string) => {
-      const cleanOwner = newOwner.trim();
-      const cleanRepo = newRepo.trim();
+      const cleanOwner = sanitizeRepoSlug(newOwner);
+      const cleanRepo = sanitizeRepoSlug(newRepo);
       if (!cleanOwner || !cleanRepo) return;
 
       setOpenRepos((prev) => {
@@ -110,14 +128,16 @@ export function useOpenRepositories(currentOwner: string, currentRepo: string, a
   // Switch to an already open repository
   const switchRepository = useCallback(
     (targetOwner: string, targetRepo: string) => {
+      const cleanOwner = sanitizeRepoSlug(targetOwner);
+      const cleanRepo = sanitizeRepoSlug(targetRepo);
       if (
-        targetOwner.toLowerCase() === currentOwner.toLowerCase() &&
-        targetRepo.toLowerCase() === currentRepo.toLowerCase()
+        cleanOwner.toLowerCase() === currentOwner.toLowerCase() &&
+        cleanRepo.toLowerCase() === currentRepo.toLowerCase()
       ) {
         return; // already active
       }
       const tabSegment = activeTab && activeTab !== 'overview' ? `/${activeTab}` : '';
-      navigate(`/repository/${targetOwner}/${targetRepo}${tabSegment}`);
+      navigate(`/repository/${cleanOwner}/${cleanRepo}${tabSegment}`);
     },
     [currentOwner, currentRepo, activeTab, navigate]
   );
@@ -129,11 +149,14 @@ export function useOpenRepositories(currentOwner: string, currentRepo: string, a
         e.stopPropagation();
       }
 
+      const cleanOwner = sanitizeRepoSlug(targetOwner);
+      const cleanRepo = sanitizeRepoSlug(targetRepo);
+
       setOpenRepos((prev) => {
         const targetIndex = prev.findIndex(
           (r) =>
-            r.owner.toLowerCase() === targetOwner.toLowerCase() &&
-            r.repo.toLowerCase() === targetRepo.toLowerCase()
+            r.owner.toLowerCase() === cleanOwner.toLowerCase() &&
+            r.repo.toLowerCase() === cleanRepo.toLowerCase()
         );
 
         if (targetIndex === -1) return prev;

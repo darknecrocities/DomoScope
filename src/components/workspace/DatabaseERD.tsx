@@ -30,6 +30,8 @@ import {
   SlidersHorizontal,
   Zap,
   ArrowRight,
+  ArrowDown,
+  Workflow,
   Eye,
   Key,
 } from 'lucide-react';
@@ -37,6 +39,7 @@ import { DatabaseSchema, DatabaseTable, TableRelationship } from '../../types';
 import { EmptyState } from '../common/EmptyState';
 import { DatabaseTableNode, DatabaseTableNodeData } from './DatabaseTableNode';
 import { DatabaseInspectorDrawer } from './DatabaseInspectorDrawer';
+import { AnimatedCounter } from '../common/AnimatedCounter';
 
 interface DatabaseERDProps {
   schema?: DatabaseSchema | null;
@@ -188,6 +191,19 @@ function DatabaseERDInner({ schema, onOpenFile }: DatabaseERDProps) {
     );
   }, [tables, searchQuery]);
 
+  // Filter relationships for search
+  const filteredRelationships = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return relationships;
+    return relationships.filter(
+      (r) =>
+        r.fromTable.toLowerCase().includes(q) ||
+        r.toTable.toLowerCase().includes(q) ||
+        r.fromColumn.toLowerCase().includes(q) ||
+        r.toColumn.toLowerCase().includes(q)
+    );
+  }, [relationships, searchQuery]);
+
   // Map of connected tables for highlighting
   const connectionsMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -206,17 +222,27 @@ function DatabaseERDInner({ schema, onOpenFile }: DatabaseERDProps) {
     const selectedStroke = '#18181B';
 
     if (!selectedTableName) {
+      const q = searchQuery.toLowerCase().trim();
       setNodes((nds) =>
-        nds.map((n) => ({
-          ...n,
-          data: {
-            ...n.data,
-            isSelected: false,
-            isDimmed: false,
-            onOpenFile,
-            onSelectTable: (name: string) => setSelectedTableName(name),
-          },
-        }))
+        nds.map((n) => {
+          const isMatchingSearch =
+            !q ||
+            n.id.toLowerCase().includes(q) ||
+            n.data.table.columns.some(
+              (c) => c.name.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)
+            );
+
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              isSelected: false,
+              isDimmed: q ? !isMatchingSearch : false,
+              onOpenFile,
+              onSelectTable: (name: string) => setSelectedTableName(name),
+            },
+          };
+        })
       );
 
       setEdges((eds) =>
@@ -289,7 +315,7 @@ function DatabaseERDInner({ schema, onOpenFile }: DatabaseERDProps) {
         };
       })
     );
-  }, [selectedTableName, connectionsMap, isFlowAnimated, onOpenFile, setNodes, setEdges]);
+  }, [selectedTableName, connectionsMap, isFlowAnimated, searchQuery, onOpenFile, setNodes, setEdges]);
 
   // Selected table object for inspector drawer
   const selectedTableObj = useMemo(() => {
@@ -371,10 +397,10 @@ function DatabaseERDInner({ schema, onOpenFile }: DatabaseERDProps) {
 
           <div className="flex items-center gap-1.5 font-mono text-xs">
             <span className="px-2 py-0.5 rounded border border-zinc-200 bg-zinc-50 text-zinc-800 font-semibold">
-              {tables.length} tables
+              <AnimatedCounter value={tables.length} /> tables
             </span>
             <span className="px-2 py-0.5 rounded border border-zinc-200 bg-zinc-50 text-zinc-800 font-semibold">
-              {relationships.length} connections
+              <AnimatedCounter value={relationships.length} /> connections
             </span>
             {schema.detectedTypes.map((t) => (
               <span
@@ -388,114 +414,145 @@ function DatabaseERDInner({ schema, onOpenFile }: DatabaseERDProps) {
         </div>
 
         {/* Right Tools: View Toggle, Layout, Animation, Search, Export */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View Mode Toggle */}
           <div className="flex items-center bg-zinc-100 p-0.5 rounded-xl border border-zinc-200 text-xs font-mono">
             <button
               onClick={() => setViewMode('flow')}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'flow'
-                  ? 'bg-white text-zinc-900 font-bold shadow-xs'
-                  : 'text-zinc-600 hover:text-zinc-900'
+                  ? 'bg-white text-zinc-950 font-bold shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-950'
               }`}
-              title="Interactive Diagram with animated relationship line flows"
+              title="Interactive ERD diagram canvas"
             >
-              <Zap className="w-3.5 h-3.5 text-zinc-800" />
-              <span>ERD Flow</span>
+              <Workflow className="w-3.5 h-3.5" />
+              <span>Diagram</span>
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'grid'
-                  ? 'bg-white text-zinc-900 font-bold shadow-xs'
-                  : 'text-zinc-600 hover:text-zinc-900'
+                  ? 'bg-white text-zinc-950 font-bold shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-950'
               }`}
-              title="Card Grid view"
+              title="Table cards grid"
             >
               <TableProperties className="w-3.5 h-3.5" />
               <span>Tables</span>
             </button>
             <button
               onClick={() => setViewMode('relationships')}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'relationships'
-                  ? 'bg-white text-zinc-900 font-bold shadow-xs'
-                  : 'text-zinc-600 hover:text-zinc-900'
+                  ? 'bg-white text-zinc-950 font-bold shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-950'
               }`}
-              title="Relationship connections catalog"
+              title="Foreign key connections catalog"
             >
               <Network className="w-3.5 h-3.5" />
               <span>Relations ({relationships.length})</span>
             </button>
           </div>
 
-          {/* Flow Controls (Visible in Flow Mode) */}
+          {/* Canvas Controls (Visible in Diagram Mode) */}
           {viewMode === 'flow' && (
             <div className="flex items-center gap-1 bg-zinc-100 p-0.5 rounded-xl border border-zinc-200 text-xs font-mono">
               {/* Direction Switcher (LR vs TB) */}
               <button
                 onClick={() => setDirection((d) => (d === 'LR' ? 'TB' : 'LR'))}
-                className="px-2 py-1 rounded-lg bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200 shadow-2xs transition-colors cursor-pointer text-[11px] font-bold"
-                title="Toggle Diagram Orientation (Left-to-Right or Top-to-Bottom)"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200/80 shadow-2xs transition-all cursor-pointer text-[11px] font-semibold"
+                title={direction === 'LR' ? 'Orientation: Left-to-Right (Click for Top-to-Bottom)' : 'Orientation: Top-to-Bottom (Click for Left-to-Right)'}
               >
-                {direction === 'LR' ? 'LR Layout' : 'TB Layout'}
+                {direction === 'LR' ? (
+                  <>
+                    <ArrowRight className="w-3 h-3 text-zinc-500" />
+                    <span>LR Layout</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowDown className="w-3 h-3 text-zinc-500" />
+                    <span>TB Layout</span>
+                  </>
+                )}
               </button>
 
-              {/* Line Flow Animation Toggle */}
-              <button
-                onClick={() => setIsFlowAnimated((v) => !v)}
-                className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                  isFlowAnimated
-                    ? 'bg-zinc-900 text-white shadow-2xs'
-                    : 'bg-white text-zinc-600 border border-zinc-200 hover:text-zinc-900'
-                }`}
-                title="Toggle animated pulse on relationship lines"
-              >
-                <Zap className="w-3 h-3" />
-                <span>{isFlowAnimated ? 'Flow' : 'Static'}</span>
-              </button>
+              {/* Line Flow Animation Toggle (Shown if relationships exist) */}
+              {relationships.length > 0 && (
+                <button
+                  onClick={() => setIsFlowAnimated((v) => !v)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    isFlowAnimated
+                      ? 'bg-white text-zinc-950 border border-zinc-300 shadow-2xs font-bold'
+                      : 'text-zinc-600 hover:text-zinc-950 hover:bg-white/60'
+                  }`}
+                  title="Toggle animated pulse on relationship lines"
+                >
+                  <Zap className={`w-3 h-3 ${isFlowAnimated ? 'text-zinc-950 fill-zinc-950' : 'text-zinc-400'}`} />
+                  <span>Line Pulse</span>
+                </button>
+              )}
 
               {/* Fit View Button */}
               <button
                 onClick={handleFitView}
-                className="p-1 rounded-lg bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-200 shadow-2xs transition-colors cursor-pointer"
-                title="Fit all tables to view"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-200/80 shadow-2xs transition-all cursor-pointer text-[11px] font-semibold"
+                title="Recenter and fit all tables to view"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-3 h-3 text-zinc-500" />
+                <span>Fit</span>
               </button>
             </div>
           )}
 
-          {/* Export Actions */}
-          <div className="flex items-center gap-1">
+          {/* Export Actions (Segmented Group) */}
+          <div className="flex items-center bg-zinc-100 p-0.5 rounded-xl border border-zinc-200 text-xs font-mono">
             <button
               onClick={handleCopySqlDDL}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-200 rounded-xl text-xs font-mono font-semibold shadow-2xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-zinc-700 hover:text-zinc-950 hover:bg-white text-[11px] font-semibold transition-all cursor-pointer"
               title="Copy complete SQL CREATE TABLE statements"
             >
-              {copiedType === 'sql' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-zinc-500" />}
-              <span>{copiedType === 'sql' ? 'Copied' : 'SQL DDL'}</span>
+              {copiedType === 'sql' ? (
+                <>
+                  <Check className="w-3 h-3 text-zinc-950" />
+                  <span className="text-zinc-950 font-bold">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3 text-zinc-500" />
+                  <span>SQL DDL</span>
+                </>
+              )}
             </button>
 
             <button
               onClick={handleCopyMermaidERD}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-mono font-semibold shadow-xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-zinc-700 hover:text-zinc-950 hover:bg-white text-[11px] font-semibold transition-all cursor-pointer"
               title="Copy Mermaid.js ERD schema definition"
             >
-              {copiedType === 'mermaid' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedType === 'mermaid' ? 'Copied' : 'Mermaid ERD'}</span>
+              {copiedType === 'mermaid' ? (
+                <>
+                  <Check className="w-3 h-3 text-zinc-950" />
+                  <span className="text-zinc-950 font-bold">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3 text-zinc-500" />
+                  <span>Mermaid ERD</span>
+                </>
+              )}
             </button>
           </div>
 
           {/* Search Filter Input */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs w-40">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-50 border border-zinc-200 rounded-xl text-xs w-36 sm:w-44 focus-within:bg-white focus-within:border-zinc-400 transition-all">
             <Search className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter tables..."
-              className="w-full bg-transparent outline-none text-zinc-800 placeholder:text-zinc-400 font-mono text-xs"
+              className="w-full bg-transparent outline-none text-zinc-800 placeholder:text-zinc-400 font-mono text-[11px]"
             />
           </div>
         </div>
@@ -690,38 +747,44 @@ function DatabaseERDInner({ schema, onOpenFile }: DatabaseERDProps) {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {relationships.map((rel) => (
-                  <div
-                    key={rel.id}
-                    onClick={() => {
-                      setSelectedTableName(rel.fromTable);
-                      setViewMode('flow');
-                    }}
-                    className="p-3.5 bg-zinc-50 hover:bg-white border border-zinc-200 hover:border-zinc-400 rounded-xl flex items-center justify-between text-xs font-mono transition-all cursor-pointer shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-bold text-zinc-900 truncate">
-                        {rel.fromTable}.{rel.fromColumn}
-                      </span>
-                      <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                      <span className="font-bold text-zinc-900 truncate">
-                        {rel.toTable}.{rel.toColumn}
+              {filteredRelationships.length === 0 ? (
+                <div className="py-12 text-center text-xs font-mono text-zinc-400">
+                  {searchQuery ? `No relationships match "${searchQuery}"` : 'No relationships detected'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredRelationships.map((rel) => (
+                    <div
+                      key={rel.id}
+                      onClick={() => {
+                        setSelectedTableName(rel.fromTable);
+                        setViewMode('flow');
+                      }}
+                      className="p-3.5 bg-zinc-50 hover:bg-white border border-zinc-200 hover:border-zinc-400 rounded-xl flex items-center justify-between text-xs font-mono transition-all cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold text-zinc-900 truncate">
+                          {rel.fromTable}.{rel.fromColumn}
+                        </span>
+                        <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                        <span className="font-bold text-zinc-900 truncate">
+                          {rel.toTable}.{rel.toColumn}
+                        </span>
+                      </div>
+
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded font-mono shrink-0 ml-2 font-bold ${
+                          rel.isInferred
+                            ? 'border border-dashed border-zinc-400 text-zinc-600'
+                            : 'bg-zinc-900 text-white'
+                        }`}
+                      >
+                        {rel.isInferred ? 'Inferred' : 'Explicit'}
                       </span>
                     </div>
-
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded font-mono shrink-0 ml-2 font-bold ${
-                        rel.isInferred
-                          ? 'border border-dashed border-zinc-400 text-zinc-600'
-                          : 'bg-zinc-900 text-white'
-                      }`}
-                    >
-                      {rel.isInferred ? 'Inferred' : 'Explicit'}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

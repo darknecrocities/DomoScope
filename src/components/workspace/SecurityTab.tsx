@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { SecurityFinding } from '../../types';
 import { EmptyState } from '../common/EmptyState';
+import { AnimatedCounter } from '../common/AnimatedCounter';
+import { StreamingText } from '../common/StreamingText';
 
 interface SecurityTabProps {
   findings: SecurityFinding[];
@@ -330,7 +332,7 @@ export function SecurityTab({ findings, onOpenFile }: SecurityTabProps) {
           <Shield className="w-5 h-5 text-zinc-900" />
           <h2 className="text-base font-bold text-zinc-900">Security Audit & Defense</h2>
           <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-md bg-zinc-900 text-white">
-            {findings.length} findings
+            <AnimatedCounter value={findings.length} /> findings
           </span>
         </div>
 
@@ -358,7 +360,7 @@ export function SecurityTab({ findings, onOpenFile }: SecurityTabProps) {
         >
           <span className="flex items-center gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5" />
-            Scan Findings ({findings.length})
+            Scan Findings (<AnimatedCounter value={findings.length} />)
           </span>
         </button>
         <button
@@ -477,9 +479,14 @@ export function SecurityTab({ findings, onOpenFile }: SecurityTabProps) {
                               )}
                             </button>
                           </div>
-                          <pre className="p-3 bg-white border border-zinc-300 rounded-lg font-mono text-xs text-zinc-900 overflow-x-auto whitespace-pre-wrap">
-                            {patch.patched}
-                          </pre>
+                          <StreamingText
+                            text={patch.patched}
+                            speed="fast"
+                            as="pre"
+                            cursorClassName="w-1.5 h-3.5 bg-zinc-900"
+                            className="p-3 bg-white border border-zinc-300 rounded-lg font-mono text-xs text-zinc-900 overflow-x-auto whitespace-pre-wrap"
+                            sessionKey={`patch-${item.id}`}
+                          />
                         </div>
                       )}
 

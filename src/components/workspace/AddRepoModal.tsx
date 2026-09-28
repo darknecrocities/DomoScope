@@ -62,7 +62,13 @@ export function AddRepoModal({
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
-        setInputUrl(text.trim());
+        const trimmed = text.trim();
+        const parsed = parseGitHubUrl(trimmed);
+        if (parsed) {
+          setInputUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
+        } else {
+          setInputUrl(trimmed);
+        }
         setError(null);
       }
     } catch {
@@ -116,6 +122,20 @@ export function AddRepoModal({
                   onChange={(e) => {
                     setInputUrl(e.target.value);
                     if (error) setError(null);
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text');
+                    if (pasted) {
+                      const trimmed = pasted.trim();
+                      const parsed = parseGitHubUrl(trimmed);
+                      if (parsed) {
+                        setInputUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
+                      } else {
+                        setInputUrl(trimmed);
+                      }
+                      if (error) setError(null);
+                    }
                   }}
                   placeholder="https://github.com/facebook/react or expressjs/express"
                   className={`w-full px-3.5 py-2.5 pr-20 bg-zinc-50/70 border rounded-xl text-xs font-mono text-zinc-900 placeholder:text-zinc-400 outline-none transition-all ${

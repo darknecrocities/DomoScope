@@ -33,6 +33,8 @@ import { WorkspaceTab } from '../layout/Sidebar';
 import { detectFrameworks } from '../../services/frameworkDetector';
 import { detectAppType } from '../../services/appTypeDetector';
 import { detectCloudServices } from '../../services/cloudServicesDetector';
+import { StreamingText } from '../common/StreamingText';
+import { AnimatedCounter } from '../common/AnimatedCounter';
 
 interface OverviewTabProps {
   analysis: RepoAnalysis;
@@ -163,9 +165,13 @@ export function OverviewTab({
               Project Summary
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-zinc-800 leading-relaxed font-sans">
-            {analysis.summary}
-          </p>
+          <StreamingText
+            text={analysis.summary}
+            speed="normal"
+            sessionKey={`overview-summary-${analysis.metadata.fullName}`}
+            className="text-xs sm:text-sm text-zinc-800 leading-relaxed font-sans"
+            as="p"
+          />
         </div>
       </div>
 
@@ -207,9 +213,14 @@ export function OverviewTab({
         </div>
 
         {/* Framework Description & Narrative */}
-        <p className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-sans">
-          {primaryFramework.description}
-        </p>
+        <StreamingText
+          text={primaryFramework.description}
+          speed="normal"
+          delay={120}
+          sessionKey={`overview-framework-${analysis.metadata.fullName}`}
+          className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-sans"
+          as="p"
+        />
 
         {/* Framework Capabilities Chips */}
         <div>
@@ -751,7 +762,9 @@ export function OverviewTab({
             <span className="text-xs font-medium text-zinc-500">Files</span>
             <FileText className="w-3.5 h-3.5" />
           </div>
-          <div className="text-xl font-bold font-mono text-zinc-900">{totalFiles}</div>
+          <div className="text-xl font-bold font-mono text-zinc-900">
+            <AnimatedCounter value={totalFiles} />
+          </div>
         </div>
 
         <div
@@ -762,7 +775,9 @@ export function OverviewTab({
             <span className="text-xs font-medium text-zinc-500">Folders</span>
             <Folder className="w-3.5 h-3.5" />
           </div>
-          <div className="text-xl font-bold font-mono text-zinc-900">{totalDirs}</div>
+          <div className="text-xl font-bold font-mono text-zinc-900">
+            <AnimatedCounter value={totalDirs} />
+          </div>
         </div>
 
         <div
@@ -773,7 +788,9 @@ export function OverviewTab({
             <span className="text-xs font-medium text-zinc-500">Packages</span>
             <Package className="w-3.5 h-3.5" />
           </div>
-          <div className="text-xl font-bold font-mono text-zinc-900">{dependencies.length}</div>
+          <div className="text-xl font-bold font-mono text-zinc-900">
+            <AnimatedCounter value={dependencies.length} />
+          </div>
         </div>
 
         <div
@@ -785,7 +802,7 @@ export function OverviewTab({
             <GitBranch className="w-3.5 h-3.5" />
           </div>
           <div className="text-xl font-bold font-mono text-zinc-900">
-            {branches.length > 0 ? branches.length : 1}
+            <AnimatedCounter value={branches.length > 0 ? branches.length : 1} />
           </div>
         </div>
 
@@ -798,7 +815,13 @@ export function OverviewTab({
             <Database className="w-3.5 h-3.5" />
           </div>
           <div className="text-sm font-semibold text-zinc-900 truncate">
-            {hasDatabase ? `${databaseSchema!.tables.length} tables` : 'Synthesized'}
+            {hasDatabase ? (
+              <>
+                <AnimatedCounter value={databaseSchema!.tables.length} /> tables
+              </>
+            ) : (
+              'Synthesized'
+            )}
           </div>
         </div>
 
@@ -811,7 +834,7 @@ export function OverviewTab({
             <Shield className="w-3.5 h-3.5" />
           </div>
           <div className="text-xl font-bold font-mono text-zinc-900">
-            {securityFindings.length}
+            <AnimatedCounter value={securityFindings.length} />
           </div>
         </div>
       </div>

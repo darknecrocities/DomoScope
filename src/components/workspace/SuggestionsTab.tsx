@@ -1,5 +1,7 @@
 import { Lightbulb, CheckCircle2, AlertCircle, FileText, ArrowRight } from 'lucide-react';
 import { RepoAnalysis } from '../../types';
+import { StreamingText } from '../common/StreamingText';
+import { AnimatedCounter } from '../common/AnimatedCounter';
 
 interface SuggestionsTabProps {
   analysis: RepoAnalysis;
@@ -77,9 +79,14 @@ export function SuggestionsTab({ analysis, onOpenFile }: SuggestionsTabProps) {
   return (
     <div className="h-full flex flex-col bg-zinc-50 overflow-auto p-6 md:p-8">
       <div className="max-w-4xl mx-auto w-full space-y-6">
-        <div className="flex items-center gap-2 pb-2">
-          <Lightbulb className="w-5 h-5 text-zinc-700" />
-          <h2 className="text-base font-semibold text-zinc-900">Codebase Insights & Suggestions</h2>
+        <div className="flex items-center justify-between pb-2">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-zinc-700" />
+            <h2 className="text-base font-semibold text-zinc-900">Codebase Insights & Suggestions</h2>
+          </div>
+          <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-800 font-bold">
+            <AnimatedCounter value={suggestions.length} /> recommendations
+          </span>
         </div>
 
         <div className="space-y-4">
@@ -99,7 +106,14 @@ export function SuggestionsTab({ analysis, onOpenFile }: SuggestionsTabProps) {
 
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 mb-1">{item.title}</h3>
-                  <p className="text-xs text-zinc-600 leading-relaxed max-w-xl">{item.description}</p>
+                  <StreamingText
+                    text={item.description}
+                    delay={idx * 130}
+                    speed="fast"
+                    sessionKey={`suggestion-${analysis.metadata.fullName}-${idx}`}
+                    className="text-xs text-zinc-600 leading-relaxed max-w-xl"
+                    as="p"
+                  />
                 </div>
               </div>
 

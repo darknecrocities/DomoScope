@@ -39,9 +39,11 @@ import { SpecGeneratorModal } from '../components/workspace/SpecGeneratorModal';
 import { useOpenRepositories } from '../hooks/useOpenRepositories';
 import { RepoTabsBar } from '../components/workspace/RepoTabsBar';
 import { AddRepoModal } from '../components/workspace/AddRepoModal';
+import { RepoLoadingProgress } from '../components/workspace/RepoLoadingProgress';
+import { sanitizeRepoSlug } from '../services/github';
 
 export function WorkspacePage() {
-  const { owner = '', repo = '', tab = 'overview' } = useParams<{
+  const { owner: rawOwner = '', repo: rawRepo = '', tab = 'overview' } = useParams<{
     owner: string;
     repo: string;
     tab?: string;
@@ -49,6 +51,20 @@ export function WorkspacePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlBranch = searchParams.get('branch') || undefined;
+
+  const owner = useMemo(() => sanitizeRepoSlug(rawOwner), [rawOwner]);
+  const repo = useMemo(() => sanitizeRepoSlug(rawRepo), [rawRepo]);
+
+  // Self-healing redirect: If URL parameters were corrupted (e.g. /repository/Thes-IS-IT/Easylenshttps),
+  // automatically redirect to cleanly sanitized repository route
+  useEffect(() => {
+    if ((owner && owner !== rawOwner) || (repo && repo !== rawRepo)) {
+      const search = searchParams.toString();
+      const query = search ? `?${search}` : '';
+      const tabSegment = tab ? `/${tab}` : '';
+      navigate(`/repository/${owner}/${repo}${tabSegment}${query}`, { replace: true });
+    }
+  }, [owner, repo, rawOwner, rawRepo, tab, searchParams, navigate]);
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(
     (tab as WorkspaceTab) || 'overview'
@@ -74,6 +90,12 @@ export function WorkspacePage() {
   const [isSpecGeneratorOpen, setIsSpecGeneratorOpen] = useState(false);
   const [isAddRepoOpen, setIsAddRepoOpen] = useState(false);
   const [explainPrompt, setExplainPrompt] = useState<string | null>(null);
+  const [isProceedReady, setIsProceedReady] = useState(false);
+
+  // Reset proceed readiness when active repository or branch changes
+  useEffect(() => {
+    setIsProceedReady(false);
+  }, [owner, repo, urlBranch]);
 
   const { openRepos, addRepository, switchRepository, closeRepository } =
     useOpenRepositories(owner, repo, activeTab);
@@ -240,64 +262,17 @@ export function WorkspacePage() {
     return fileContents.get(selectedFile) || '';
   }, [selectedFile, fileContents]);
 
-  const LOADING_STEPS = [
-    'Checking repository',
-    'Reading files',
-    'Understanding structure',
-    'Building project map',
-    'Preparing workspace',
-  ];
-
   // Full-page Meaningful Loading Experience (initial landing or single-repo view)
-  if (openRepos.length <= 1 && status === 'loading' && files.length === 0) {
-    const currentStepIndex = LOADING_STEPS.indexOf(loadingStep);
-
+  if (openRepos.length <= 1 && !isProceedReady && status !== 'error') {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 select-none">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-bold text-sm mx-auto shadow-md">
-            D
-          </div>
-
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900">
-              Exploring {owner}/{repo}
-            </h2>
-            <p className="text-xs text-zinc-500 mt-1 font-mono">
-              Retrieving repository data from GitHub...
-            </p>
-          </div>
-
-          <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-2.5 text-left text-xs font-mono">
-            {LOADING_STEPS.map((step, idx) => {
-              const isPast = idx < currentStepIndex;
-              const isCurrent = idx === currentStepIndex;
-              return (
-                <div key={step} className="flex items-center justify-between">
-                  <span
-                    className={
-                      isCurrent
-                        ? 'text-zinc-900 font-semibold'
-                        : isPast
-                        ? 'text-zinc-500 line-through'
-                        : 'text-zinc-300'
-                    }
-                  >
-                    {step}
-                  </span>
-                  {isPast ? (
-                    <span className="text-zinc-800 font-bold">✓</span>
-                  ) : isCurrent ? (
-                    <span className="w-2 h-2 rounded-full bg-zinc-900 animate-ping" />
-                  ) : (
-                    <span className="text-zinc-300">○</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <RepoLoadingProgress
+        owner={owner}
+        repo={repo}
+        loadingStep={loadingStep}
+        isDataReady={status === 'success' && files.length > 0 && Boolean(analysis)}
+        onProceed={() => setIsProceedReady(true)}
+        isFullScreen={true}
+      />
     );
   }
 
@@ -438,51 +413,15 @@ export function WorkspacePage() {
           key={`${owner}/${repo}`}
           className="flex-1 flex flex-col overflow-y-auto relative min-w-0 bg-white"
         >
-          {status === 'loading' && files.length === 0 && (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 select-none bg-white">
-              <div className="w-full max-w-sm space-y-6 text-center">
-                <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-bold text-sm mx-auto shadow-md">
-                  D
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-zinc-900">
-                    Exploring {owner}/{repo}
-                  </h2>
-                  <p className="text-xs text-zinc-500 mt-1 font-mono">
-                    Retrieving repository data from GitHub...
-                  </p>
-                </div>
-                <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-2.5 text-left text-xs font-mono">
-                  {LOADING_STEPS.map((step, idx) => {
-                    const currentStepIndex = LOADING_STEPS.indexOf(loadingStep);
-                    const isPast = idx < currentStepIndex;
-                    const isCurrent = idx === currentStepIndex;
-                    return (
-                      <div key={step} className="flex items-center justify-between">
-                        <span
-                          className={
-                            isCurrent
-                              ? 'text-zinc-900 font-semibold'
-                              : isPast
-                              ? 'text-zinc-500 line-through'
-                              : 'text-zinc-300'
-                          }
-                        >
-                          {step}
-                        </span>
-                        {isPast ? (
-                          <span className="text-zinc-800 font-bold">✓</span>
-                        ) : isCurrent ? (
-                          <span className="w-2 h-2 rounded-full bg-zinc-900 animate-ping" />
-                        ) : (
-                          <span className="text-zinc-300">○</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+          {!isProceedReady && status !== 'error' && (
+            <RepoLoadingProgress
+              owner={owner}
+              repo={repo}
+              loadingStep={loadingStep}
+              isDataReady={status === 'success' && files.length > 0 && Boolean(analysis)}
+              onProceed={() => setIsProceedReady(true)}
+              isFullScreen={false}
+            />
           )}
 
           {status === 'error' && (
@@ -522,7 +461,7 @@ export function WorkspacePage() {
             </div>
           )}
 
-          {!(status === 'loading' && files.length === 0) && status !== 'error' && (
+          {isProceedReady && status === 'success' && (
             <>
               {activeTab === 'overview' && analysis && (
                 <OverviewTab
@@ -649,6 +588,10 @@ export function WorkspacePage() {
                   fileContents={fileContents}
                   databaseSchema={databaseSchema}
                   dependencies={dependencies}
+                  onOpenFile={(path) => {
+                    setSelectedFile(path);
+                    handleTabChange('files');
+                  }}
                 />
               )}
 

@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { ApiEndpoint, RepoFile } from '../../types';
 import { parseApiEndpoints } from '../../services/apiRouteCatalog';
 import { Search, Globe, FileCode, Filter, ExternalLink, ShieldCheck } from 'lucide-react';
+import { StreamingText } from '../common/StreamingText';
+import { AnimatedCounter } from '../common/AnimatedCounter';
 
 interface ApiCatalogTabProps {
   fileContents: Map<string, string>;
@@ -112,13 +114,17 @@ export const ApiCatalogTab: React.FC<ApiCatalogTabProps> = ({ fileContents, file
             <Globe className="w-5 h-5 text-zinc-900" />
             <h2 className="text-xl font-bold text-zinc-900">API Route & Endpoint Catalog</h2>
           </div>
-          <p className="text-xs sm:text-sm text-zinc-500 mt-1">
-            Auto-discovered REST, GraphQL, Next.js, FastAPI, Express, and client-side endpoints across your repository.
-          </p>
+          <StreamingText
+            text="Auto-discovered REST, GraphQL, Next.js, FastAPI, Express, and client-side endpoints across your repository."
+            speed="normal"
+            sessionKey="api-catalog-subtitle"
+            className="text-xs sm:text-sm text-zinc-500 mt-1"
+            as="p"
+          />
         </div>
         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-zinc-200 shadow-xs text-xs text-zinc-700 font-medium">
           <ShieldCheck className="w-4 h-4 text-zinc-900" />
-          <span>{endpoints.length} Active Endpoints Discovered</span>
+          <span><AnimatedCounter value={endpoints.length} /> Active Endpoints Discovered</span>
         </div>
       </div>
 

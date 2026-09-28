@@ -22,6 +22,8 @@ import {
   generateAuditReportHtml,
   generateAuditReportMarkdown,
 } from '../../services/auditReportGenerator';
+import { AnimatedCounter } from '../common/AnimatedCounter';
+import { StreamingText } from '../common/StreamingText';
 
 interface AuditReportTabProps {
   owner: string;
@@ -152,10 +154,13 @@ export function AuditReportTab({
               Codebase Architectural Audit Score
             </h1>
           </div>
-          <p className="text-xs text-zinc-600 max-w-2xl pl-1">
-            Comprehensive evaluation of modularity, dependency coupling, security exposure, and database schema health for{' '}
-            <strong className="text-zinc-900 font-semibold">{owner}/{repo}</strong>.
-          </p>
+          <StreamingText
+            text={`Comprehensive evaluation of modularity, dependency coupling, security exposure, and database schema health for ${owner}/${repo}.`}
+            speed="normal"
+            sessionKey={`audit-banner-${owner}-${repo}`}
+            className="text-xs text-zinc-600 max-w-2xl pl-1"
+            as="p"
+          />
         </div>
 
         {/* Export Controls Bar */}
@@ -193,7 +198,9 @@ export function AuditReportTab({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Health Score Card */}
         <div className="bg-zinc-900 text-white border border-zinc-900 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-sm">
-          <div className="text-4xl font-black tracking-tight">{healthScore} / 100</div>
+          <div className="text-4xl font-black tracking-tight">
+            <AnimatedCounter value={healthScore} duration={900} /> / 100
+          </div>
           <div className="text-xs text-zinc-300 uppercase font-bold tracking-wider mt-2">
             Audit Quality Score
           </div>
@@ -205,7 +212,9 @@ export function AuditReportTab({
             <FileCode className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-black text-zinc-900">{files.length}</div>
+            <div className="text-xl font-black text-zinc-900">
+              <AnimatedCounter value={files.length} />
+            </div>
             <div className="text-xs text-zinc-500 font-medium">Scanned Source Files</div>
           </div>
         </div>
@@ -216,7 +225,9 @@ export function AuditReportTab({
             <Database className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-black text-zinc-900">{schema.tables.length}</div>
+            <div className="text-xl font-black text-zinc-900">
+              <AnimatedCounter value={schema.tables.length} />
+            </div>
             <div className="text-xs text-zinc-500 font-medium">Database Entities</div>
           </div>
         </div>
@@ -227,7 +238,9 @@ export function AuditReportTab({
             <Shield className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-black text-zinc-900">{securityFindings.length}</div>
+            <div className="text-xl font-black text-zinc-900">
+              <AnimatedCounter value={securityFindings.length} />
+            </div>
             <div className="text-xs text-zinc-500 font-medium">Security Issues</div>
           </div>
         </div>
@@ -260,7 +273,14 @@ export function AuditReportTab({
         </div>
 
         <div className="p-6 overflow-x-auto bg-zinc-950 text-zinc-100 font-mono text-xs leading-relaxed selection:bg-zinc-700 selection:text-white">
-          <pre className="whitespace-pre-wrap break-words">{markdownReport}</pre>
+          <StreamingText
+            text={markdownReport}
+            speed="fast"
+            as="pre"
+            cursorClassName="w-1.5 h-3.5 bg-zinc-200"
+            className="whitespace-pre-wrap break-words font-mono text-xs text-zinc-100"
+            sessionKey={`audit-report-md-${repo}-${files.length}`}
+          />
         </div>
       </div>
     </div>
