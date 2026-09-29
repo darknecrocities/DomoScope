@@ -600,10 +600,16 @@ export function WorkspacePage() {
               {activeTab === 'suggestions' && analysis && (
                 <SuggestionsTab
                   analysis={analysis}
+                  files={files}
+                  fileContents={fileContents}
+                  databaseSchema={databaseSchema}
+                  securityFindings={securityFindings}
+                  dependencies={dependencies}
                   onOpenFile={(path) => {
                     setSelectedFile(path);
                     handleTabChange('files');
                   }}
+                  onSelectTab={(t) => handleTabChange(t as WorkspaceTab)}
                 />
               )}
 
