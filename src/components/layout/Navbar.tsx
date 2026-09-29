@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings, Search, ExternalLink, Cpu, FileText } from 'lucide-react';
+import { Settings, Search, ExternalLink, Cpu, FileText, Terminal } from 'lucide-react';
 import { GitHubIcon } from '../common/Icons';
 import { RepoMetadata } from '../../types';
 import { GitHubService } from '../../services/github';
@@ -108,6 +108,15 @@ export function Navbar({
             <span className="hidden md:inline">Generate .md</span>
           </button>
         )}
+
+        <Link
+          to="/setup"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-800 hover:text-black bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-xl transition-colors cursor-pointer font-mono font-semibold"
+          title="CLI, MCP Protocol & Agent Setup Guide"
+        >
+          <Terminal className="w-3.5 h-3.5 text-zinc-900" />
+          <span className="hidden md:inline">Setup</span>
+        </Link>
 
         {/* Global Search Shortcut */}
         <button

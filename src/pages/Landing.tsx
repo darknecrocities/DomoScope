@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Settings, Zap, UserCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Settings, Zap, UserCheck, Terminal } from 'lucide-react';
 import { GitHubIcon } from '../components/common/Icons';
 import { Hero } from '../components/landing/Hero';
 import { TechBelt } from '../components/landing/TechBelt';
@@ -78,6 +79,15 @@ export function LandingPage() {
                 </span>
               </button>
             )}
+
+            <Link
+              to="/setup"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-mono font-semibold transition-colors cursor-pointer border border-slate-200"
+              title="CLI, MCP Protocol & Agent Setup Guide"
+            >
+              <Terminal className="w-3.5 h-3.5 text-slate-900" />
+              <span className="hidden sm:inline">Setup & CLI</span>
+            </Link>
 
             <button
               onClick={() => setIsSettingsOpen(true)}

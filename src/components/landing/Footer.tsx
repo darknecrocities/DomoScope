@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { GitHubIcon } from '../common/Icons';
 
 export function Footer() {
@@ -11,6 +12,9 @@ export function Footer() {
         </div>
 
         <div className="flex items-center gap-6">
+          <Link to="/setup" className="hover:text-zinc-900 transition-colors">
+            Setup & CLI
+          </Link>
           <a
             href="https://github.com/darknecrocities/DomoScope"
             target="_blank"

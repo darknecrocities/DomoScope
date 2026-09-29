@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Maximize2, Minimize2, GitBranch, Menu, ArrowUpDown, Star, Zap, UserCheck, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { RefreshCw, Maximize2, Minimize2, GitBranch, Menu, ArrowUpDown, Star, Zap, UserCheck, Plus, Terminal } from 'lucide-react';
 import { WorkspaceTab } from './Sidebar';
 import { RepoMetadata } from '../../types';
 import { GitHubService } from '../../services/github';
@@ -189,6 +190,16 @@ export function AppBar({
             </span>
           </button>
         )}
+
+        {/* Setup & Agent MCP Guide Link */}
+        <Link
+          to="/setup"
+          className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-zinc-100 border border-zinc-300 rounded-xl text-xs font-mono text-zinc-900 transition-colors cursor-pointer shadow-xs font-semibold"
+          title="CLI, MCP Protocol & Agent Setup Guide"
+        >
+          <Terminal className="w-3.5 h-3.5 text-zinc-900 stroke-[2]" />
+          <span className="hidden sm:inline">Setup</span>
+        </Link>
 
         {/* Graph Direction toggle when on architecture tab */}
         {activeTab === 'architecture' && onToggleGraphDirection && (
