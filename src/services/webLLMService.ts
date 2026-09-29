@@ -400,6 +400,10 @@ function executeSemanticReasoningEngine(
     (q.includes('this file') ||
       q.includes('selected file') ||
       q.includes('explain file') ||
+      q.includes('describe') ||
+      q.includes('what does this do') ||
+      q.includes('what does this file do') ||
+      q.includes('review file') ||
       q.includes(selectedFile.toLowerCase().split('/').pop() || ''));
 
   // ── 1. Specific File Deep Dive (Only when requested) ───────────────────────

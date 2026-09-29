@@ -622,6 +622,7 @@ export function WorkspacePage() {
                       files={files}
                       fileContents={fileContents}
                       selectedFile={selectedFile}
+                      onSelectFile={(path) => setSelectedFile(path)}
                       onOpenFile={(path) => {
                         setSelectedFile(path);
                         handleTabChange('files');
@@ -656,6 +657,7 @@ export function WorkspacePage() {
                   files={files}
                   fileContents={fileContents}
                   selectedFile={selectedFile}
+                  onSelectFile={(path) => setSelectedFile(path)}
                   onOpenFile={(path) => {
                     setSelectedFile(path);
                     setActiveTab('files');

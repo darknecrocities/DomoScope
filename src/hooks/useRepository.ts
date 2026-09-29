@@ -472,9 +472,11 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
   );
 
   const selectFile = useCallback(
-    (filePath: string) => {
+    (filePath: string | null) => {
       setSelectedFile(filePath);
-      loadFileContent(filePath);
+      if (filePath) {
+        loadFileContent(filePath);
+      }
     },
     [loadFileContent]
   );

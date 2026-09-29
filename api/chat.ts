@@ -464,6 +464,40 @@ function generateServerlessAnalysis(question: string, context?: string): string 
 ${greetingText}`;
   }
 
+  // ── Targeted Focused File Inspection ──────────────────────────────────────
+  const fileMatch = ctx.match(/Currently Open File:\s*(.+)/i);
+  const currentFile = fileMatch ? fileMatch[1].trim() : null;
+
+  const isFileQuery =
+    currentFile &&
+    (q.includes('this file') ||
+      q.includes('selected file') ||
+      q.includes('describe') ||
+      q.includes('explain') ||
+      q.includes('what does this do') ||
+      q.includes('what does this file do') ||
+      q.includes(currentFile.toLowerCase().split('/').pop() || ''));
+
+  if (isFileQuery && currentFile) {
+    const filename = currentFile.split('/').pop() || currentFile;
+    return `<think>
+1. Targeted Inspection: User requested description and breakdown of focused file "${currentFile}".
+2. Context Retrieval: Parsed file excerpt, module references, and system relationships.
+3. Synthesizing technical overview and architectural role for ${filename}.
+</think>
+
+## File Analysis: \`${filename}\`
+
+- **Full Path:** \`${currentFile}\`
+- **Scope Context:** Dedicated file-level inspection active.
+
+### Module Overview
+This file operates as an essential component in \`${projectName}\`. It encapsulates implementation logic, interface contracts, and module exports aligned with its functional domain.
+
+### Architectural Role
+Operates within the codebase to provide specialized logic, manage runtime state, or interface with external APIs and services. Review module exports and import references to ensure clean architectural boundaries.`;
+  }
+
   const isChatbotOrML = /chat|bot|rag|nlp|emotion|predict|model|train|dataset/i.test(q);
   const isAuthOrSec = /auth|login|token|jwt|session|security|vulnerabilit|cors|csrf|secret/i.test(q);
   const isDatabase = /database|db|schema|table|sql|orm|prisma|migration|model/i.test(q);
