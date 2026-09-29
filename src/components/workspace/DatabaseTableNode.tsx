@@ -42,7 +42,19 @@ export const DatabaseTableNode = memo(function DatabaseTableNode({
           : 'border-zinc-200 hover:border-zinc-400 hover:shadow-md shadow-xs'
       }`}
     >
-      {/* Node-level Fallback Handles */}
+      {/* Node-level Fallback and Directional Handles */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="table-target-top"
+        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-white hover:!bg-zinc-900 transition-colors"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="table-target-left"
+        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-white hover:!bg-zinc-900 transition-colors"
+      />
       <Handle
         type="target"
         position={isLR ? Position.Left : Position.Top}
@@ -196,7 +208,19 @@ export const DatabaseTableNode = memo(function DatabaseTableNode({
         </div>
       )}
 
-      {/* Node-level Fallback Source Handle */}
+      {/* Node-level Fallback and Directional Source Handles */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="table-source-bottom"
+        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-white hover:!bg-zinc-900 transition-colors"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="table-source-right"
+        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-white hover:!bg-zinc-900 transition-colors"
+      />
       <Handle
         type="source"
         position={isLR ? Position.Right : Position.Bottom}

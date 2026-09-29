@@ -40,6 +40,7 @@ import { EmptyState } from '../common/EmptyState';
 import { DatabaseTableNode, DatabaseTableNodeData } from './DatabaseTableNode';
 import { DatabaseInspectorDrawer } from './DatabaseInspectorDrawer';
 import { AnimatedCounter } from '../common/AnimatedCounter';
+import { inferDatabaseRelationships } from '../../services/databaseParser';
 
 interface DatabaseERDProps {
   schema?: DatabaseSchema | null;
@@ -59,7 +60,8 @@ type LayoutDirection = 'LR' | 'TB';
 function layoutDatabaseERD(
   tables: DatabaseTable[],
   relationships: TableRelationship[],
-  direction: LayoutDirection = 'LR'
+  direction: LayoutDirection = 'LR',
+  isFlowAnimated: boolean = true
 ): { nodes: Node<DatabaseTableNodeData>[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
@@ -77,16 +79,17 @@ function layoutDatabaseERD(
     g.setNode(table.name, { width: nodeWidth, height: nodeHeight });
   }
 
-  // Connect edges where both source and target table exist
-  const tableNamesSet = new Set(tables.map((t) => t.name.toLowerCase()));
-  const validRels = relationships.filter(
-    (r) =>
-      tableNamesSet.has(r.fromTable.toLowerCase()) &&
-      tableNamesSet.has(r.toTable.toLowerCase())
-  );
+  // Connect edges where both source and target table exist (case-insensitive lookup mapped to exact table names)
+  const validRels = relationships.filter((r) => {
+    const src = tables.find((t) => t.name.toLowerCase() === r.fromTable.toLowerCase());
+    const tgt = tables.find((t) => t.name.toLowerCase() === r.toTable.toLowerCase());
+    return Boolean(src && tgt);
+  });
 
   for (const rel of validRels) {
-    g.setEdge(rel.fromTable, rel.toTable);
+    const sourceTable = tables.find((t) => t.name.toLowerCase() === rel.fromTable.toLowerCase())!;
+    const targetTable = tables.find((t) => t.name.toLowerCase() === rel.toTable.toLowerCase())!;
+    g.setEdge(sourceTable.name, targetTable.name);
   }
 
   dagre.layout(g);
@@ -109,43 +112,65 @@ function layoutDatabaseERD(
     };
   });
 
+  const isTB = direction === 'TB';
+
   const edges: Edge[] = validRels.map((rel) => {
+    const sourceTable = tables.find((t) => t.name.toLowerCase() === rel.fromTable.toLowerCase())!;
+    const targetTable = tables.find((t) => t.name.toLowerCase() === rel.toTable.toLowerCase())!;
+
+    const hasSourceCol = Boolean(sourceTable.columns.some((c) => c.name === rel.fromColumn));
+    const hasTargetCol = Boolean(targetTable.columns.some((c) => c.name === rel.toColumn));
+
+    // Layout-aware handle routing:
+    // In TB mode (vertical flow), edges connect straight from Bottom of upper node to Top of lower node.
+    // In LR mode (horizontal flow), edges connect from Column Source handle (Right) to Column Target handle (Left).
+    let sourceHandle: string;
+    let targetHandle: string;
+
+    if (isTB) {
+      sourceHandle = 'table-source-bottom';
+      targetHandle = 'table-target-top';
+    } else {
+      sourceHandle = hasSourceCol ? `${rel.fromColumn}-source` : 'table-source-right';
+      targetHandle = hasTargetCol ? `${rel.toColumn}-target` : 'table-target-left';
+    }
+
     return {
       id: rel.id,
-      source: rel.fromTable,
-      sourceHandle: `${rel.fromColumn}-source`,
-      target: rel.toTable,
-      targetHandle: `${rel.toColumn}-target`,
+      source: sourceTable.name,
+      sourceHandle,
+      target: targetTable.name,
+      targetHandle,
       type: 'smoothstep',
-      animated: true,
+      animated: isFlowAnimated,
       data: { relationship: rel },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        width: 14,
-        height: 14,
-        color: '#71717A',
+        width: 16,
+        height: 16,
+        color: '#18181B',
       },
       style: {
-        stroke: '#71717A',
-        strokeWidth: 1.8,
+        stroke: '#18181B',
+        strokeWidth: 2,
         strokeDasharray: rel.isInferred ? '5 5' : undefined,
       },
       label: `${rel.fromColumn} ➔ ${rel.toColumn}`,
       labelStyle: {
         fill: '#18181B',
-        fontWeight: 600,
+        fontWeight: 700,
         fontSize: 10,
         fontFamily: 'monospace',
       },
       labelBgStyle: {
         fill: '#FFFFFF',
-        fillOpacity: 0.95,
-        stroke: '#E4E4E7',
-        strokeWidth: 1,
+        fillOpacity: 0.98,
+        stroke: '#D4D4D8',
+        strokeWidth: 1.2,
         rx: 6,
         ry: 6,
       },
-      labelBgPadding: [6, 3] as [number, number],
+      labelBgPadding: [8, 4] as [number, number],
     };
   });
 
@@ -163,13 +188,20 @@ function DatabaseERDInner({ schema, onOpenFile }: DatabaseERDProps) {
   const reactFlowInstance = useReactFlow();
 
   const tables = useMemo(() => schema?.tables || [], [schema]);
-  const relationships = useMemo(() => schema?.relationships || [], [schema]);
+  const relationships = useMemo(() => {
+    if (!schema?.tables || schema.tables.length === 0) return [];
+    if (schema.relationships && schema.relationships.length > 0) {
+      return schema.relationships;
+    }
+    // Dynamic Self-Healing: In case existing storage cache had 0 connections, dynamically infer relationships!
+    return inferDatabaseRelationships(schema.tables);
+  }, [schema]);
 
   // Compute Layout Elements
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     if (!schema || tables.length === 0) return { nodes: [], edges: [] };
-    return layoutDatabaseERD(tables, relationships, direction);
-  }, [schema, tables, relationships, direction]);
+    return layoutDatabaseERD(tables, relationships, direction, isFlowAnimated);
+  }, [schema, tables, relationships, direction, isFlowAnimated]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<DatabaseTableNodeData>>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);

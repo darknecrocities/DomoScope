@@ -448,7 +448,7 @@ export const GitHubService = {
   },
 };
 
-function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoFile['category'] {
+export function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoFile['category'] {
   if (type === 'tree') return 'folder';
 
   const lower = path.toLowerCase();

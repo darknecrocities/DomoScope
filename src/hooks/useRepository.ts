@@ -232,12 +232,22 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
             n === 'docker-compose.yaml'
           ) return true;
 
-          // Database & schemas
+          // Database & schemas (SQL, PostgreSQL, MySQL, SQLite, Prisma, Supabase, Firebase, MongoDB, Drizzle, Drift, Room, Mermaid, and Markdown ERD docs)
           if (
             n === 'schema.prisma' ||
+            n === 'firestore.rules' ||
+            n === 'firestore.indexes.json' ||
+            p.includes('supabase') ||
+            p.includes('database.types') ||
+            p.includes('types_db') ||
             p.includes('drizzle') ||
             p.includes('migrations/') ||
-            n.endsWith('.sql')
+            n.endsWith('.sql') ||
+            n.endsWith('.mermaid') ||
+            n.endsWith('.mmd') ||
+            p.includes('.schema.') ||
+            p.includes('.model.') ||
+            (n.endsWith('.md') && (p.includes('erd') || p.includes('schema') || p.includes('database') || p.includes('entity')))
           ) return true;
 
           // Key source files
@@ -272,7 +282,17 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
             n === 'serverless.yml' ||
             n === 'serverless.yaml'
           ) return 1;
-          if (n === 'schema.prisma' || n.endsWith('.sql') || p.includes('schema') || p.includes('model') || p.includes('entity') || p.includes('entities')) return 2;
+          if (
+            n === 'schema.prisma' ||
+            n === 'firestore.rules' ||
+            p.includes('supabase') ||
+            p.includes('database.types') ||
+            n.endsWith('.sql') ||
+            p.includes('schema') ||
+            p.includes('model') ||
+            p.includes('entity') ||
+            p.includes('entities')
+          ) return 2;
           if (p.includes('routes') || p.includes('api') || p.includes('controllers') || /src\/(main|index|app)\./i.test(p) || p === 'lib/main.dart') return 3;
           return 4;
         };

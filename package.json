@@ -3,11 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "bin": {
+    "domoscope-mcp": "./bin/domoscope-mcp.js"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mcp": "node bin/domoscope-mcp.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.85",
