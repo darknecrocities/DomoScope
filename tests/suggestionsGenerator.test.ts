@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import {
-  generateCodebaseSuggestions,
-  filterSuggestions,
-  generateSuggestionsMarkdown,
+  generateSetupChecklist,
+  filterChecklist,
+  generateChecklistMarkdown,
 } from '../src/services/suggestionsGenerator';
 import { RepoAnalysis, RepoFile, DatabaseSchema, SecurityFinding, RepoDependency } from '../src/types';
 
-describe('Codebase Suggestions & Insights Engine', () => {
+describe('Repository Setup & Standards Checklist Engine', () => {
   const mockMetadata = {
     owner: 'test-owner',
     repo: 'test-repo',
     fullName: 'test-owner/test-repo',
-    description: 'Test repository for architectural suggestions',
+    description: 'Test repository for setup checklist',
     defaultBranch: 'main',
     stars: 100,
     forks: 20,
@@ -28,36 +28,20 @@ describe('Codebase Suggestions & Insights Engine', () => {
 
   const mockFiles: RepoFile[] = [
     {
+      path: '.gitignore',
+      name: '.gitignore',
+      type: 'blob',
+      extension: '',
+      category: 'config',
+      content: 'node_modules\n.env\ndist\n.DS_Store',
+    },
+    {
       path: 'src/main.tsx',
       name: 'main.tsx',
       type: 'blob',
       extension: 'tsx',
       category: 'component',
       content: 'import React from "react";\nexport function App() { return <div>App</div>; }',
-    },
-    {
-      path: 'src/components/HugeView.tsx',
-      name: 'HugeView.tsx',
-      type: 'blob',
-      extension: 'tsx',
-      category: 'component',
-      content: Array(450).fill('const line = 1;').join('\n'),
-    },
-    {
-      path: 'src/services/dataService.ts',
-      name: 'dataService.ts',
-      type: 'blob',
-      extension: 'ts',
-      category: 'service',
-      content: 'export const DataService = { fetchAll: () => [] };',
-    },
-    {
-      path: 'tests/dataService.test.ts',
-      name: 'dataService.test.ts',
-      type: 'blob',
-      extension: 'ts',
-      category: 'test',
-      content: 'import { describe, it, expect } from "vitest";\ndescribe("test", () => {});',
     },
     {
       path: 'README.md',
@@ -68,12 +52,28 @@ describe('Codebase Suggestions & Insights Engine', () => {
       content: '# Test Repo\nSetup guide',
     },
     {
+      path: 'tests/main.test.ts',
+      name: 'main.test.ts',
+      type: 'blob',
+      extension: 'ts',
+      category: 'test',
+      content: 'import { describe, it, expect } from "vitest";\ndescribe("main", () => {});',
+    },
+    {
       path: '.github/workflows/ci.yml',
       name: 'ci.yml',
       type: 'blob',
       extension: 'yml',
       category: 'config',
       content: 'name: CI\non: push',
+    },
+    {
+      path: 'tsconfig.json',
+      name: 'tsconfig.json',
+      type: 'blob',
+      extension: 'json',
+      category: 'config',
+      content: '{"compilerOptions": {"strict": true}}',
     },
   ];
 
@@ -82,11 +82,11 @@ describe('Codebase Suggestions & Insights Engine', () => {
     files: mockFiles,
     summary: 'A modular TypeScript web application.',
     categoriesCount: {
-      component: 2,
-      service: 1,
+      component: 1,
+      service: 0,
       api: 0,
       database: 0,
-      config: 1,
+      config: 3,
       test: 1,
       style: 0,
       doc: 1,
@@ -108,142 +108,132 @@ describe('Codebase Suggestions & Insights Engine', () => {
         schemaType: 'prisma',
         columns: [
           { name: 'id', type: 'String', isPrimary: true, isNullable: false, isForeignKey: false },
-          { name: 'email', type: 'String', isPrimary: false, isNullable: false, isForeignKey: false },
-          { name: 'createdAt', type: 'DateTime', isPrimary: false, isNullable: false, isForeignKey: false },
-        ],
-      },
-      {
-        name: 'posts',
-        sourceFile: 'prisma/schema.prisma',
-        schemaType: 'prisma',
-        columns: [
-          { name: 'id', type: 'String', isPrimary: true, isNullable: false, isForeignKey: false },
-          { name: 'userId', type: 'String', isPrimary: false, isNullable: false, isForeignKey: true },
-          { name: 'createdAt', type: 'DateTime', isPrimary: false, isNullable: false, isForeignKey: false },
         ],
       },
     ],
-    relationships: [
-      {
-        id: 'rel-users-posts',
-        fromTable: 'posts',
-        fromColumn: 'userId',
-        toTable: 'users',
-        toColumn: 'id',
-        type: 'one-to-many',
-        isInferred: false,
-      },
-    ],
+    relationships: [],
     detectedTypes: ['prisma'],
     sourceFiles: ['prisma/schema.prisma'],
   };
 
-  const mockSecurityFindings: SecurityFinding[] = [
-    {
-      id: 'sec-1',
-      title: 'Potential Hardcoded Secret',
-      severity: 'high',
-      category: 'Secrets',
-      file: 'src/config/keys.ts',
-      line: 12,
-      evidence: 'const KEY = "sk_live_12345"',
-      explanation: 'Hardcoded secret token in source file.',
-      suggestedAction: 'Move to process.env.KEY.',
-    },
-  ];
-
   const mockDependencies: RepoDependency[] = [
     {
-      name: 'react',
-      version: '^18.2.0',
-      isDev: false,
+      name: 'eslint',
+      version: '^9.0.0',
+      isDev: true,
       ecosystem: 'npm',
       manifestPath: 'package.json',
-      usedInFiles: ['src/main.tsx'],
-    },
-    {
-      name: '@xyflow/react',
-      version: '^12.0.0',
-      isDev: false,
-      ecosystem: 'npm',
-      manifestPath: 'package.json',
-      usedInFiles: ['src/components/HugeView.tsx'],
+      usedInFiles: [],
     },
   ];
 
-  it('generates multi-category suggestions from repository static analysis', () => {
-    const { suggestions, stats } = generateCodebaseSuggestions({
+  it('generates standard setup checklist items with checkmark status', () => {
+    const { items, stats } = generateSetupChecklist({
       analysis: mockAnalysis,
       files: mockFiles,
       databaseSchema: mockSchema,
-      securityFindings: mockSecurityFindings,
+      securityFindings: [],
       dependencies: mockDependencies,
     });
 
-    expect(suggestions.length).toBeGreaterThan(0);
-    expect(stats.total).toBe(suggestions.length);
-    expect(stats.overallScore).toBeGreaterThanOrEqual(40);
-    expect(stats.overallScore).toBeLessThanOrEqual(100);
+    expect(items.length).toBeGreaterThanOrEqual(10);
+    expect(stats.total).toBe(items.length);
+    expect(stats.completedCount).toBeGreaterThan(0);
+    expect(stats.completionPercentage).toBeGreaterThanOrEqual(50);
 
-    // Should detect the 450-line file as a monolithic hotspot
-    const hotspot = suggestions.find((s) => s.id === 'arch-monolithic-hotspots');
-    expect(hotspot).toBeDefined();
-    expect(hotspot?.affectedFiles).toContain('src/components/HugeView.tsx');
-    expect(hotspot?.agentPrompt).toContain('Refactor');
+    // .gitignore check
+    const gitignoreItem = items.find((i) => i.id === 'setup-gitignore');
+    expect(gitignoreItem).toBeDefined();
+    expect(gitignoreItem?.status).toBe('completed');
 
-    // Should detect security finding
-    const sec = suggestions.find((s) => s.id === 'sec-vulnerabilities-remediation');
-    expect(sec).toBeDefined();
-    expect(sec?.impact).toBe('high');
+    // README check
+    const readmeItem = items.find((i) => i.id === 'setup-readme');
+    expect(readmeItem).toBeDefined();
+    expect(readmeItem?.status).toBe('completed');
 
-    // Should detect heavy dependency dynamic import recommendation
-    const perf = suggestions.find((s) => s.id === 'perf-code-splitting-heavy-deps');
-    expect(perf).toBeDefined();
-    expect(perf?.category).toBe('performance');
+    // Tests check
+    const testItem = items.find((i) => i.id === 'setup-testing');
+    expect(testItem).toBeDefined();
+    expect(testItem?.status).toBe('completed');
 
-    // Should detect database relational integrity as positive
-    const db = suggestions.find((s) => s.id === 'db-relations-intact');
-    expect(db).toBeDefined();
-    expect(db?.impact).toBe('positive');
+    // CI check
+    const ciItem = items.find((i) => i.id === 'setup-ci');
+    expect(ciItem).toBeDefined();
+    expect(ciItem?.status).toBe('completed');
   });
 
-  it('filters suggestions correctly by category, priority, and text query', () => {
-    const { suggestions } = generateCodebaseSuggestions({
+  it('flags missing setup items as needs_setup with code snippet recipes', () => {
+    const emptyFiles: RepoFile[] = [
+      {
+        path: 'src/app.js',
+        name: 'app.js',
+        type: 'blob',
+        extension: 'js',
+        category: 'component',
+        content: 'console.log("hello");',
+      },
+    ];
+
+    const emptyAnalysis: RepoAnalysis = {
+      ...mockAnalysis,
+      files: emptyFiles,
+      categoriesCount: { component: 1, service: 0, api: 0, database: 0, config: 0, test: 0, style: 0, doc: 0, file: 0, folder: 0 },
+      metadata: { ...mockMetadata, license: null },
+      entryPoints: [],
+    };
+
+    const { items, stats } = generateSetupChecklist({
+      analysis: emptyAnalysis,
+      files: emptyFiles,
+      databaseSchema: null,
+      securityFindings: [],
+      dependencies: [],
+    });
+
+    expect(stats.needsSetupCount).toBeGreaterThan(0);
+
+    const gitignoreItem = items.find((i) => i.id === 'setup-gitignore');
+    expect(gitignoreItem?.status).toBe('needs_setup');
+    expect(gitignoreItem?.codeSnippet).toBeDefined();
+    expect(gitignoreItem?.codeSnippet?.code).toContain('node_modules');
+
+    const readmeItem = items.find((i) => i.id === 'setup-readme');
+    expect(readmeItem?.status).toBe('needs_setup');
+
+    const testItem = items.find((i) => i.id === 'setup-testing');
+    expect(testItem?.status).toBe('needs_setup');
+  });
+
+  it('filters checklist correctly by status and search query', () => {
+    const { items } = generateSetupChecklist({
       analysis: mockAnalysis,
       files: mockFiles,
       databaseSchema: mockSchema,
-      securityFindings: mockSecurityFindings,
+      securityFindings: [],
       dependencies: mockDependencies,
     });
 
-    // Filter by category
-    const archOnly = filterSuggestions(suggestions, { category: 'architecture' });
-    expect(archOnly.every((s) => s.category === 'architecture')).toBe(true);
+    const completedOnly = filterChecklist(items, { status: 'completed' });
+    expect(completedOnly.every((i) => i.status === 'completed')).toBe(true);
 
-    // Filter by impact
-    const highOnly = filterSuggestions(suggestions, { impact: 'high' });
-    expect(highOnly.every((s) => s.impact === 'high')).toBe(true);
-
-    // Search query
-    const searchMatch = filterSuggestions(suggestions, { searchQuery: 'monolithic' });
+    const searchMatch = filterChecklist(items, { searchQuery: 'gitignore' });
     expect(searchMatch.length).toBeGreaterThan(0);
-    expect(searchMatch[0].title.toLowerCase()).toContain('monolithic');
+    expect(searchMatch[0].id).toBe('setup-gitignore');
   });
 
-  it('generates clean, emoji-free markdown action plan', () => {
-    const { suggestions, stats } = generateCodebaseSuggestions({
+  it('exports clean markdown checklist without emojis', () => {
+    const { items, stats } = generateSetupChecklist({
       analysis: mockAnalysis,
       files: mockFiles,
       databaseSchema: mockSchema,
-      securityFindings: mockSecurityFindings,
+      securityFindings: [],
       dependencies: mockDependencies,
     });
 
-    const markdown = generateSuggestionsMarkdown('test-owner/test-repo', suggestions, stats);
+    const markdown = generateChecklistMarkdown('test-owner/test-repo', items, stats);
 
-    expect(markdown).toContain('# Codebase Insights & Action Plan: test-owner/test-repo');
-    expect(markdown).toContain('## Executive Summary');
-    expect(markdown).toContain('## Detailed Action Items');
+    expect(markdown).toContain('# Repository Setup & Standards Checklist: test-owner/test-repo');
+    expect(markdown).toContain('## Checklist Overview');
     expect(markdown).not.toMatch(/[\u{1F300}-\u{1F9FF}]/u); // Zero emojis
   });
 });
