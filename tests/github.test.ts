@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { parseGitHubUrl, sanitizeRepoSlug } from '../src/services/github';
+import {
+  parseGitHubUrl,
+  sanitizeRepoSlug,
+  GitHubService,
+  isRestrictedRepository,
+  isRestrictedRepoInput,
+  RESTRICTED_REPO_ERROR,
+} from '../src/services/github';
 
 describe('GitHub Slug Sanitizer', () => {
   it('strips accidental trailing protocol artifacts', () => {
@@ -110,3 +117,49 @@ describe('GitHub URL Parser', () => {
     expect(parseGitHubUrl('not-a-repo')).toBeNull();
   });
 });
+
+describe('Restricted Repository Protection', () => {
+  it('correctly identifies darknecrocities/DomoScope and its variations as restricted', () => {
+    expect(isRestrictedRepository('darknecrocities', 'DomoScope')).toBe(true);
+    expect(isRestrictedRepository('darknecrocities', 'domoscope')).toBe(true);
+    expect(isRestrictedRepository('DARKNECROCITIES', 'DOMOSCOPE')).toBe(true);
+    expect(isRestrictedRepository('Darknecrocities', 'DomoScope.git')).toBe(true);
+    expect(isRestrictedRepository('darknecrocities', 'DomoScope/')).toBe(true);
+  });
+
+  it('allows other repositories under darknecrocities or general open-source', () => {
+    expect(isRestrictedRepository('darknecrocities', 'Agentdeck')).toBe(false);
+    expect(isRestrictedRepository('facebook', 'react')).toBe(false);
+    expect(isRestrictedRepository('vercel', 'next.js')).toBe(false);
+    expect(isRestrictedRepository(null, null)).toBe(false);
+  });
+
+  it('detects restricted repository URLs and input strings', () => {
+    expect(isRestrictedRepoInput('https://github.com/darknecrocities/DomoScope')).toBe(true);
+    expect(isRestrictedRepoInput('https://github.com/darknecrocities/DomoScope.git')).toBe(true);
+    expect(isRestrictedRepoInput('https://github.com/darknecrocities/DomoScope/')).toBe(true);
+    expect(isRestrictedRepoInput('https://github.com/darknecrocities/DomoScope/tree/main')).toBe(true);
+    expect(isRestrictedRepoInput('darknecrocities/DomoScope')).toBe(true);
+    expect(isRestrictedRepoInput('git@github.com:darknecrocities/DomoScope.git')).toBe(true);
+
+    expect(isRestrictedRepoInput('https://github.com/facebook/react')).toBe(false);
+    expect(isRestrictedRepoInput('darknecrocities/Agentdeck')).toBe(false);
+    expect(isRestrictedRepoInput('')).toBe(false);
+  });
+
+  it('GitHubService methods immediately reject darknecrocities/DomoScope without network requests', async () => {
+    await expect(GitHubService.fetchRepoMetadata('darknecrocities', 'DomoScope')).rejects.toThrow(
+      RESTRICTED_REPO_ERROR
+    );
+    await expect(GitHubService.fetchRepoTree('darknecrocities', 'DomoScope', 'main')).rejects.toThrow(
+      RESTRICTED_REPO_ERROR
+    );
+    await expect(
+      GitHubService.fetchFileContent('darknecrocities', 'DomoScope', 'main', 'package.json')
+    ).rejects.toThrow(RESTRICTED_REPO_ERROR);
+    await expect(
+      GitHubService.compareBranches('darknecrocities', 'DomoScope', 'main', 'feature')
+    ).rejects.toThrow(RESTRICTED_REPO_ERROR);
+  });
+});
+

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { sanitizeRepoSlug } from '../services/github';
+import { sanitizeRepoSlug, isRestrictedRepository } from '../services/github';
 
 export interface OpenRepoItem {
   owner: string;
@@ -22,7 +22,7 @@ function loadStoredRepos(): OpenRepoItem[] {
         if (typeof item?.owner === 'string' && typeof item?.repo === 'string') {
           const owner = sanitizeRepoSlug(item.owner);
           const repo = sanitizeRepoSlug(item.repo);
-          if (owner && repo) {
+          if (owner && repo && !isRestrictedRepository(owner, repo)) {
             const key = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
             if (!seen.has(key)) {
               seen.add(key);
@@ -77,6 +77,7 @@ export function useOpenRepositories(rawOwner: string, rawRepo: string, activeTab
   // Keep openRepos in sync if route params change
   useEffect(() => {
     if (!currentOwner || !currentRepo) return;
+    if (isRestrictedRepository(currentOwner, currentRepo)) return;
 
     setOpenRepos((prev) => {
       const exists = prev.some(
@@ -100,6 +101,7 @@ export function useOpenRepositories(rawOwner: string, rawRepo: string, activeTab
       const cleanOwner = sanitizeRepoSlug(newOwner);
       const cleanRepo = sanitizeRepoSlug(newRepo);
       if (!cleanOwner || !cleanRepo) return;
+      if (isRestrictedRepository(cleanOwner, cleanRepo)) return;
 
       setOpenRepos((prev) => {
         const existingIdx = prev.findIndex(

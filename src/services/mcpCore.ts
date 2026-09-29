@@ -1,4 +1,4 @@
-import { sanitizeRepoSlug, categorizeFile } from './github';
+import { sanitizeRepoSlug, categorizeFile, isRestrictedRepository, RESTRICTED_REPO_ERROR } from './github';
 import { buildArchitectureGraph, GraphBuildResult } from './graphBuilder';
 import { detectFrameworks, FrameworkDetectionResult } from './frameworkDetector';
 import { detectCloudServices, CloudDetectionResult } from './cloudServicesDetector';
@@ -397,6 +397,11 @@ export async function analyzeRepositoryForMCP(
     rawRepo.startsWith('.');
   const owner = isLocal ? 'local' : sanitizeRepoSlug(rawOwner);
   const repo = isLocal ? rawRepo : sanitizeRepoSlug(rawRepo);
+
+  if (isRestrictedRepository(owner, repo)) {
+    throw new Error(RESTRICTED_REPO_ERROR);
+  }
+
   const cacheKey = `${owner}/${repo}@${branch || 'default'}`;
 
   const cached = analysisCache.get(cacheKey);

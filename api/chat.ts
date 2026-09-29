@@ -190,6 +190,19 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    // ── 2b. Target Repository Restriction Check (DomoScope self-analysis defense) ─
+    if (
+      /darknecrocities\/domoscope/i.test(trimmedQ) ||
+      /darknecrocities\/domoscope/i.test(context || '')
+    ) {
+      res.status(200).json({
+        text: 'This repository cannot be analyzed. DomoScope self-analysis is restricted.',
+        modelUsed: 'Policy Guardrail',
+        provider: 'guardrail',
+      });
+      return;
+    }
+
     // ── 3. Scope & Guardrail Filtering (Exclude friendly greetings) ───────────
     const isGreetingQuery =
       /^(hi+|hello+|he+y+|heya|howdy|sup|yo+|hiya|aloha|hola|bonjour|greetings)(\s+there|\s+assistant|\s+domoscope|\s+bot)?[\s!.,?]*$/i.test(trimmedQ) ||

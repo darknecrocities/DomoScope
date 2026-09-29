@@ -2,7 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, AlertCircle, Clipboard, Loader2 } from 'lucide-react';
 import { GitHubIcon } from '../common/Icons';
-import { parseGitHubUrl } from '../../services/github';
+import {
+  parseGitHubUrl,
+  isRestrictedRepository,
+  isRestrictedRepoInput,
+  RESTRICTED_REPO_ERROR,
+} from '../../services/github';
 
 export function FinalCTA() {
   const [url, setUrl] = useState('');
@@ -15,8 +20,18 @@ export function FinalCTA() {
       const text = await navigator.clipboard.readText();
       if (text) {
         const trimmed = text.trim();
+        if (isRestrictedRepoInput(trimmed)) {
+          setUrl(trimmed);
+          setErrorMessage(RESTRICTED_REPO_ERROR);
+          return;
+        }
         const parsed = parseGitHubUrl(trimmed);
         if (parsed) {
+          if (isRestrictedRepository(parsed.owner, parsed.repo)) {
+            setUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
+            setErrorMessage(RESTRICTED_REPO_ERROR);
+            return;
+          }
           setUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
         } else {
           setUrl(trimmed);
@@ -31,11 +46,23 @@ export function FinalCTA() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    if (isRestrictedRepoInput(url)) {
+      setErrorMessage(RESTRICTED_REPO_ERROR);
+      return;
+    }
+
     const parsed = parseGitHubUrl(url);
     if (!parsed) {
       setErrorMessage('Please enter a valid GitHub project link (e.g. owner/project).');
       return;
     }
+
+    if (isRestrictedRepository(parsed.owner, parsed.repo)) {
+      setErrorMessage(RESTRICTED_REPO_ERROR);
+      return;
+    }
+
     setIsChecking(true);
     navigate(`/repository/${parsed.owner}/${parsed.repo}`);
   };
@@ -57,16 +84,31 @@ export function FinalCTA() {
               type="text"
               value={url}
               onChange={(e) => {
-                setUrl(e.target.value);
-                if (errorMessage) setErrorMessage(null);
+                const val = e.target.value;
+                setUrl(val);
+                if (isRestrictedRepoInput(val)) {
+                  setErrorMessage(RESTRICTED_REPO_ERROR);
+                } else if (errorMessage) {
+                  setErrorMessage(null);
+                }
               }}
               onPaste={(e) => {
                 e.preventDefault();
                 const pasted = e.clipboardData.getData('text');
                 if (pasted) {
                   const trimmed = pasted.trim();
+                  if (isRestrictedRepoInput(trimmed)) {
+                    setUrl(trimmed);
+                    setErrorMessage(RESTRICTED_REPO_ERROR);
+                    return;
+                  }
                   const parsed = parseGitHubUrl(trimmed);
                   if (parsed) {
+                    if (isRestrictedRepository(parsed.owner, parsed.repo)) {
+                      setUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
+                      setErrorMessage(RESTRICTED_REPO_ERROR);
+                      return;
+                    }
                     setUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
                   } else {
                     setUrl(trimmed);

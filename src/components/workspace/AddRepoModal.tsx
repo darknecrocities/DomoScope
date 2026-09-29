@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, GitFork, ArrowRight, Clipboard, Sparkles, FolderGit2 } from 'lucide-react';
-import { parseGitHubUrl } from '../../services/github';
+import {
+  parseGitHubUrl,
+  isRestrictedRepository,
+  isRestrictedRepoInput,
+  RESTRICTED_REPO_ERROR,
+} from '../../services/github';
 
 interface AddRepoModalProps {
   isOpen: boolean;
@@ -55,9 +60,19 @@ export function AddRepoModal({
       return;
     }
 
+    if (isRestrictedRepoInput(trimmed)) {
+      setError(RESTRICTED_REPO_ERROR);
+      return;
+    }
+
     const parsed = parseGitHubUrl(trimmed);
     if (!parsed) {
       setError('Invalid format. Use "owner/repo" or "https://github.com/owner/repo".');
+      return;
+    }
+
+    if (isRestrictedRepository(parsed.owner, parsed.repo)) {
+      setError(RESTRICTED_REPO_ERROR);
       return;
     }
 
@@ -89,8 +104,18 @@ export function AddRepoModal({
       const text = await navigator.clipboard.readText();
       if (text) {
         const trimmed = text.trim();
+        if (isRestrictedRepoInput(trimmed)) {
+          setInputUrl(trimmed);
+          setError(RESTRICTED_REPO_ERROR);
+          return;
+        }
         const parsed = parseGitHubUrl(trimmed);
         if (parsed) {
+          if (isRestrictedRepository(parsed.owner, parsed.repo)) {
+            setInputUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
+            setError(RESTRICTED_REPO_ERROR);
+            return;
+          }
           setInputUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
         } else {
           setInputUrl(trimmed);
@@ -174,16 +199,31 @@ export function AddRepoModal({
                       type="text"
                       value={inputUrl}
                       onChange={(e) => {
-                        setInputUrl(e.target.value);
-                        if (error) setError(null);
+                        const val = e.target.value;
+                        setInputUrl(val);
+                        if (isRestrictedRepoInput(val)) {
+                          setError(RESTRICTED_REPO_ERROR);
+                        } else if (error) {
+                          setError(null);
+                        }
                       }}
                       onPaste={(e) => {
                         e.preventDefault();
                         const pasted = e.clipboardData.getData('text');
                         if (pasted) {
                           const trimmed = pasted.trim();
+                          if (isRestrictedRepoInput(trimmed)) {
+                            setInputUrl(trimmed);
+                            setError(RESTRICTED_REPO_ERROR);
+                            return;
+                          }
                           const parsed = parseGitHubUrl(trimmed);
                           if (parsed) {
+                            if (isRestrictedRepository(parsed.owner, parsed.repo)) {
+                              setInputUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
+                              setError(RESTRICTED_REPO_ERROR);
+                              return;
+                            }
                             setInputUrl(`https://github.com/${parsed.owner}/${parsed.repo}`);
                           } else {
                             setInputUrl(trimmed);

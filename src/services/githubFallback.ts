@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { RepoMetadata, RepoFile } from '../types';
+import { isRestrictedRepository, RESTRICTED_REPO_ERROR } from './github';
 
 export interface FallbackResult {
   metadata: RepoMetadata;
@@ -186,6 +187,9 @@ export async function fetchViaZipball(
   repo: string,
   targetBranch: string = 'main'
 ): Promise<FallbackResult | null> {
+  if (isRestrictedRepository(owner, repo)) {
+    throw new Error(RESTRICTED_REPO_ERROR);
+  }
   const cacheBuster = Date.now();
   const branchesToTry = Array.from(new Set([targetBranch, 'HEAD', 'main', 'master', 'dev', 'trunk'])).filter(Boolean);
 
@@ -335,6 +339,9 @@ export async function fetchViaRawProbe(
   repo: string,
   targetBranch: string = 'main'
 ): Promise<FallbackResult> {
+  if (isRestrictedRepository(owner, repo)) {
+    throw new Error(RESTRICTED_REPO_ERROR);
+  }
   const branches = Array.from(new Set([targetBranch, 'main', 'master'])).filter(Boolean);
   let activeBranch = 'main';
 

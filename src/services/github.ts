@@ -187,6 +187,36 @@ export function parseGitHubUrl(input: string): RepoIdentifier | null {
   return null;
 }
 
+export const RESTRICTED_REPO_ERROR =
+  'This repository cannot be analyzed. DomoScope self-analysis is restricted.';
+
+/**
+ * Checks if a repository is restricted from being analyzed by DomoScope.
+ * Specifically prevents self-analysis of DomoScope itself (darknecrocities/DomoScope).
+ */
+export function isRestrictedRepository(owner?: string | null, repo?: string | null): boolean {
+  if (!owner || !repo) return false;
+  const cleanOwner = sanitizeRepoSlug(owner).toLowerCase();
+  const cleanRepo = sanitizeRepoSlug(repo).toLowerCase();
+  return cleanOwner === 'darknecrocities' && cleanRepo === 'domoscope';
+}
+
+/**
+ * Checks if a raw user input, URL, or string references the restricted repository.
+ */
+export function isRestrictedRepoInput(input?: string | null): boolean {
+  if (!input) return false;
+  const trimmed = input.trim();
+  const parsed = parseGitHubUrl(trimmed);
+  if (parsed && isRestrictedRepository(parsed.owner, parsed.repo)) {
+    return true;
+  }
+  return (
+    /github\.com[/:](?:www\.)?darknecrocities\/domoscope(?:\.git|\/|$|\?|#)/i.test(trimmed) ||
+    /^darknecrocities\/domoscope(?:\.git|\/|$|\?|#)/i.test(trimmed)
+  );
+}
+
 export async function getAuthHeaders(): Promise<{ headers: HeadersInit; hasToken: boolean }> {
   const token = await StorageService.getSetting<string>('github_token', '');
   const cleanToken = token ? token.trim() : '';
@@ -216,6 +246,9 @@ export const GitHubService = {
   },
 
   async fetchRepoMetadata(owner: string, repo: string): Promise<RepoMetadata> {
+    if (isRestrictedRepository(owner, repo)) {
+      throw new GitHubError(RESTRICTED_REPO_ERROR, 403);
+    }
     const { headers, hasToken } = await getAuthHeaders();
     const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 
@@ -287,6 +320,9 @@ export const GitHubService = {
   },
 
   async fetchRepoTree(owner: string, repo: string, branch: string): Promise<RepoFile[]> {
+    if (isRestrictedRepository(owner, repo)) {
+      throw new GitHubError(RESTRICTED_REPO_ERROR, 403);
+    }
     const { headers, hasToken } = await getAuthHeaders();
     const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
 
@@ -339,6 +375,9 @@ export const GitHubService = {
   },
 
   async fetchFileContent(owner: string, repo: string, branch: string, path: string): Promise<string> {
+    if (isRestrictedRepository(owner, repo)) {
+      throw new GitHubError(RESTRICTED_REPO_ERROR, 403);
+    }
     const cached = await StorageService.getFileContent(owner, repo, branch, path);
     if (cached !== null) {
       return cached;
@@ -383,6 +422,9 @@ export const GitHubService = {
   },
 
   async fetchBranches(owner: string, repo: string): Promise<BranchInfo[]> {
+    if (isRestrictedRepository(owner, repo)) {
+      return [];
+    }
     const { headers, hasToken } = await getAuthHeaders();
     const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches?per_page=30`;
 
@@ -401,6 +443,9 @@ export const GitHubService = {
   },
 
   async compareBranches(owner: string, repo: string, base: string, head: string): Promise<BranchComparison> {
+    if (isRestrictedRepository(owner, repo)) {
+      throw new GitHubError(RESTRICTED_REPO_ERROR, 403);
+    }
     const { headers, hasToken } = await getAuthHeaders();
     const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`;
 

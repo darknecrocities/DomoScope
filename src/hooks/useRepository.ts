@@ -8,7 +8,7 @@ import {
   BranchInfo,
   SecurityFinding,
 } from '../types';
-import { GitHubService, GitHubError, getAuthHeaders } from '../services/github';
+import { GitHubService, GitHubError, getAuthHeaders, isRestrictedRepository, RESTRICTED_REPO_ERROR } from '../services/github';
 import { fetchViaZipball, fetchViaRawProbe } from '../services/githubFallback';
 import { StorageService } from '../services/storage';
 import { analyzeRepository } from '../services/analysis';
@@ -60,6 +60,13 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
   const loadRepository = useCallback(
     async (ownerName: string, repoName: string, branchName?: string, forceRefresh: boolean = false) => {
       if (!ownerName || !repoName) return;
+
+      if (isRestrictedRepository(ownerName, repoName)) {
+        setStatus('error');
+        setErrorMessage(RESTRICTED_REPO_ERROR);
+        setLoadingStep('idle');
+        return;
+      }
 
       const currentRequestId = ++requestIdRef.current;
 
@@ -483,6 +490,11 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
 
   const refresh = useCallback(() => {
     if (owner && repo) {
+      if (isRestrictedRepository(owner, repo)) {
+        setStatus('error');
+        setErrorMessage(RESTRICTED_REPO_ERROR);
+        return;
+      }
       StorageService.clearRepoCache(owner, repo);
       loadRepository(owner, repo, currentBranch, true);
     }
@@ -490,6 +502,12 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
 
   useEffect(() => {
     if (owner && repo) {
+      if (isRestrictedRepository(owner, repo)) {
+        setStatus('error');
+        setErrorMessage(RESTRICTED_REPO_ERROR);
+        setLoadingStep('idle');
+        return;
+      }
       const repoKey = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
       if (activeRepoRef.current !== repoKey) {
         activeRepoRef.current = repoKey;
