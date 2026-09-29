@@ -3,7 +3,7 @@ import { StorageService } from './storage';
 import { WebLLMService, parseThoughtProcess } from './webLLMService';
 import { DEFAULT_AI_MODELS, ModelFetcherService } from './modelFetcherService';
 import { detectFrameworks } from './frameworkDetector';
-import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SAFETY_VIOLATION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL, generateGreetingResponse } from './chatGuardrail';
+import { validateQuestionScope, GUARDRAIL_REJECTION_MESSAGE, SAFETY_VIOLATION_MESSAGE, SYSTEM_PROMPT_GUARDRAIL, generateGreetingResponse, redactSecrets } from './chatGuardrail';
 import { detectAppType } from './appTypeDetector';
 
 export const AI_MODELS: AIModelOption[] = DEFAULT_AI_MODELS;
@@ -163,9 +163,16 @@ CRITICAL SAFETY & REASONING RULES:
     // ── Focused File ─────────────────────────────────────────────────────────
     if (selectedFile) {
       parts.push(`\nCurrently Open File: ${selectedFile}`);
-      const content = fileContents.get(selectedFile);
-      if (content) {
-        parts.push(`File Excerpt (first 2,000 chars):\n${content.slice(0, 2000)}`);
+      const isSensitiveFile = /(\.env(\..+)?|\.pem|\.key|id_rsa|credentials\.json|\.npmrc|\.p12)$/i.test(selectedFile);
+      if (isSensitiveFile) {
+        parts.push(`[File Content Redacted: Sensitive Credential / Configuration File]`);
+      } else {
+        const content = fileContents.get(selectedFile);
+        if (content) {
+          const scrubbed = redactSecrets(content.slice(0, 2000))
+            .replace(/([A-Za-z0-9_-]*(?:KEY|SECRET|TOKEN|PASSWORD|PASSWD|AUTH)[A-Za-z0-9_-]*\s*[:=]\s*["']?)[^"'\s\n]{4,}(["']?)/gi, '$1[REDACTED_SECRET]$2');
+          parts.push(`File Excerpt (first 2,000 chars):\n${scrubbed}`);
+        }
       }
     }
 
@@ -227,18 +234,26 @@ CRITICAL SAFETY & REASONING RULES:
 
     const config = await this.getConfig();
 
-    // Build a rich context payload used by all providers
+    // Build a rich context payload used by all providers (delimiters escaped & secrets scrubbed)
     const buildCtx = () =>
-      this.buildContextPayload(
-        question,
-        analysis,
-        files,
-        fileContents,
-        selectedFile,
-        dependencies,
-        databaseSchema,
-        securityFindings
-      );
+      redactSecrets(
+        this.buildContextPayload(
+          question,
+          analysis,
+          files,
+          fileContents,
+          selectedFile,
+          dependencies,
+          databaseSchema,
+          securityFindings
+        )
+      )
+        .replace(/<\/repo_data>/gi, '&lt;/repo_data&gt;')
+        .replace(/<repo_data>/gi, '&lt;repo_data&gt;');
+
+    const sanitizedQuestion = question
+      .replace(/<\/repo_data>/gi, '')
+      .replace(/<repo_data>/gi, '');
 
     // ── Vercel Serverless Function Check ──────────────────────────────────────
     // If user selected Vercel Serverless AI or doesn't have client keys for a cloud provider,
@@ -256,7 +271,7 @@ CRITICAL SAFETY & REASONING RULES:
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            question,
+            question: sanitizedQuestion,
             context,
             provider: config.provider === 'local' ? 'gemini' : config.provider,
             model: config.selectedModel === 'vercel-serverless' ? 'gemini-2.5-flash' : config.selectedModel,
@@ -268,9 +283,10 @@ CRITICAL SAFETY & REASONING RULES:
           const data = await serverlessRes.json();
           if (!data.fallbackToLocal && data.text) {
             const { text, thoughtProcess } = parseThoughtProcess(data.text);
+            const scrubbedText = redactSecrets(text);
             return {
-              text,
-              referencedFiles: this.extractReferencedFiles(text, files),
+              text: scrubbedText,
+              referencedFiles: this.extractReferencedFiles(scrubbedText, files),
               modelUsed: `${data.modelUsed || 'Vercel Cloud AI'} (Serverless)`,
               thoughtProcess,
             };
@@ -290,7 +306,7 @@ CRITICAL SAFETY & REASONING RULES:
           model,
           messages: [
             { role: 'system', content: this.buildSystemPrompt() },
-            { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${question}` },
+            { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${sanitizedQuestion}` },
           ],
           temperature: 0.2,
           max_tokens: 1000,
@@ -318,17 +334,18 @@ CRITICAL SAFETY & REASONING RULES:
         const data = await res.json();
         const rawText = data.choices[0]?.message?.content || 'No response generated.';
         const { text, thoughtProcess } = parseThoughtProcess(rawText);
+        const scrubbedText = redactSecrets(text);
         return {
-          text,
-          referencedFiles: this.extractReferencedFiles(text, files),
+          text: scrubbedText,
+          referencedFiles: this.extractReferencedFiles(scrubbedText, files),
           modelUsed: model,
           thoughtProcess,
         };
       } catch (err: any) {
-        console.warn('OpenAI query failed, falling back to local assistant:', err);
-        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile, config.selectedModel);
+        console.warn('OpenAI query failed, falling back to local assistant:', redactSecrets(err.message));
+        const fallback = await WebLLMService.askQuestion(sanitizedQuestion, analysis, files, fileContents, selectedFile, config.selectedModel);
         return {
-          text: `[OpenAI Note: ${err.message} — Switched to Local Engine]\n\n${fallback.text}`,
+          text: `[OpenAI Note: ${redactSecrets(err.message)} — Switched to Local Engine]\n\n${redactSecrets(fallback.text)}`,
           referencedFiles: fallback.referencedFiles,
           modelUsed: 'Local Fallback',
           thoughtProcess: fallback.thoughtProcess,
@@ -353,7 +370,7 @@ CRITICAL SAFETY & REASONING RULES:
             model,
             system: this.buildSystemPrompt(),
             messages: [
-              { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${question}` },
+              { role: 'user', content: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${sanitizedQuestion}` },
             ],
             max_tokens: 1000,
           }),
@@ -367,17 +384,18 @@ CRITICAL SAFETY & REASONING RULES:
         const data = await res.json();
         const rawText = data.content?.[0]?.text || 'No response generated.';
         const { text, thoughtProcess } = parseThoughtProcess(rawText);
+        const scrubbedText = redactSecrets(text);
         return {
-          text,
-          referencedFiles: this.extractReferencedFiles(text, files),
+          text: scrubbedText,
+          referencedFiles: this.extractReferencedFiles(scrubbedText, files),
           modelUsed: model,
           thoughtProcess,
         };
       } catch (err: any) {
-        console.warn('Claude query failed, falling back to local assistant:', err);
-        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile, config.selectedModel);
+        console.warn('Claude query failed, falling back to local assistant:', redactSecrets(err.message));
+        const fallback = await WebLLMService.askQuestion(sanitizedQuestion, analysis, files, fileContents, selectedFile, config.selectedModel);
         return {
-          text: `[Claude Note: ${err.message} — Switched to Local Engine]\n\n${fallback.text}`,
+          text: `[Claude Note: ${redactSecrets(err.message)} — Switched to Local Engine]\n\n${redactSecrets(fallback.text)}`,
           referencedFiles: fallback.referencedFiles,
           modelUsed: 'Local Fallback',
           thoughtProcess: fallback.thoughtProcess,
@@ -389,7 +407,7 @@ CRITICAL SAFETY & REASONING RULES:
     if (config.provider === 'gemini' && config.geminiKey) {
       try {
         const context = buildCtx();
-        const model = config.selectedModel || 'gemini-3.5-flash';
+        const model = config.selectedModel || 'gemini-2.5-flash';
         const effort = config.reasoningEffort || 'medium';
         const budgetMap: Record<string, number> = { low: 1024, medium: 4096, high: 8192 };
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
@@ -416,7 +434,7 @@ CRITICAL SAFETY & REASONING RULES:
             contents: [
               {
                 parts: [
-                  { text: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${question}` },
+                  { text: `<repo_data>\n${context}\n</repo_data>\n\nQuestion: ${sanitizedQuestion}` },
                 ],
               },
             ],
@@ -452,17 +470,18 @@ CRITICAL SAFETY & REASONING RULES:
         const data = await res.json();
         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
         const { text, thoughtProcess } = parseThoughtProcess(rawText);
+        const scrubbedText = redactSecrets(text);
         return {
-          text,
-          referencedFiles: this.extractReferencedFiles(text, files),
+          text: scrubbedText,
+          referencedFiles: this.extractReferencedFiles(scrubbedText, files),
           modelUsed: model,
           thoughtProcess,
         };
       } catch (err: any) {
-        console.warn('Gemini query failed, falling back to local assistant:', err);
-        const fallback = await WebLLMService.askQuestion(question, analysis, files, fileContents, selectedFile, config.selectedModel);
+        console.warn('Gemini query failed, falling back to local assistant:', redactSecrets(err.message));
+        const fallback = await WebLLMService.askQuestion(sanitizedQuestion, analysis, files, fileContents, selectedFile, config.selectedModel);
         return {
-          text: `[Gemini Note: ${err.message} — Switched to Local Engine]\n\n${fallback.text}`,
+          text: `[Gemini Note: ${redactSecrets(err.message)} — Switched to Local Engine]\n\n${redactSecrets(fallback.text)}`,
           referencedFiles: fallback.referencedFiles,
           modelUsed: 'Local Fallback',
           thoughtProcess: fallback.thoughtProcess,
@@ -472,15 +491,16 @@ CRITICAL SAFETY & REASONING RULES:
 
     // ── 4. Direct Zero-Install Intelligent Engine (Client-Side) ────────────────
     const localResult = await WebLLMService.askQuestion(
-      question,
+      sanitizedQuestion,
       analysis,
       files,
       fileContents,
       selectedFile,
       config.selectedModel
     );
+    const scrubbedLocalText = redactSecrets(localResult.text);
     return {
-      text: localResult.text,
+      text: scrubbedLocalText,
       referencedFiles: localResult.referencedFiles,
       modelUsed: config.selectedModel || 'Direct Intelligent Engine (Zero-Install)',
       thoughtProcess: localResult.thoughtProcess,
