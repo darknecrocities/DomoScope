@@ -15,6 +15,7 @@ import { analyzeRepository } from '../services/analysis';
 import { parseDatabaseFiles } from '../services/databaseParser';
 import { parseDependencies } from '../services/dependencyParser';
 import { runSecurityChecks } from '../services/securityScanner';
+import { openLocalDirectoryInBrowser } from '../services/browserLocalScanner';
 
 export type LoadingStep =
   | 'idle'
@@ -513,6 +514,110 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
     }
   }, [owner, repo, initialBranch, loadRepository]);
 
+  const loadLocalDirectory = useCallback(async () => {
+    setStatus('loading');
+    setLoadingStep('Reading files');
+    setErrorMessage(null);
+
+    try {
+      const result = await openLocalDirectoryInBrowser();
+      setMetadata(result.metadata);
+      setFiles(result.files);
+      setFileContents(result.fileContents);
+      setAnalysis(result.analysis);
+      setDatabaseSchema(result.databaseSchema);
+      setDependencies(result.dependencies);
+      setSecurityFindings(result.securityFindings);
+      setBranches([{ name: 'main', sha: 'HEAD', isDefault: true }]);
+      setCurrentBranch('main');
+
+      // Persist to IndexedDB
+      await StorageService.saveAnalysis('local', result.projectName, result.analysis);
+      await StorageService.saveFileTree('local', result.projectName, 'main', result.files);
+      if (result.databaseSchema) {
+        await StorageService.saveDatabaseSchema('local', result.projectName, 'main', result.databaseSchema);
+      }
+      if (result.securityFindings) {
+        await StorageService.saveSecurityFindings('local', result.projectName, 'main', result.securityFindings);
+      }
+
+      if (result.analysis.entryPoints.length > 0) {
+        setSelectedFile(result.analysis.entryPoints[0]);
+      } else if (result.files.length > 0) {
+        const firstBlob = result.files.find((f) => f.type === 'blob');
+        if (firstBlob) setSelectedFile(firstBlob.path);
+      }
+
+      setStatus('success');
+      setLoadingStep('done');
+      return result;
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setStatus(analysis ? 'success' : 'idle');
+        return null;
+      }
+      setStatus('error');
+      setErrorMessage(err.message || 'Failed to open local directory');
+      return null;
+    }
+  }, [analysis]);
+
+  const connectLocalServer = useCallback(async (serverUrl = 'http://localhost:4004') => {
+    setStatus('loading');
+    setLoadingStep('Checking repository');
+    setErrorMessage(null);
+
+    try {
+      const res = await fetch(`${serverUrl}/api/local/analysis`);
+      if (!res.ok) throw new Error(`Local studio responded with status ${res.status}`);
+      const snap = await res.json();
+
+      setMetadata(snap.metadata);
+      setFiles(snap.files);
+      setAnalysis(snap.analysis);
+      setDatabaseSchema(snap.database);
+      setDependencies(snap.dependencies);
+      setSecurityFindings(snap.securityFindings);
+      setBranches([{ name: snap.metadata.defaultBranch || 'main', sha: 'HEAD', isDefault: true }]);
+      setCurrentBranch(snap.metadata.defaultBranch || 'main');
+
+      const contents = new Map<string, string>();
+      for (const f of snap.files) {
+        if (f.content) contents.set(f.path, f.content);
+      }
+      setFileContents(contents);
+
+      if (snap.analysis.entryPoints.length > 0) {
+        setSelectedFile(snap.analysis.entryPoints[0]);
+      }
+
+      try {
+        const evtSource = new EventSource(`${serverUrl}/api/local/events`);
+        evtSource.addEventListener('snapshot', async () => {
+          const freshRes = await fetch(`${serverUrl}/api/local/analysis`);
+          if (freshRes.ok) {
+            const freshSnap = await freshRes.json();
+            setAnalysis(freshSnap.analysis);
+            setFiles(freshSnap.files);
+            setDatabaseSchema(freshSnap.database);
+            setDependencies(freshSnap.dependencies);
+            setSecurityFindings(freshSnap.securityFindings);
+          }
+        });
+      } catch {
+        // Ignore SSE errors
+      }
+
+      setStatus('success');
+      setLoadingStep('done');
+      return snap;
+    } catch (err: any) {
+      setStatus('error');
+      setErrorMessage(`Cannot connect to DomoScope local studio at ${serverUrl}. Is "npx domoscope serve" running?`);
+      return null;
+    }
+  }, []);
+
   return {
     status,
     loadingStep,
@@ -535,5 +640,7 @@ export function useRepository(owner?: string, repo?: string, initialBranch?: str
     loadFileContent,
     refresh,
     loadRepository,
+    loadLocalDirectory,
+    connectLocalServer,
   };
 }

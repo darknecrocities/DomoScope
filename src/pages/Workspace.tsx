@@ -122,6 +122,8 @@ export function WorkspacePage() {
     loadFileContent,
     refresh,
     loadRepository,
+    loadLocalDirectory,
+    connectLocalServer,
   } = useRepository(owner, repo, urlBranch);
 
   // Smooth branch switching with URL persistence
@@ -752,6 +754,8 @@ export function WorkspacePage() {
         isOpen={isAddRepoOpen}
         onClose={() => setIsAddRepoOpen(false)}
         onAddRepo={addRepository}
+        onOpenLocalFolder={loadLocalDirectory}
+        onConnectLocalServer={connectLocalServer}
         existingRepos={openRepos}
       />
     </div>

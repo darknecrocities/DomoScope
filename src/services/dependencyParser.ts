@@ -2,7 +2,7 @@ import { RepoDependency } from '../types';
 
 export function parseDependencies(
   manifests: { path: string; content: string }[],
-  sourceFiles: { path: string; content?: string }[]
+  sourceFiles: { path: string; content?: string }[] = []
 ): RepoDependency[] {
   const dependencies: RepoDependency[] = [];
 

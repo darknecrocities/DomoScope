@@ -2,7 +2,7 @@
 
 # 🔭 DomoScope
 
-**Free, open-source, and autonomous GitHub repository inspection, visualization, and reverse-engineering platform.**
+**Free, open-source, local-first developer experience (DX) and repository intelligence platform with npm CLI, real-time AST analysis, interactive architecture visualization, and Model Context Protocol (MCP) support for AI coding agents.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-black.svg)](https://www.typescriptlang.org/)
@@ -10,7 +10,7 @@
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Protocol%202024--11--05-black.svg)](https://modelcontextprotocol.io/)
 [![Tests](https://img.shields.io/badge/Vitest-100%25%20Passing-black.svg)](tests/)
 
-[Live App](https://domoscope.vercel.app) • [MCP Server Setup](#-model-context-protocol-mcp-server) • [Reverse Engineering](#-autonomous-reverse-engineering-engine) • [Database ERD](#-polyglot-database-erd-engine) • [API Catalog](#-api-route-catalog) • [Documentation](#-getting-started)
+[Live App](https://domoscope.vercel.app) • [CLI Quickstart](#-cli-quickstart) • [MCP Server Setup](#-model-context-protocol-mcp-server) • [Reverse Engineering](#-autonomous-reverse-engineering-engine) • [Database ERD](#-polyglot-database-erd-engine) • [Documentation](#-getting-started)
 
 </div>
 
@@ -18,7 +18,52 @@
 
 ## 📖 Overview
 
-**DomoScope** transforms any public or private GitHub repository into an interactive, multi-dimensional architectural blueprint. Built with a strict monochrome editorial aesthetic and powered by in-browser static analysis, DomoScope lets developers, architects, and autonomous AI agents inspect codebases, reverse engineer complete systems, map database relationships, audit security vulnerabilities, and extract production-ready technical specifications in seconds.
+**DomoScope** transforms any local project or GitHub repository into an interactive, multi-dimensional architectural blueprint. Built with a strict monochrome editorial aesthetic and powered by framework-independent static analysis, DomoScope lets developers, architects, and autonomous AI agents inspect codebases, reverse engineer complete systems, map database relationships, audit security vulnerabilities, and extract production-ready technical specifications in seconds.
+
+---
+
+## 🚀 CLI Quickstart
+
+DomoScope provides a zero-dependency npm CLI package for instant terminal analysis, live file watching, documentation generation, and agentic workflows:
+
+```bash
+# 1. Inspect repository health & diagnostic checks
+npx domoscope doctor
+
+# 2. Run baseline project initialization
+npx domoscope init
+
+# 3. Analyze codebase architecture with structured output
+npx domoscope analyze
+
+# 4. Export architectural dependency graph (Mermaid or JSON)
+npx domoscope graph --format mermaid --output architecture.mmd
+
+# 5. Generate complete 6-file markdown documentation suite
+npx domoscope docs --output ./docs/architecture
+
+# 6. Launch local interactive studio dashboard on localhost:4004
+npx domoscope serve --port 4004
+
+# 7. Start live file watcher with incremental re-analysis
+npx domoscope watch
+
+# 8. Run local Model Context Protocol (MCP) server for AI agents
+npx domoscope mcp
+```
+
+### CLI Command Reference:
+
+| Command | Description | Key Options |
+|---|---|---|
+| `domoscope init` | Inspects current project and creates `.domoscope.json` configuration | `-d, --dir`, `--force` |
+| `domoscope analyze` | Executes unified static analysis and outputs structured summary | `--json`, `--output <file>`, `--no-cache` |
+| `domoscope graph` | Exports module dependency and architectural graph | `--format <mermaid\|json>`, `--output <file>` |
+| `domoscope docs` | Generates 6 markdown guides in `.domoscope/docs/` | `--output <dir>` |
+| `domoscope serve` | Launches local dashboard and REST/SSE server | `--port <number>`, `--open`, `--no-open` |
+| `domoscope watch` | Runs debounced live terminal watcher with instant cache diffing | `-d, --dir`, `--verbose` |
+| `domoscope mcp` | Starts stdio JSON-RPC 2.0 MCP server for AI coding agents | `--verbose` |
+| `domoscope doctor` | Executes environment and repository diagnostic health checks | `-d, --dir` |
 
 ---
 
@@ -26,11 +71,12 @@
 
 ```
                       ┌──────────────────────────────────────────────┐
-                      │              GitHub Repository               │
+                      │    Local Project / GitHub Remote Repository  │
                       └──────────────────────┬───────────────────────┘
                                              │
                       ┌──────────────────────▼───────────────────────┐
-                      │       DomoScope Ingestion Engine             │
+                      │   Safe Discovery & Incremental Cache Engine  │
+                      │  (.gitignore, sha256 diff, symlink containment)│
                       └──────┬───────────────┬───────────────┬───────┘
                              │               │               │
             ┌────────────────▼─┐   ┌─────────▼────────┐   ┌──▼────────────────┐
@@ -39,8 +85,8 @@
             └────────────────┬─┘   └─────────┬────────┘   └──┬────────────────┘
                              │               │               │
             ┌────────────────▼───────────────▼───────────────▼────────────────┐
-            │   DomoScope Model Context Protocol (MCP) Server & Studio        │
-            │   (Claude Desktop, Cursor, Gemini CLI, Subagents, Autonomous Bots)│
+            │   DomoScope Model Context Protocol (MCP) Server & Local Studio  │
+            │   (Claude Desktop, Cursor, Gemini CLI, Antigravity, Subagents)  │
             └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -56,23 +102,29 @@
 ### 🔌 Model Context Protocol (MCP) Server
 DomoScope exposes a native **Model Context Protocol (MCP)** server with dual-transport capability (**local stdio** and **remote cloud HTTP/SSE**), allowing any AI client or autonomous agent to connect directly and inspect codebases:
 
-* **Stdio CLI Transport**: Run locally via `npx domoscope-mcp` or `node bin/domoscope-mcp.js`.
+* **Stdio CLI Transport**: Run locally via `npx domoscope mcp` or `node bin/domoscope-mcp.js`.
 * **Cloud SSE / HTTP Transport**: Deploy serverless on Vercel (`/api/mcp`) for remote agents and webhooks.
 * **Agent Integration**: Seamlessly connect **Claude Desktop**, **Cursor IDE**, **Gemini CLI**, **Windsurf**, **Antigravity**, **LangChain**, and **LlamaIndex**.
 
 #### Registered MCP Tools:
 | Tool Name | Description | Key Arguments |
 |---|---|---|
-| `get_repository_architecture` | Retrieves high-level architecture, layers, tech stack, and graph summary | `owner`, `repo`, `branch` |
-| `get_database_erd` | Extracts database tables, columns, PK/FK relationships, and formats (JSON, SQL, DBML) | `owner`, `repo`, `format` |
-| `get_reverse_engineer_blueprint` | Generates deep architectural reconstruction and rebuilding instructions | `owner`, `repo`, `category` |
-| `get_api_catalog` | Extracts all backend, REST, GraphQL, tRPC, and serverless API endpoints | `owner`, `repo`, `framework` |
-| `get_dependencies` | Scans manifests (`package.json`, `go.mod`, `Cargo.toml`, etc.) and usage | `owner`, `repo` |
-| `get_cloud_services` | Detects integrated cloud infrastructure, auth, database, and payments | `owner`, `repo` |
-| `get_security_audit` | In-browser static analysis of vulnerabilities, leaked secrets, and raw SQL | `owner`, `repo` |
+| `get_repository_architecture` | High-level architecture, layers, tech stack, and graph summary | `owner`, `repo`, `branch` |
+| `get_project_overview` | High-level project summary, primary/secondary frameworks, cloud foundations | `owner`, `repo` |
+| `get_dependency_graph` | Architectural dependency and module graph with category filters | `owner`, `repo`, `category`, `limit` |
+| `get_module_details` | Deep static AST inspection for a specific file or module | `owner`, `repo`, `path` |
+| `get_analysis_status` | Freshness, memory cache state, and diagnostic health check | `owner`, `repo` |
+| `get_changed_files` | Files modified, added, or deleted since last indexed snapshot | `owner`, `repo` |
+| `list_repository_files` | Full indexed file tree with categorization and size metadata | `owner`, `repo`, `limit` |
+| `get_database_erd` | Database tables, columns, PK/FK relationships (JSON, SQL DDL, Mermaid) | `owner`, `repo`, `format` |
+| `get_reverse_engineer_blueprint` | Deep architectural reconstruction and rebuilding instructions | `owner`, `repo`, `category` |
+| `get_api_catalog` | All backend, REST, GraphQL, tRPC, and serverless API endpoints | `owner`, `repo` |
+| `get_dependencies` | Scans manifests (`package.json`, `go.mod`, `Cargo.toml`, etc.) | `owner`, `repo` |
+| `get_security_audit` | Static analysis of vulnerabilities, leaked secrets, and raw SQL | `owner`, `repo` |
+| `read_repository_file` | Safely retrieves source code of specific repository files | `owner`, `repo`, `path` |
+| `get_file_tree` | Full directory structure and file categories | `owner`, `repo`, `limit` |
+| `generate_markdown_spec` | Comprehensive 1,000+ line production technical specification | `owner`, `repo` |
 | `query_domoscope` | AI-assisted natural language query answering architectural questions | `query`, `owner`, `repo` |
-| `get_file_content` | Safely retrieves source code of specific repository files | `owner`, `repo`, `filePath` |
-| `list_repository_files` | Lists filtered file tree with extension and path globbing | `owner`, `repo`, `extension` |
 
 ---
 
@@ -100,78 +152,32 @@ DomoScope parses relational and document schemas across modern database ecosyste
 
 ---
 
-### 📡 API Route Catalog & Endpoints
-* Automatically discovers backend routes, HTTP methods, route params, request bodies, and controller handlers across:
-  * **Next.js**: App Router (`app/**/route.ts`) and Pages Router (`pages/api/**`)
-  * **Node.js**: Express, Fastify, NestJS, Koa, Hono
-  * **Python**: FastAPI, Flask, Django REST Framework
-  * **Go**: Gin, Fiber, Echo, standard `net/http`
-  * **Rust**: Axum, Actix-web, Rocket
-  * **PHP / Ruby**: Laravel, Ruby on Rails
-
----
-
-### 🔒 Security Scanner & Static Audit
-* Scans files entirely client-side in the browser:
-  * Hardcoded API keys, JWT secrets, Stripe secret keys, and private certificates.
-  * Insecure dynamic execution (`eval()`, `new Function()`, `exec()`, `execSync()`).
-  * Raw SQL string concatenation and unsanitized queries.
-  * Exposed staging endpoints, sensitive `.env` files, and misconfigured permissions.
-
----
-
-### 🤖 Local AI Assistant (WebLLM)
-* **Zero Cloud Latency & Total Privacy**: Run repository AI queries directly on-device using WebGPU acceleration via `@mlc-ai/web-llm`.
-* **Deterministic Grounded Fallback**: Operates in offline environments with grounded rule-based architectural analysis when WebGPU is unavailable.
-
----
-
-## 🛠️ Tech Stack
-
-* **Frontend & Framework**: React 18, TypeScript, Vite, Tailwind CSS, Framer Motion
-* **Graph & Diagram Visualization**: `@xyflow/react`, `dagre`, `mermaid`
-* **Code Editor & Viewer**: `@monaco-editor/react`
-* **Local On-Device AI**: `@mlc-ai/web-llm` (WebGPU)
-* **Persistence & Caching**: IndexedDB (`idb`)
-* **Icons**: Lucide React
-* **Testing & Quality Assurance**: Vitest (100% unit & integration test coverage)
-* **MCP Server Protocol**: `@modelcontextprotocol/sdk` (Protocol Version 2024-11-05)
-
----
-
-## 🚀 Getting Started
+## 🛠️ Local Development
 
 ### Prerequisites
-* **Node.js 18+** (recommended Node v20 or v22)
-* **npm**, **pnpm**, or **yarn**
+* Node.js 18.0.0 or higher
+* npm 9.0.0 or higher
 
-### Local Setup
+### Installation
 
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone https://github.com/darknecrocities/DomoScope.git
 cd DomoScope
 
-# 2. Install dependencies
+# Install dependencies
 npm install
 
-# 3. Start development server
+# Start local development server
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
 ---
 
-## 🤖 Model Context Protocol (MCP) Server Setup
+## 🤖 Configuring AI Coding Agents
 
-DomoScope's MCP server allows AI agents to directly analyze and reverse engineer any repository.
-
-### 1. Connecting Claude Desktop
-Add DomoScope to your `claude_desktop_config.json`:
-
-**MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+### 1. Claude Desktop Configuration
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
@@ -184,19 +190,7 @@ Add DomoScope to your `claude_desktop_config.json`:
 }
 ```
 
-*Or via npx:*
-```json
-{
-  "mcpServers": {
-    "domoscope": {
-      "command": "npx",
-      "args": ["domoscope-mcp"]
-    }
-  }
-}
-```
-
-### 2. Connecting Cursor IDE
+### 2. Cursor IDE Configuration
 Add to `.cursor/mcp.json` in your workspace:
 
 ```json
@@ -229,6 +223,8 @@ For remote AI agents or webhooks:
 ## 🧪 Testing
 
 DomoScope is tested with a comprehensive Vitest test suite covering:
+* Local filesystem scanning, `.gitignore` matching, and path traversal protection
+* Local cache manager atomic persistence, diffing, and corruption recovery
 * Real AST import resolution and dependency parsing
 * Polyglot database schema synthesis (Prisma, SQL, Supabase, Firebase, MongoDB, TypeORM, Mermaid)
 * DAG graph generation, cycle breaking, and Dagre layout calculations
@@ -236,7 +232,7 @@ DomoScope is tested with a comprehensive Vitest test suite covering:
 * MCP Server protocol handshake, JSON-RPC 2.0 handling, tool registration, and tool calls
 
 ```bash
-# Run all unit and integration tests
+# Run all unit and integration tests (23 suites, 142+ tests)
 npx vitest run
 
 # Run with watch mode during development
@@ -245,26 +241,13 @@ npx vitest
 
 ---
 
-## ⚙️ Environment Variables (Optional)
-
-DomoScope runs completely free without requiring third-party API keys. 
-
-GitHub provides an unauthenticated rate limit of 60 requests/hour per IP. To increase this to 5,000 requests/hour, configure a GitHub Personal Access Token:
-
-```env
-# .env
-VITE_GITHUB_TOKEN=ghp_your_personal_access_token_here
-```
-
-Tokens can also be added directly inside the application via the in-app **Settings** modal with encrypted local storage.
-
----
-
 ## 🛡️ Security & Privacy
 
-1. **Client-Side Processing**: Repository analysis, token parsing, and AST generation occur directly in your browser or local MCP process.
-2. **Zero Code Execution**: DomoScope never executes repository binaries, shell scripts, or npm lifecycle hooks.
-3. **Encrypted Credentials**: In-app GitHub tokens are stored locally in IndexedDB using AES-GCM encryption.
+1. **Local-First Processing**: Repository analysis, token parsing, and AST generation occur directly in your browser or local MCP process.
+2. **Path Traversal Containment**: Scanners enforce strict boundary checks preventing symlinks from escaping project roots.
+3. **Sensitive File Protection**: API keys, credentials, and `.env` secrets are automatically redacted in audit outputs.
+4. **Zero Arbitrary Execution**: DomoScope never executes repository binaries, shell scripts, or untrusted package hooks.
+5. **Encrypted Credentials**: In-app GitHub tokens are stored locally in IndexedDB using AES-GCM encryption.
 
 ---
 

@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "bin": {
+    "domoscope": "./bin/domoscope.js",
     "domoscope-mcp": "./bin/domoscope-mcp.js"
   },
   "scripts": {
@@ -11,6 +12,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "cli": "node bin/domoscope.js",
     "mcp": "node bin/domoscope-mcp.js",
     "test": "vitest run"
   },

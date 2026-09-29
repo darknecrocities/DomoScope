@@ -163,7 +163,7 @@ describe('DomoScope MCP Server Protocol Tests', () => {
   });
 
   describe('Tools Registry', () => {
-    it('returns all 10 DomoScope tools on tools/list', async () => {
+    it('returns all 16 DomoScope tools on tools/list', async () => {
       const req: JSONRPCRequest = {
         jsonrpc: '2.0',
         id: 3,
@@ -172,7 +172,7 @@ describe('DomoScope MCP Server Protocol Tests', () => {
 
       const res = await handleMcpRequest(req);
       expect(res.result.tools).toBeDefined();
-      expect(res.result.tools.length).toBe(10);
+      expect(res.result.tools.length).toBe(16);
 
       const toolNames = res.result.tools.map((t: any) => t.name);
       expect(toolNames).toContain('get_repository_architecture');
@@ -185,6 +185,12 @@ describe('DomoScope MCP Server Protocol Tests', () => {
       expect(toolNames).toContain('read_repository_file');
       expect(toolNames).toContain('generate_markdown_spec');
       expect(toolNames).toContain('query_domoscope');
+      expect(toolNames).toContain('get_project_overview');
+      expect(toolNames).toContain('get_dependency_graph');
+      expect(toolNames).toContain('get_module_details');
+      expect(toolNames).toContain('get_analysis_status');
+      expect(toolNames).toContain('get_changed_files');
+      expect(toolNames).toContain('list_repository_files');
     });
 
     it('each tool defines strict inputSchema with required owner and repo', () => {
@@ -443,6 +449,99 @@ describe('DomoScope MCP Server Protocol Tests', () => {
       });
       expect(res.result.content[0].text).toContain('DomoScope Codebase Summary');
       expect(res.result.content[0].text).toContain('Primary Framework');
+    });
+
+    it('executes get_project_overview tool', async () => {
+      const res = await handleMcpRequest({
+        jsonrpc: '2.0',
+        id: 21,
+        method: 'tools/call',
+        params: {
+          name: 'get_project_overview',
+          arguments: { owner: 'Thes-IS-IT', repo: 'Easylens' },
+        },
+      });
+      const parsed = JSON.parse(res.result.content[0].text);
+      expect(parsed.repository).toBe('Thes-IS-IT/Easylens');
+      expect(parsed.primaryFramework).toBeDefined();
+      expect(parsed.totalIndexedFiles).toBeGreaterThan(0);
+    });
+
+    it('executes get_dependency_graph tool', async () => {
+      const res = await handleMcpRequest({
+        jsonrpc: '2.0',
+        id: 22,
+        method: 'tools/call',
+        params: {
+          name: 'get_dependency_graph',
+          arguments: { owner: 'Thes-IS-IT', repo: 'Easylens', limit: 10 },
+        },
+      });
+      const parsed = JSON.parse(res.result.content[0].text);
+      expect(parsed.repository).toBe('Thes-IS-IT/Easylens');
+      expect(Array.isArray(parsed.nodes)).toBe(true);
+      expect(Array.isArray(parsed.edges)).toBe(true);
+    });
+
+    it('executes get_module_details tool', async () => {
+      const res = await handleMcpRequest({
+        jsonrpc: '2.0',
+        id: 23,
+        method: 'tools/call',
+        params: {
+          name: 'get_module_details',
+          arguments: { owner: 'Thes-IS-IT', repo: 'Easylens', path: 'lib/main.dart' },
+        },
+      });
+      const parsed = JSON.parse(res.result.content[0].text);
+      expect(parsed.filePath).toBe('lib/main.dart');
+      expect(parsed.category).toBeDefined();
+    });
+
+    it('executes get_analysis_status tool', async () => {
+      const res = await handleMcpRequest({
+        jsonrpc: '2.0',
+        id: 24,
+        method: 'tools/call',
+        params: {
+          name: 'get_analysis_status',
+          arguments: { owner: 'Thes-IS-IT', repo: 'Easylens' },
+        },
+      });
+      const parsed = JSON.parse(res.result.content[0].text);
+      expect(parsed.repository).toBe('Thes-IS-IT/Easylens');
+      expect(parsed.isFresh).toBe(true);
+      expect(parsed.totalFiles).toBeGreaterThan(0);
+    });
+
+    it('executes get_changed_files tool', async () => {
+      const res = await handleMcpRequest({
+        jsonrpc: '2.0',
+        id: 25,
+        method: 'tools/call',
+        params: {
+          name: 'get_changed_files',
+          arguments: { owner: 'Thes-IS-IT', repo: 'Easylens' },
+        },
+      });
+      const parsed = JSON.parse(res.result.content[0].text);
+      expect(parsed.repository).toBe('Thes-IS-IT/Easylens');
+      expect(Array.isArray(parsed.files)).toBe(true);
+    });
+
+    it('executes list_repository_files tool', async () => {
+      const res = await handleMcpRequest({
+        jsonrpc: '2.0',
+        id: 26,
+        method: 'tools/call',
+        params: {
+          name: 'list_repository_files',
+          arguments: { owner: 'Thes-IS-IT', repo: 'Easylens', limit: 5 },
+        },
+      });
+      const parsed = JSON.parse(res.result.content[0].text);
+      expect(parsed.repository).toBe('Thes-IS-IT/Easylens');
+      expect(parsed.returnedFiles).toBeLessThanOrEqual(5);
     });
   });
 

@@ -448,9 +448,10 @@ export const GitHubService = {
   },
 };
 
-export function categorizeFile(path: string, ext: string, type: 'blob' | 'tree'): RepoFile['category'] {
+export function categorizeFile(path: string, ext?: string, type?: 'blob' | 'tree'): RepoFile['category'] {
   if (type === 'tree') return 'folder';
 
+  const resolvedExt = ext || (path.includes('.') ? path.split('.').pop()?.toLowerCase() || '' : '');
   const lower = path.toLowerCase();
 
   if (lower.includes('.test.') || lower.includes('.spec.') || lower.includes('__tests__') || lower.startsWith('tests/')) {
@@ -506,11 +507,11 @@ export function categorizeFile(path: string, ext: string, type: 'blob' | 'tree')
   }
 
   if (
-    ext === 'tsx' ||
-    ext === 'jsx' ||
-    ext === 'vue' ||
-    ext === 'svelte' ||
-    ext === 'astro' ||
+    resolvedExt === 'tsx' ||
+    resolvedExt === 'jsx' ||
+    resolvedExt === 'vue' ||
+    resolvedExt === 'svelte' ||
+    resolvedExt === 'astro' ||
     lower.includes('/components/') ||
     lower.includes('/widgets/') ||
     lower.includes('/screens/') ||
@@ -569,11 +570,11 @@ export function categorizeFile(path: string, ext: string, type: 'blob' | 'tree')
     return 'config';
   }
 
-  if (ext === 'md' || ext === 'mdx' || ext === 'txt' || lower.includes('license')) {
+  if (resolvedExt === 'md' || resolvedExt === 'mdx' || resolvedExt === 'txt' || lower.includes('license')) {
     return 'doc';
   }
 
-  if (ext === 'css' || ext === 'scss' || ext === 'sass' || ext === 'less') {
+  if (resolvedExt === 'css' || resolvedExt === 'scss' || resolvedExt === 'sass' || resolvedExt === 'less') {
     return 'style';
   }
 

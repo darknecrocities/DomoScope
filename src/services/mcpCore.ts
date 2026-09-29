@@ -199,12 +199,100 @@ export const DOMOSCOPE_MCP_TOOLS: MCPToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        owner: { type: 'string', description: 'GitHub repository owner' },
-        repo: { type: 'string', description: 'GitHub repository name' },
+        owner: { type: 'string', description: 'GitHub repository owner or "local"' },
+        repo: { type: 'string', description: 'GitHub repository name or path' },
         query: { type: 'string', description: 'Question to ask about the codebase' },
         branch: { type: 'string', description: 'Optional Git branch name' },
       },
       required: ['owner', 'repo', 'query'],
+    },
+  },
+  {
+    name: 'get_project_overview',
+    description:
+      'Get a comprehensive project overview of a repository (local or remote), including framework, cloud architecture, file stats, and discovered modules.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner or "local"' },
+        repo: { type: 'string', description: 'Repository name or path' },
+        branch: { type: 'string', description: 'Optional Git branch name' },
+      },
+      required: ['owner', 'repo'],
+    },
+  },
+  {
+    name: 'get_dependency_graph',
+    description:
+      'Get the software dependency and architectural module graph for a repository (local or remote).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner or "local"' },
+        repo: { type: 'string', description: 'Repository name or path' },
+        branch: { type: 'string', description: 'Optional Git branch name' },
+        category: { type: 'string', description: 'Optional category filter (e.g. component, service, api_route, data_model)' },
+        limit: { type: 'number', description: 'Maximum nodes/edges to return (default 200)' },
+      },
+      required: ['owner', 'repo'],
+    },
+  },
+  {
+    name: 'get_module_details',
+    description:
+      'Get deep static AST analysis and dependency details for a specific module or file in the repository.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner or "local"' },
+        repo: { type: 'string', description: 'Repository name or path' },
+        path: { type: 'string', description: 'Relative path of the module/file' },
+        branch: { type: 'string', description: 'Optional Git branch name' },
+      },
+      required: ['owner', 'repo', 'path'],
+    },
+  },
+  {
+    name: 'get_analysis_status',
+    description:
+      'Check the freshness, cache state, and diagnostics of the repository analysis.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner or "local"' },
+        repo: { type: 'string', description: 'Repository name or path' },
+        branch: { type: 'string', description: 'Optional Git branch name' },
+      },
+      required: ['owner', 'repo'],
+    },
+  },
+  {
+    name: 'get_changed_files',
+    description:
+      'Retrieve files changed, added, or deleted since the last indexed analysis snapshot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner or "local"' },
+        repo: { type: 'string', description: 'Repository name or path' },
+        branch: { type: 'string', description: 'Optional Git branch name' },
+      },
+      required: ['owner', 'repo'],
+    },
+  },
+  {
+    name: 'list_repository_files',
+    description:
+      'List all indexed repository files with categorization, extensions, and metadata.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner or "local"' },
+        repo: { type: 'string', description: 'Repository name or path' },
+        branch: { type: 'string', description: 'Optional Git branch name' },
+        limit: { type: 'number', description: 'Maximum files to return (default 300, max 1000)' },
+      },
+      required: ['owner', 'repo'],
     },
   },
 ];
@@ -301,13 +389,48 @@ export async function analyzeRepositoryForMCP(
   branch?: string,
   token?: string
 ): Promise<CachedRepoAnalysis> {
-  const owner = sanitizeRepoSlug(rawOwner);
-  const repo = sanitizeRepoSlug(rawRepo);
+  const isLocal =
+    rawOwner === 'local' ||
+    rawOwner.startsWith('/') ||
+    rawOwner.startsWith('.') ||
+    rawRepo.startsWith('/') ||
+    rawRepo.startsWith('.');
+  const owner = isLocal ? 'local' : sanitizeRepoSlug(rawOwner);
+  const repo = isLocal ? rawRepo : sanitizeRepoSlug(rawRepo);
   const cacheKey = `${owner}/${repo}@${branch || 'default'}`;
 
   const cached = analysisCache.get(cacheKey);
   if (cached && Date.now() - cached.analyzedAt < 30 * 60 * 1000) {
     return cached;
+  }
+
+  if (isLocal) {
+    if (typeof process !== 'undefined' && process.versions?.node) {
+      try {
+        const { analyzeLocalRepository } = await import('./local/localAnalysisEngine');
+        const targetPath =
+          rawOwner === 'local' ? (rawRepo === 'local' || !rawRepo ? '.' : rawRepo) : rawOwner;
+        const snapshot = await analyzeLocalRepository({ rootDir: targetPath });
+        const result: CachedRepoAnalysis = {
+          metadata: snapshot.metadata,
+          files: snapshot.files,
+          fileContents: snapshot.fileContents || new Map(),
+          analysis: snapshot.analysis,
+          graph: snapshot.graph,
+          dbSchema: snapshot.databaseSchema,
+          apiRoutes: snapshot.apiEndpoints,
+          securityFindings: snapshot.securityFindings,
+          dependencies: snapshot.dependencies,
+          framework: snapshot.frameworks,
+          cloud: snapshot.cloudServices,
+          analyzedAt: snapshot.timestamp,
+        };
+        analysisCache.set(cacheKey, result);
+        return result;
+      } catch (err: any) {
+        console.error('Local analysis error in MCP:', err);
+      }
+    }
   }
 
   const headers: Record<string, string> = {
@@ -641,14 +764,25 @@ export async function handleMcpRequest(
           };
         }
 
-        const { owner, repo, branch } = args;
+        let owner = args.owner;
+        let repo = args.repo;
+        const branch = args.branch;
+
+        if (!owner && !repo && (args.projectPath || args.path)) {
+          owner = 'local';
+          repo = args.projectPath || args.path || '.';
+        } else if (owner === '.' || owner === './') {
+          owner = 'local';
+          repo = '.';
+        }
+
         if (!owner || !repo) {
           return {
             jsonrpc: '2.0',
             id,
             error: {
               code: -32602,
-              message: 'Both "owner" and "repo" parameters are required for repository inspection',
+              message: 'Both "owner" and "repo" (or "projectPath") parameters are required for repository inspection',
             },
           };
         }
@@ -939,6 +1073,202 @@ export async function handleMcpRequest(
               id,
               result: {
                 content: [{ type: 'text', text: answer }],
+              },
+            };
+          }
+
+          case 'get_project_overview': {
+            const overview = {
+              repository: data.metadata.fullName,
+              description: data.metadata.description,
+              primaryFramework: data.framework.primary.name,
+              primaryCategory: data.framework.primary.category,
+              secondaryFrameworks: data.framework.secondary.map((f) => f.name),
+              cloudArchitecture: data.cloud.architectureTitle,
+              cloudProviders: data.cloud.providers,
+              entryPoints: data.analysis.entryPoints,
+              totalIndexedFiles: data.files.length,
+              componentsCount: data.graph.nodes.filter((n) => n.data?.category === 'component').length,
+              servicesCount: data.graph.nodes.filter((n) => n.data?.category === 'service').length,
+              apiRoutesCount: data.apiRoutes.length,
+              databaseTablesCount: data.dbSchema.tables.length,
+              dependenciesCount: data.dependencies.length,
+              securityIssuesCount: data.securityFindings.length,
+              defaultBranch: data.metadata.defaultBranch,
+              analyzedAt: new Date(data.analyzedAt).toISOString(),
+            };
+            return {
+              jsonrpc: '2.0',
+              id,
+              result: {
+                content: [{ type: 'text', text: JSON.stringify(overview, null, 2) }],
+              },
+            };
+          }
+
+          case 'get_dependency_graph': {
+            const limit = Math.min(Number(args.limit) || 200, 1000);
+            const filterCategory = args.category ? String(args.category).toLowerCase() : null;
+
+            let nodes = data.graph.nodes;
+            if (filterCategory) {
+              nodes = nodes.filter((n) => String(n.data?.category).toLowerCase() === filterCategory);
+            }
+            const nodeIds = new Set(nodes.map((n) => n.id));
+            const edges = data.graph.edges.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target));
+
+            return {
+              jsonrpc: '2.0',
+              id,
+              result: {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify(
+                      {
+                        repository: data.metadata.fullName,
+                        totalNodes: nodes.length,
+                        totalEdges: edges.length,
+                        nodes: nodes.slice(0, limit).map((n) => ({
+                          id: n.id,
+                          label: n.data?.label || n.id,
+                          category: n.data?.category,
+                          filePath: n.data?.filePath || n.id,
+                          dependencies: n.data?.dependencies || [],
+                        })),
+                        edges: edges.slice(0, limit).map((e) => ({
+                          source: e.source,
+                          target: e.target,
+                          type: e.type,
+                        })),
+                      },
+                      null,
+                      2
+                    ),
+                  },
+                ],
+              },
+            };
+          }
+
+          case 'get_module_details': {
+            const targetPath = String(args.path || args.filePath || args.module_path || args.modulePath || '').trim();
+            if (!targetPath) {
+              return {
+                jsonrpc: '2.0',
+                id,
+                error: { code: -32602, message: 'Missing "path" parameter' },
+              };
+            }
+            const matchedNode = data.graph.nodes.find(
+              (n) => n.id === targetPath || n.data?.filePath === targetPath || n.id.endsWith(targetPath)
+            );
+            const relatedEdges = data.graph.edges.filter(
+              (e) => e.source === matchedNode?.id || e.target === matchedNode?.id
+            );
+            const relatedRoutes = data.apiRoutes.filter(
+              (r) => r.file === targetPath || r.path === targetPath || (r as any).controller?.includes(targetPath)
+            );
+            const fileEntry = data.files.find((f) => f.path === targetPath);
+            const content = data.fileContents.get(targetPath);
+
+            const details = {
+              repository: data.metadata.fullName,
+              filePath: targetPath,
+              exists: Boolean(fileEntry || matchedNode),
+              category: fileEntry?.category || matchedNode?.data?.category || 'unknown',
+              nodeInfo: matchedNode
+                ? {
+                    id: matchedNode.id,
+                    label: matchedNode.data?.label,
+                    dependencies: matchedNode.data?.dependencies,
+                  }
+                : null,
+              inboundConnections: relatedEdges.filter((e) => e.target === matchedNode?.id).map((e) => e.source),
+              outboundConnections: relatedEdges.filter((e) => e.source === matchedNode?.id).map((e) => e.target),
+              associatedApiRoutes: relatedRoutes,
+              lineCount: content ? content.split('\n').length : fileEntry?.size ? Math.round(fileEntry.size / 30) : 0,
+            };
+
+            return {
+              jsonrpc: '2.0',
+              id,
+              result: {
+                content: [{ type: 'text', text: JSON.stringify(details, null, 2) }],
+              },
+            };
+          }
+
+          case 'get_analysis_status': {
+            const status = {
+              repository: data.metadata.fullName,
+              analyzedAt: new Date(data.analyzedAt).toISOString(),
+              isFresh: Date.now() - data.analyzedAt < 5 * 60 * 1000,
+              totalFiles: data.files.length,
+              cachedInMemory: true,
+              modulesIndexed: data.graph.nodes.length,
+              routesDiscovered: data.apiRoutes.length,
+              tablesDiscovered: data.dbSchema.tables.length,
+              securityIssuesFound: data.securityFindings.length,
+            };
+            return {
+              jsonrpc: '2.0',
+              id,
+              result: {
+                content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
+              },
+            };
+          }
+
+          case 'get_changed_files': {
+            return {
+              jsonrpc: '2.0',
+              id,
+              result: {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify(
+                      {
+                        repository: data.metadata.fullName,
+                        lastIndexedAt: new Date(data.analyzedAt).toISOString(),
+                        totalFiles: data.files.length,
+                        files: data.files.slice(0, 100).map((f) => ({
+                          path: f.path,
+                          category: f.category,
+                          size: f.size,
+                        })),
+                      },
+                      null,
+                      2
+                    ),
+                  },
+                ],
+              },
+            };
+          }
+
+          case 'list_repository_files': {
+            const limit = Math.min(Number(args.limit) || 300, 1000);
+            return {
+              jsonrpc: '2.0',
+              id,
+              result: {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify(
+                      {
+                        repository: data.metadata.fullName,
+                        totalIndexedFiles: data.files.length,
+                        returnedFiles: Math.min(data.files.length, limit),
+                        files: data.files.slice(0, limit),
+                      },
+                      null,
+                      2
+                    ),
+                  },
+                ],
               },
             };
           }
