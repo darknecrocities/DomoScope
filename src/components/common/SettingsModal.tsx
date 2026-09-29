@@ -55,7 +55,7 @@ export function SettingsModal({ isOpen, onClose, onClearCache }: SettingsModalPr
   const [isAiSaved, setIsAiSaved] = useState(false);
 
   // MCP Configuration & Playground state
-  const [mcpClientType, setMcpClientType] = useState<'claude' | 'cursor' | 'antigravity' | 'remote'>('claude');
+  const [mcpClientType, setMcpClientType] = useState<'codex' | 'claude' | 'cursor' | 'antigravity' | 'windsurf' | 'cline' | 'remote'>('codex');
   const [isMcpCopied, setIsMcpCopied] = useState(false);
   const [mcpTestRepo, setMcpTestRepo] = useState('Thes-IS-IT/Easylens');
   const [mcpTestTool, setMcpTestTool] = useState('get_repository_architecture');
@@ -532,11 +532,14 @@ export function SettingsModal({ isOpen, onClose, onClearCache }: SettingsModalPr
               </div>
 
               {/* Client Selector Buttons */}
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                 {[
+                  { id: 'codex', label: 'Codex' },
                   { id: 'claude', label: 'Claude' },
                   { id: 'cursor', label: 'Cursor' },
                   { id: 'antigravity', label: 'Antigravity' },
+                  { id: 'windsurf', label: 'Windsurf' },
+                  { id: 'cline', label: 'Cline' },
                   { id: 'remote', label: 'Remote / URL' },
                 ].map((item) => (
                   <button
@@ -564,7 +567,25 @@ export function SettingsModal({ isOpen, onClose, onClearCache }: SettingsModalPr
                         : 'https://domoscope.vercel.app';
                     const tokenNotice = token ? token : 'OPTIONAL_GITHUB_TOKEN';
 
-                    if (mcpClientType === 'claude' || mcpClientType === 'cursor' || mcpClientType === 'antigravity') {
+                    if (mcpClientType === 'codex' || mcpClientType === 'cursor' || mcpClientType === 'windsurf' || mcpClientType === 'cline') {
+                      return JSON.stringify(
+                        {
+                          mcpServers: {
+                            domoscope: {
+                              command: 'npx',
+                              args: ['-y', 'domoscope', 'mcp'],
+                              env: {
+                                GITHUB_TOKEN: tokenNotice,
+                              },
+                            },
+                          },
+                        },
+                        null,
+                        2
+                      );
+                    }
+
+                    if (mcpClientType === 'claude' || mcpClientType === 'antigravity') {
                       return JSON.stringify(
                         {
                           mcpServers: {
