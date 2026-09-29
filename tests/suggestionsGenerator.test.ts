@@ -52,6 +52,30 @@ describe('Repository Setup & Standards Checklist Engine', () => {
       content: '# Test Repo\nSetup guide',
     },
     {
+      path: 'package-lock.json',
+      name: 'package-lock.json',
+      type: 'blob',
+      extension: 'json',
+      category: 'config',
+      content: '{"lockfileVersion": 3}',
+    },
+    {
+      path: '.nvmrc',
+      name: '.nvmrc',
+      type: 'blob',
+      extension: '',
+      category: 'config',
+      content: '20.18.0',
+    },
+    {
+      path: '.editorconfig',
+      name: '.editorconfig',
+      type: 'blob',
+      extension: '',
+      category: 'config',
+      content: 'root = true\n[*]\nindent_size = 2',
+    },
+    {
       path: 'tests/main.test.ts',
       name: 'main.test.ts',
       type: 'blob',
@@ -86,7 +110,7 @@ describe('Repository Setup & Standards Checklist Engine', () => {
       service: 0,
       api: 0,
       database: 0,
-      config: 3,
+      config: 6,
       test: 1,
       style: 0,
       doc: 1,
@@ -94,7 +118,7 @@ describe('Repository Setup & Standards Checklist Engine', () => {
       folder: 0,
     },
     languages: { TypeScript: 80, YAML: 10, Markdown: 10 },
-    totalFiles: 6,
+    totalFiles: 9,
     totalDirs: 3,
     detectedTools: ['vite', 'vitest'],
     entryPoints: ['src/main.tsx'],
@@ -127,7 +151,7 @@ describe('Repository Setup & Standards Checklist Engine', () => {
     },
   ];
 
-  it('generates standard setup checklist items with checkmark status', () => {
+  it('generates standard setup checklist items with checkmark status across domains', () => {
     const { items, stats } = generateSetupChecklist({
       analysis: mockAnalysis,
       files: mockFiles,
@@ -136,10 +160,11 @@ describe('Repository Setup & Standards Checklist Engine', () => {
       dependencies: mockDependencies,
     });
 
-    expect(items.length).toBeGreaterThanOrEqual(10);
+    expect(items.length).toBeGreaterThanOrEqual(14);
     expect(stats.total).toBe(items.length);
     expect(stats.completedCount).toBeGreaterThan(0);
     expect(stats.completionPercentage).toBeGreaterThanOrEqual(50);
+    expect(stats.byCategory.essential.total).toBeGreaterThan(0);
 
     // .gitignore check
     const gitignoreItem = items.find((i) => i.id === 'setup-gitignore');
@@ -150,6 +175,21 @@ describe('Repository Setup & Standards Checklist Engine', () => {
     const readmeItem = items.find((i) => i.id === 'setup-readme');
     expect(readmeItem).toBeDefined();
     expect(readmeItem?.status).toBe('completed');
+
+    // Lockfile check
+    const lockfileItem = items.find((i) => i.id === 'setup-lockfile');
+    expect(lockfileItem).toBeDefined();
+    expect(lockfileItem?.status).toBe('completed');
+
+    // .editorconfig check
+    const editorconfigItem = items.find((i) => i.id === 'setup-editorconfig');
+    expect(editorconfigItem).toBeDefined();
+    expect(editorconfigItem?.status).toBe('completed');
+
+    // .nvmrc check
+    const nvmrcItem = items.find((i) => i.id === 'setup-node-version');
+    expect(nvmrcItem).toBeDefined();
+    expect(nvmrcItem?.status).toBe('completed');
 
     // Tests check
     const testItem = items.find((i) => i.id === 'setup-testing');
@@ -202,9 +242,12 @@ describe('Repository Setup & Standards Checklist Engine', () => {
 
     const testItem = items.find((i) => i.id === 'setup-testing');
     expect(testItem?.status).toBe('needs_setup');
+
+    const securityDoc = items.find((i) => i.id === 'setup-security-policy');
+    expect(securityDoc?.status).toBe('needs_setup');
   });
 
-  it('filters checklist correctly by status and search query', () => {
+  it('filters checklist correctly by status, category, and search query', () => {
     const { items } = generateSetupChecklist({
       analysis: mockAnalysis,
       files: mockFiles,
@@ -215,6 +258,9 @@ describe('Repository Setup & Standards Checklist Engine', () => {
 
     const completedOnly = filterChecklist(items, { status: 'completed' });
     expect(completedOnly.every((i) => i.status === 'completed')).toBe(true);
+
+    const essentialOnly = filterChecklist(items, { category: 'essential' });
+    expect(essentialOnly.every((i) => i.category === 'essential')).toBe(true);
 
     const searchMatch = filterChecklist(items, { searchQuery: 'gitignore' });
     expect(searchMatch.length).toBeGreaterThan(0);

@@ -13,6 +13,10 @@ import {
   ChevronDown,
   ChevronUp,
   Layers,
+  Shield,
+  CheckCheck,
+  Wrench,
+  Cpu,
 } from 'lucide-react';
 import {
   RepoAnalysis,
@@ -29,6 +33,7 @@ import {
   filterChecklist,
   generateChecklistMarkdown,
   ChecklistStatus,
+  ChecklistCategory,
 } from '../../services/suggestionsGenerator';
 
 export interface SuggestionsTabProps {
@@ -54,6 +59,7 @@ export function SuggestionsTab({
   onOpenFile,
 }: SuggestionsTabProps) {
   const [activeStatus, setActiveStatus] = useState<ChecklistStatus | 'all'>('all');
+  const [activeCategory, setActiveCategory] = useState<ChecklistCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
   const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null);
@@ -73,13 +79,14 @@ export function SuggestionsTab({
     });
   }, [analysis, files, fileContents, databaseSchema, securityFindings, dependencies, apiRoutes]);
 
-  // Filter items by status and text search query
+  // Filter items by status, category, and text search query
   const filteredItems = useMemo(() => {
     return filterChecklist(items, {
       status: activeStatus,
+      category: activeCategory,
       searchQuery,
     });
-  }, [items, activeStatus, searchQuery]);
+  }, [items, activeStatus, activeCategory, searchQuery]);
 
   const toggleExpand = (id: string) => {
     setExpandedCardIds((prev) => {
@@ -131,6 +138,21 @@ export function SuggestionsTab({
     navigator.clipboard.writeText(md);
     setCopiedMarkdown(true);
     setTimeout(() => setCopiedMarkdown(false), 2000);
+  };
+
+  const getCategoryIcon = (cat: ChecklistCategory) => {
+    switch (cat) {
+      case 'essential':
+        return <Layers className="w-3.5 h-3.5 text-zinc-600" />;
+      case 'security':
+        return <Shield className="w-3.5 h-3.5 text-zinc-600" />;
+      case 'quality':
+        return <CheckCheck className="w-3.5 h-3.5 text-zinc-600" />;
+      case 'tooling':
+        return <Wrench className="w-3.5 h-3.5 text-zinc-600" />;
+      case 'architecture':
+        return <Cpu className="w-3.5 h-3.5 text-zinc-600" />;
+    }
   };
 
   return (
@@ -200,72 +222,106 @@ export function SuggestionsTab({
           </div>
         </div>
 
-        {/* CONTROLS: FILTER PILLS & SEARCH */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            <button
-              onClick={() => setActiveStatus('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
-                activeStatus === 'all'
-                  ? 'bg-zinc-900 text-white font-bold'
-                  : 'bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50'
-              }`}
-            >
-              All ({stats.total})
-            </button>
-
-            <button
-              onClick={() => setActiveStatus('needs_setup')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
-                activeStatus === 'needs_setup'
-                  ? 'bg-zinc-900 text-white font-bold'
-                  : 'bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50'
-              }`}
-            >
-              Needs Setup ({stats.needsSetupCount})
-            </button>
-
-            <button
-              onClick={() => setActiveStatus('completed')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
-                activeStatus === 'completed'
-                  ? 'bg-zinc-900 text-white font-bold'
-                  : 'bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50'
-              }`}
-            >
-              Completed ({stats.completedCount})
-            </button>
+        {/* CATEGORY & STATUS CONTROLS */}
+        <div className="p-4 bg-white border border-zinc-200 rounded-xl shadow-2xs space-y-3">
+          {/* Domain Category Filter Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-zinc-100 scrollbar-thin">
+            {[
+              { id: 'all', label: 'All Checks', count: stats.total },
+              { id: 'essential', label: 'Essentials & Docs', count: stats.byCategory.essential?.total || 0 },
+              { id: 'security', label: 'Security & Secrets', count: stats.byCategory.security?.total || 0 },
+              { id: 'quality', label: 'Testing & Quality', count: stats.byCategory.quality?.total || 0 },
+              { id: 'tooling', label: 'Tooling & DX', count: stats.byCategory.tooling?.total || 0 },
+              { id: 'architecture', label: 'Architecture & Types', count: stats.byCategory.architecture?.total || 0 },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveCategory(tab.id as ChecklistCategory | 'all')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-colors whitespace-nowrap cursor-pointer ${
+                  activeCategory === tab.id
+                    ? 'bg-zinc-900 text-white font-bold'
+                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    activeCategory === tab.id ? 'bg-zinc-700 text-white' : 'bg-zinc-100 text-zinc-600'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            ))}
           </div>
 
-          {/* Search Bar & Expand/Collapse */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search checklist..."
-                className="w-full pl-8 pr-3 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs font-sans text-zinc-900 focus:outline-hidden focus:ring-1 focus:ring-zinc-950"
-              />
+          {/* Secondary Controls: Status Filter, Search, Expand/Collapse */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+            {/* Status Tabs */}
+            <div className="flex items-center gap-1.5 w-full sm:w-auto">
+              <button
+                onClick={() => setActiveStatus('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
+                  activeStatus === 'all'
+                    ? 'bg-zinc-900 text-white font-bold'
+                    : 'bg-zinc-50 border border-zinc-200 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                }`}
+              >
+                All Status
+              </button>
+
+              <button
+                onClick={() => setActiveStatus('needs_setup')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
+                  activeStatus === 'needs_setup'
+                    ? 'bg-zinc-900 text-white font-bold'
+                    : 'bg-zinc-50 border border-zinc-200 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                }`}
+              >
+                Needs Setup ({stats.needsSetupCount})
+              </button>
+
+              <button
+                onClick={() => setActiveStatus('completed')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
+                  activeStatus === 'completed'
+                    ? 'bg-zinc-900 text-white font-bold'
+                    : 'bg-zinc-50 border border-zinc-200 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                }`}
+              >
+                Completed ({stats.completedCount})
+              </button>
             </div>
 
-            <div className="flex items-center gap-1 border-l border-zinc-200 pl-2">
-              <button
-                onClick={expandAll}
-                className="p-1.5 hover:bg-zinc-200 rounded text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
-                title="Expand All"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              <button
-                onClick={collapseAll}
-                className="p-1.5 hover:bg-zinc-200 rounded text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
-                title="Collapse All"
-              >
-                <ChevronUp className="w-4 h-4" />
-              </button>
+            {/* Search Bar & Expand/Collapse */}
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search checklist..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-sans text-zinc-900 focus:outline-hidden focus:ring-1 focus:ring-zinc-950 focus:bg-white"
+                />
+              </div>
+
+              <div className="flex items-center gap-1 border-l border-zinc-200 pl-2">
+                <button
+                  onClick={expandAll}
+                  className="p-1.5 hover:bg-zinc-100 rounded text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
+                  title="Expand All"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={collapseAll}
+                  className="p-1.5 hover:bg-zinc-100 rounded text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
+                  title="Collapse All"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -276,7 +332,7 @@ export function SuggestionsTab({
             <div className="p-12 text-center bg-white border border-zinc-200 rounded-xl space-y-2">
               <CheckCircle2 className="w-8 h-8 text-zinc-700 mx-auto" />
               <h3 className="text-sm font-bold text-zinc-900 font-sans">No matching checklist items</h3>
-              <p className="text-xs text-zinc-500 font-sans">Try clearing your search query or switching filters.</p>
+              <p className="text-xs text-zinc-500 font-sans">Try clearing your search query or switching category filters.</p>
             </div>
           ) : (
             filteredItems.map((item, idx) => {
@@ -291,7 +347,7 @@ export function SuggestionsTab({
                   {/* MAIN CARD ROW */}
                   <div className="p-4 sm:p-5 flex flex-col gap-2.5">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         {isCompleted ? (
                           <CheckCircle2 className="w-5 h-5 text-zinc-950 shrink-0" />
                         ) : (
@@ -307,6 +363,11 @@ export function SuggestionsTab({
                         >
                           {isCompleted ? 'Completed' : 'Action Required'}
                         </span>
+
+                        <div className="flex items-center gap-1 text-[11px] font-mono text-zinc-500 bg-zinc-50 px-2 py-0.5 rounded border border-zinc-200">
+                          {getCategoryIcon(item.category)}
+                          <span className="capitalize">{item.category}</span>
+                        </div>
 
                         <h3
                           onClick={() => (item.codeSnippet || item.agentPrompt ? toggleExpand(item.id) : null)}
@@ -344,7 +405,7 @@ export function SuggestionsTab({
                     <div className="pl-7.5">
                       <StreamingText
                         text={item.summary}
-                        delay={idx * 60}
+                        delay={idx * 50}
                         speed="fast"
                         sessionKey={`checklist-${analysis.metadata?.fullName || 'repo'}-${item.id}`}
                         className="text-xs text-zinc-600 font-sans leading-relaxed"
