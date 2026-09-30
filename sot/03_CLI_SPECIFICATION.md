@@ -39,7 +39,7 @@ npx domoscope doctor [--verbose]
 **Sample Terminal Output:**
 ```
 =================================================================
-🩺 DomoScope Doctor — Environment & Repository Diagnostics
+DomoScope Doctor — Environment & Repository Diagnostics
 =================================================================
 ✓ Node.js Runtime:       v22.22.3 (>= 18 required)
 ✓ Project Directory:     /Users/developer/my-project (Accessible)
@@ -104,33 +104,33 @@ npx domoscope analyze --json | jq .frameworks
 **Sample Terminal Table Output:**
 ```
 =================================================================
-🔭 DomoScope Codebase Analysis — my-project
+DomoScope Codebase Analysis — my-project
 =================================================================
 Project Root:         /Users/developer/my-project
 Git Branch:           main
 Snapshot ID:          snap_1790775529067_44f53860
 Duration:             342ms (Incremental Cache Hit)
 
-📊 CODEBASE METRICS
+CODEBASE METRICS
   • Total Files:        146
   • Total Directories:  28
   • Total Lines of Code:45,956
   • Primary Framework:  React / TypeScript (Next.js)
   • Detected Tooling:   Vite, TailwindCSS, Vitest, Docker
 
-🏗️ ARCHITECTURE & MODULES
+ARCHITECTURE & MODULES
   • Graph Nodes:        146
   • Graph Import Edges: 382
   • Entry Points:       src/main.tsx, src/App.tsx
 
-🗄️ DATABASE & ENTITIES
+DATABASE & ENTITIES
   • Tables / Entities:  8 (Prisma, PostgreSQL)
   • Relationships:      12
 
-📡 API ROUTE CATALOG
+API ROUTE CATALOG
   • Discovered Routes:  14
 
-🛡️ SECURITY AUDIT
+SECURITY AUDIT
   • Findings:           0 (Zero high/critical risks detected)
 =================================================================
 ```
@@ -222,7 +222,7 @@ npx domoscope watch [--verbose]
 ```
 [DomoScope Watch] Watching /Users/developer/my-project for changes...
 [21:40:12] File change: src/components/Dashboard.tsx
-⟳ Re-analyzing codebase... ✓ Updated snapshot: snap_1790776812 (146 files in 48ms)
+Re-analyzing codebase... ✓ Updated snapshot: snap_1790776812 (146 files in 48ms)
 ```
 
 ---

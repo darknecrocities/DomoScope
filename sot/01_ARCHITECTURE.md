@@ -12,12 +12,12 @@ DomoScope is built on a local-first, zero-remote-egress architecture. All AST pa
 
 ```mermaid
 flowchart TD
-    subgraph InputSources ["📥 Input Sources"]
+    subgraph InputSources ["Input Sources"]
         LocalRepo["Local Directory / Workspace (Host or Docker Volume)"]
         RemoteRepo["GitHub Remote API (Octokit / Token Vault)"]
     end
 
-    subgraph CoreEngine ["⚙️ DomoScope Core Analysis Engines"]
+    subgraph CoreEngine ["DomoScope Core Analysis Engines"]
         Scanner["Safe File Scanner (.gitignore, Symlink Guard, Sha256 Diff)"]
         CacheMgr["Local Cache Manager (.domoscope/cache.json)"]
         ASTEngine["AST & Module Dependency Graph Engine"]
@@ -27,7 +27,7 @@ flowchart TD
         ReverseEng["Reverse Engineering Blueprint & Prompt Engine"]
     end
 
-    subgraph OutputSurfaces ["🚀 Output & Consumption Surfaces"]
+    subgraph OutputSurfaces ["Output & Consumption Surfaces"]
         CLI["Zero-Install CLI (npx domoscope 8 commands)"]
         LocalServer["Local Studio Daemon (HTTP/SSE on localhost:4004)"]
         WebStudio["React 19 Interactive Web Studio (Monaco, XYFlow, Tailwind)"]
@@ -35,7 +35,7 @@ flowchart TD
         MCPEngine["Model Context Protocol (MCP) Server (Stdio & SSE)"]
     end
 
-    subgraph AIAgents ["🤖 Autonomous AI Agents"]
+    subgraph AIAgents ["Autonomous AI Agents"]
         AgentCursor["Cursor IDE"]
         AgentClaude["Claude Desktop"]
         AgentAntigravity["Antigravity / Gemini"]

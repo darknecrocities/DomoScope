@@ -1,10 +1,10 @@
-# 🔭 DomoScope — System Source of Truth (SOT)
+# DomoScope — System Source of Truth (SOT)
 **Version:** 1.0.0  
 **Status:** Approved & Living Document  
 **Target Runtimes:** Node.js >= 18, Modern Chromium/WebKit Browsers (WebGPU-enabled), Docker (Linux/x86_64 & ARM64)  
 **License:** MIT  
 
-> 📚 **Modular SOT Suite**: For deep-dive subsystem specifications, consult the modular documentation in the [`sot/`](./sot/00_INDEX.md) directory:
+> **Modular SOT Suite**: For deep-dive subsystem specifications, consult the modular documentation in the [`sot/`](./sot/00_INDEX.md) directory:
 > - [**01. Architecture Topology**](./sot/01_ARCHITECTURE.md) • [**02. Feature Catalog**](./sot/02_FEATURES_CATALOG.md) • [**03. CLI Specification**](./sot/03_CLI_SPECIFICATION.md)
 > - [**04. MCP Protocol Spec**](./sot/04_MCP_PROTOCOL_SPEC.md) • [**05. Analysis Engines**](./sot/05_ANALYSIS_ENGINES.md) • [**06. Reverse Engineering**](./sot/06_REVERSE_ENGINEERING_SPEC.md)
 > - [**07. Docker Packaging**](./sot/07_DOCKER_PACKAGING.md) • [**08. CI/CD & Testing**](./sot/08_CICD_AND_TESTING.md) • [**09. Security & Vault**](./sot/09_SECURITY_AND_VAULT.md)
@@ -30,12 +30,12 @@ DomoScope follows a modular, layered architecture designed for low latency, zero
 
 ```mermaid
 flowchart TD
-    subgraph InputSources ["📥 Input Sources"]
+    subgraph InputSources ["Input Sources"]
         LocalRepo["Local Directory / Workspace (Host or Docker Volume)"]
         RemoteRepo["GitHub Remote API (Octokit / Token Vault)"]
     end
 
-    subgraph CoreEngine ["⚙️ DomoScope Core Analysis Engines"]
+    subgraph CoreEngine ["DomoScope Core Analysis Engines"]
         Scanner["Safe File Scanner (.gitignore, Symlink Guard, Sha256 Diff)"]
         CacheMgr["Local Cache Manager (.domoscope/cache.json)"]
         ASTEngine["AST & Module Dependency Graph Engine"]
@@ -45,7 +45,7 @@ flowchart TD
         ReverseEng["Reverse Engineering Blueprint & Prompt Engine"]
     end
 
-    subgraph OutputSurfaces ["🚀 Output & Consumption Surfaces"]
+    subgraph OutputSurfaces ["Output & Consumption Surfaces"]
         CLI["Zero-Install CLI (npx domoscope 9 commands)"]
         LocalServer["Local Studio Daemon (HTTP/SSE on localhost:4004)"]
         WebStudio["React 19 Interactive Web Studio (Monaco, XYFlow, Tailwind)"]
@@ -54,7 +54,7 @@ flowchart TD
         MCPEngine["Model Context Protocol (MCP) Server (Stdio & SSE)"]
     end
 
-    subgraph AIAgents ["🤖 Autonomous AI Agents"]
+    subgraph AIAgents ["Autonomous AI Agents"]
         AgentCursor["Cursor IDE"]
         AgentClaude["Claude Desktop"]
         AgentAntigravity["Antigravity / Gemini"]
@@ -157,27 +157,27 @@ Generates 6 standardized markdown documents in `.domoscope/docs/` (or user-chose
 
 | Feature Category | Feature Name | Description | Status |
 |---|---|---|:---:|
-| **Analysis** | Polyglot Framework Detection | Identifies 30+ frameworks across JS/TS, Python, Go, Rust, Java, Dart | ✅ Done |
-| **Analysis** | AST Dependency Graph | Interactive directed acyclic graph with centrality metrics | ✅ Done |
-| **Analysis** | Polyglot ERD Generator | Prisma, SQL DDL, Mongoose, TypeORM with Mermaid export | ✅ Done |
-| **Analysis** | API Route Discovery | Catalog of REST routes across 8 major backend ecosystems | ✅ Done |
-| **Analysis** | Security & Secret Audit | Scans for leaked keys, tokens, DB URLs, and CVE patterns | ✅ Done |
-| **Analysis** | Cloud & Infra Detection | Detects AWS, GCP, Azure, Docker, Vercel, Supabase, Firebase configs | ✅ Done |
-| **AI / Agentic** | Model Context Protocol (MCP) | Full stdio & SSE MCP server with 16 tools for AI coding assistants | ✅ Done |
-| **AI / Agentic** | Autonomous Rebuild Blueprint | Phased implementation recipes and subagent delegation prompts | ✅ Done |
-| **AI / Agentic** | 7-File Markdown Suite | Automated `.md` doc generator (`domoscope docs`) | ✅ Done |
-| **AI / Agentic** | Autonomous Agent `SKILL.md` Pack | Exportable `SKILL.md` specification for Claude, Codex, Cursor (`domoscope skill`) | ✅ Done |
-| **AI / Agentic** | In-Browser WebGPU LLM | Local offline LLM execution via WebLLM (Qwen, Llama, DeepSeek) | ✅ Done |
-| **AI / Agentic** | Interactive Prompt Generator | UI wizard generating customized prompts for Cursor, Claude, Antigravity | ✅ Done |
-| **CLI & Runtime** | Zero-Install CLI | 9 executable subcommands via `npx domoscope <command>` | ✅ Done |
-| **CLI & Runtime** | Incremental File Watcher | Debounced filesystem watcher with SHA-256 hot cache invalidation | ✅ Done |
-| **CLI & Runtime** | Local Studio Daemon | Localhost:4004 visual dashboard with real-time SSE updates | ✅ Done |
-| **Security** | Hardware Token Encryption | AES-GCM 256-bit encrypted GitHub token vault in IndexedDB | ✅ Done |
-| **Security** | Safe Path Containment | Strict traversal and symlink guards preventing unauthorized file access | ✅ Done |
-| **Deployment** | Multi-Stage Dockerfile | Production-ready Alpine container running Node 22 with non-root security | ✅ Done |
-| **Deployment** | Docker Compose | Pre-configured `docker-compose.yml` with host volume mounting | ✅ Done |
-| **CI / CD** | Automated GitHub Actions CI | Matrix testing (Node 20 & 22), Oxlint, Vitest, Vite build, Docker test | ✅ Done |
-| **CI / CD** | Release & Container Publish | Automated semantic release and GHCR Docker image deployment | ✅ Done |
+| **Analysis** | Polyglot Framework Detection | Identifies 30+ frameworks across JS/TS, Python, Go, Rust, Java, Dart | Done |
+| **Analysis** | AST Dependency Graph | Interactive directed acyclic graph with centrality metrics | Done |
+| **Analysis** | Polyglot ERD Generator | Prisma, SQL DDL, Mongoose, TypeORM with Mermaid export | Done |
+| **Analysis** | API Route Discovery | Catalog of REST routes across 8 major backend ecosystems | Done |
+| **Analysis** | Security & Secret Audit | Scans for leaked keys, tokens, DB URLs, and CVE patterns | Done |
+| **Analysis** | Cloud & Infra Detection | Detects AWS, GCP, Azure, Docker, Vercel, Supabase, Firebase configs | Done |
+| **AI / Agentic** | Model Context Protocol (MCP) | Full stdio & SSE MCP server with 16 tools for AI coding assistants | Done |
+| **AI / Agentic** | Autonomous Rebuild Blueprint | Phased implementation recipes and subagent delegation prompts | Done |
+| **AI / Agentic** | 7-File Markdown Suite | Automated `.md` doc generator (`domoscope docs`) | Done |
+| **AI / Agentic** | Autonomous Agent `SKILL.md` Pack | Exportable `SKILL.md` specification for Claude, Codex, Cursor (`domoscope skill`) | Done |
+| **AI / Agentic** | In-Browser WebGPU LLM | Local offline LLM execution via WebLLM (Qwen, Llama, DeepSeek) | Done |
+| **AI / Agentic** | Interactive Prompt Generator | UI wizard generating customized prompts for Cursor, Claude, Antigravity | Done |
+| **CLI & Runtime** | Zero-Install CLI | 9 executable subcommands via `npx domoscope <command>` | Done |
+| **CLI & Runtime** | Incremental File Watcher | Debounced filesystem watcher with SHA-256 hot cache invalidation | Done |
+| **CLI & Runtime** | Local Studio Daemon | Localhost:4004 visual dashboard with real-time SSE updates | Done |
+| **Security** | Hardware Token Encryption | AES-GCM 256-bit encrypted GitHub token vault in IndexedDB | Done |
+| **Security** | Safe Path Containment | Strict traversal and symlink guards preventing unauthorized file access | Done |
+| **Deployment** | Multi-Stage Dockerfile | Production-ready Alpine container running Node 22 with non-root security | Done |
+| **Deployment** | Docker Compose | Pre-configured `docker-compose.yml` with host volume mounting | Done |
+| **CI / CD** | Automated GitHub Actions CI | Matrix testing (Node 20 & 22), Oxlint, Vitest, Vite build, Docker test | Done |
+| **CI / CD** | Release & Container Publish | Automated semantic release and GHCR Docker image deployment | Done |
 
 ---
 

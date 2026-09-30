@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔭 DomoScope
+# DomoScope
 
 **Free, open-source, local-first developer experience (DX) and repository intelligence platform with npm CLI, real-time AST analysis, interactive architecture visualization, and Model Context Protocol (MCP) support for AI coding agents.**
 
@@ -10,19 +10,19 @@
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Protocol%202024--11--05-black.svg)](https://modelcontextprotocol.io/)
 [![Tests](https://img.shields.io/badge/Vitest-100%25%20Passing-black.svg)](tests/)
 
-[Live App](https://domoscope.vercel.app) • [Architecture SOT](SOT.md) • [CLI Quickstart](#-cli-quickstart) • [MCP Server Setup](#-model-context-protocol-mcp-server) • [Reverse Engineering](#-autonomous-reverse-engineering-engine) • [Database ERD](#-polyglot-database-erd-engine) • [Documentation](#-getting-started)
+[Live App](https://domoscope.vercel.app) • [Architecture SOT](SOT.md) • [CLI Quickstart](#cli-quickstart) • [MCP Server Setup](#model-context-protocol-mcp-server) • [Reverse Engineering](#autonomous-reverse-engineering-engine) • [Database ERD](#polyglot-database-erd-engine) • [Local Development](#local-development)
 
 </div>
 
 ---
 
-## 📖 Overview
+## Overview
 
 **DomoScope** transforms any local project or GitHub repository into an interactive, multi-dimensional architectural blueprint. Built with a strict monochrome editorial aesthetic and powered by framework-independent static analysis, DomoScope lets developers, architects, and autonomous AI agents inspect codebases, reverse engineer complete systems, map database relationships, audit security vulnerabilities, and extract production-ready technical specifications in seconds.
 
 ---
 
-## 🚀 CLI Quickstart
+## CLI Quickstart
 
 DomoScope provides a zero-dependency npm CLI package for instant terminal analysis, live file watching, documentation generation, and agentic workflows:
 
@@ -71,7 +71,7 @@ npx domoscope mcp
 
 ---
 
-## ⚡ Key Capabilities
+## Key Capabilities
 
 ```
                       ┌──────────────────────────────────────────────┐
@@ -94,7 +94,7 @@ npx domoscope mcp
             └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 🧠 Autonomous Reverse Engineering Engine
+### Autonomous Reverse Engineering Engine
 * **Architectural Reconstruction**: Analyzes code organization, file dependencies, and architectural patterns (Clean Architecture, MVC, Microservices, Event-Driven, Monoliths, Serverless).
 * **Component Breakdown & Data Lifecycle**: Maps frontend component hierarchies, backend service flows, and state management lifecycles.
 * **Step-by-Step Rebuilding Blueprint**: Generates an actionable, phase-by-phase implementation recipe for rebuilding or porting the project from scratch.
@@ -103,7 +103,7 @@ npx domoscope mcp
 
 ---
 
-### 🔌 Model Context Protocol (MCP) Server
+### Model Context Protocol (MCP) Server
 DomoScope exposes a native **Model Context Protocol (MCP)** server with dual-transport capability (**local stdio** and **remote cloud HTTP/SSE**), allowing any AI client or autonomous agent to connect directly and inspect codebases:
 
 * **Stdio CLI Transport**: Run locally via `npx domoscope mcp` or `node bin/domoscope-mcp.js`.
@@ -132,7 +132,7 @@ DomoScope exposes a native **Model Context Protocol (MCP)** server with dual-tra
 
 ---
 
-### 🗄️ Polyglot Database ERD Engine
+### Polyglot Database ERD Engine
 DomoScope parses relational and document schemas across modern database ecosystems and ORMs without hardcoded bias:
 
 * **Supabase**: AST parsing of generated TypeScript definitions (`database.types.ts`, `types/supabase.ts`) with explicit `Relationships: [...]` foreign key extraction.
@@ -149,14 +149,14 @@ DomoScope parses relational and document schemas across modern database ecosyste
 
 ---
 
-### 🌐 Interactive Architecture & Dependency Graph
+### Interactive Architecture & Dependency Graph
 * **Real AST Import Resolution**: Parses ECMAScript `import`, CommonJS `require`, Go `import`, Python `import`, Rust `use`, and Dart `import` statements.
 * **Interactive Canvas**: Powered by `@xyflow/react` and `dagre` with node filtering, cluster grouping, circular dependency detection, and depth slicing.
 * **Source Viewer**: Monaco Editor side drawer with instant file jumping, syntax highlighting, and inline explanations.
 
 ---
 
-## 🛠️ Local Development
+## Local Development
 
 ### Prerequisites
 * Node.js 18.0.0 or higher
@@ -178,7 +178,7 @@ npm run dev
 
 ---
 
-## 🤖 Configuring AI Coding Agents
+## Configuring AI Coding Agents
 
 ### 1. Claude Desktop Configuration
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
@@ -224,7 +224,7 @@ For remote AI agents or webhooks:
 
 ---
 
-## 🧪 Testing
+## Testing
 
 DomoScope is tested with a comprehensive Vitest test suite covering:
 * Local filesystem scanning, `.gitignore` matching, and path traversal protection
@@ -245,7 +245,7 @@ npx vitest
 
 ---
 
-## 🛡️ Security & Privacy
+## Security & Privacy
 
 1. **Local-First Processing**: Repository analysis, token parsing, and AST generation occur directly in your browser or local MCP process.
 2. **Path Traversal Containment**: Scanners enforce strict boundary checks preventing symlinks from escaping project roots.
@@ -255,6 +255,6 @@ npx vitest
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).

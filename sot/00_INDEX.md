@@ -1,4 +1,4 @@
-# 🔭 DomoScope — Master Source of Truth (SOT)
+# DomoScope — Master Source of Truth (SOT)
 
 **Version:** 1.0.0  
 **Project:** DomoScope (`darknecrocities/DomoScope`)  
@@ -7,7 +7,7 @@
 
 ---
 
-## 📚 SOT Module Directory
+## SOT Module Directory
 
 The DomoScope architectural specification and system documentation is split into specialized modules for maintainability, developer onboarding, and AI agent ingestion:
 
@@ -25,7 +25,7 @@ The DomoScope architectural specification and system documentation is split into
 
 ---
 
-## 🎯 Quick Navigation
+## Quick Navigation
 
 - **Running DomoScope via CLI:** See [`03_CLI_SPECIFICATION.md`](./03_CLI_SPECIFICATION.md)
 - **Connecting Cursor or Claude via MCP:** See [`04_MCP_PROTOCOL_SPEC.md`](./04_MCP_PROTOCOL_SPEC.md)
