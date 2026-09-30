@@ -2,6 +2,8 @@
   "name": "domoscope",
   "private": true,
   "version": "1.0.0",
+  "author": "Arron Kian Parejas (https://github.com/DarkNecrocities)",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "domoscope": "./bin/domoscope.js",

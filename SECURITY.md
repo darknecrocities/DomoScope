@@ -2,13 +2,13 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
+| Version | Supported |
+| ------- | --------- |
+| 1.0.x   | Yes       |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in DomoScope, please do not disclose it publicly in issues. Please send an advisory through GitHub Security Advisories or contact the maintainers.
+If you discover a security vulnerability in DomoScope, please do not disclose it publicly in issues. Please send an advisory through GitHub Security Advisories or contact the project creator **Arron Kian Parejas** ([@DarkNecrocities](https://github.com/DarkNecrocities)).
 
 ## Safe Handling of Repositories
 

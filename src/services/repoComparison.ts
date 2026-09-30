@@ -471,6 +471,7 @@ export function generateComparisonMarkdown(result: RepoComparisonResult): string
 
   return `# DomoScope Repository Comparison Report
 Generated: ${new Date(result.generatedAt).toLocaleString()}
+Platform: DomoScope (Created by Arron Kian Parejas / @DarkNecrocities)
 
 ## 1. Executive Summary
 

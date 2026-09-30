@@ -5,6 +5,7 @@
 **Free, open-source, local-first developer experience (DX) and repository intelligence platform with npm CLI, real-time AST analysis, interactive architecture visualization, and Model Context Protocol (MCP) support for AI coding agents.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
+[![Creator: Arron Kian Parejas](https://img.shields.io/badge/Creator-Arron%20Kian%20Parejas-black.svg)](https://github.com/DarkNecrocities)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-black.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-black.svg)](https://react.dev/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Protocol%202024--11--05-black.svg)](https://modelcontextprotocol.io/)
@@ -259,6 +260,17 @@ npx vitest
 
 ---
 
+## Creator & Trademark
+
+**DomoScope** is designed, architected, and created by **Arron Kian Parejas** ([@DarkNecrocities](https://github.com/DarkNecrocities)).
+
+* **Creator & Author**: Arron Kian Parejas
+* **GitHub Username**: [DarkNecrocities](https://github.com/DarkNecrocities)
+* **Trademark Notice**: DomoScope is an official trademark and property of Arron Kian Parejas (DarkNecrocities). All rights reserved.
+* **Copyright**: Copyright (c) 2026 Arron Kian Parejas. All rights reserved.
+
+---
+
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE) - Copyright (c) 2026 Arron Kian Parejas (DarkNecrocities).

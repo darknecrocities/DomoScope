@@ -1,6 +1,6 @@
 # Contributing to DomoScope
 
-Thank you for your interest in contributing to DomoScope! DomoScope is a free, open-source GitHub repository inspection and visualization tool.
+Thank you for your interest in contributing to DomoScope! DomoScope is a free, open-source repository intelligence and developer experience platform created and maintained by **Arron Kian Parejas** ([@DarkNecrocities](https://github.com/DarkNecrocities)).
 
 ## Philosophy & Guidelines
 

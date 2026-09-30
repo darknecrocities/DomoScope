@@ -27,14 +27,14 @@ export function generateProjectOverviewDoc(snapshot: LocalAnalysisSnapshot): str
 
   return `# ${projectName} — Project Overview
 
-> Generated autonomously by DomoScope on ${new Date(snapshot.analyzedAt).toUTCString()}
+> Generated autonomously by DomoScope (Created by Arron Kian Parejas / @DarkNecrocities) on ${new Date(snapshot.analyzedAt).toUTCString()}
 
-## 📊 Summary
+## Summary
 ${analysis.summary}
 
 ---
 
-## 🏗️ Architecture & Frameworks
+## Architecture & Frameworks
 - **Primary Framework**: \`${frameworks.primary?.name || 'Generic / Polyglot'}\`
 - **Detected Frameworks**: ${frameworks.allDetected && frameworks.allDetected.length > 0 ? frameworks.allDetected.map((f) => `\`${f}\``).join(', ') : 'None'}
 - **Detected Tooling & Build**: ${tools}
@@ -42,7 +42,7 @@ ${analysis.summary}
 
 ---
 
-## 📈 File & Codebase Metrics
+## File & Codebase Metrics
 - **Total Tracked Files**: ${stats.totalFiles.toLocaleString()}
 - **Total Directories**: ${stats.totalDirs.toLocaleString()}
 - **Total Lines of Code**: ${stats.totalLines.toLocaleString()}
@@ -51,12 +51,12 @@ ${analysis.summary}
 
 ---
 
-## 🌐 Language Breakdown
+## Language Breakdown
 ${langs || '- No source languages recognized.'}
 
 ---
 
-## 🚀 Entry Points
+## Entry Points
 ${entryPoints}
 `;
 }
@@ -88,19 +88,19 @@ ${mermaidEdges}
 
   return `# ${projectName} — Architecture & Module Dependency Guide
 
-## 🏛️ High-Level Structure
+## High-Level Structure
 - **Architecture Style**: ${frameworks.primary?.name ? `${frameworks.primary.name} Application Architecture` : 'Modular Codebase'}
 - **Total Dependency Graph Nodes**: ${nodeCount}
 - **Total Directed Import Edges**: ${edgeCount}
 
 ---
 
-## 🔑 Core & Most-Referenced Modules
+## Core & Most-Referenced Modules
 ${topNodes || '- No nodes indexed.'}
 
 ---
 
-## 🗺️ Visual Module Dependency Flowchart (Top 50 Edges)
+## Visual Module Dependency Flowchart (Top 50 Edges)
 ${mermaidBlock}
 `;
 }
@@ -114,10 +114,10 @@ export function generateDatabaseDoc(snapshot: LocalAnalysisSnapshot): string {
 
   const tableSections = database.tables.map((table) => {
     const cols = table.columns
-      .map((c) => `| \`${c.name}\` | \`${c.type}\` | ${c.isPrimary ? '🔑 PK' : c.isForeignKey ? '🔗 FK' : '—'} | ${c.isNullable ? 'Yes' : 'No'} | ${c.references ? `\`${c.references.table}.${c.references.column}\`` : '—'} |`)
+      .map((c) => `| \`${c.name}\` | \`${c.type}\` | ${c.isPrimary ? 'PK' : c.isForeignKey ? 'FK' : '—'} | ${c.isNullable ? 'Yes' : 'No'} | ${c.references ? `\`${c.references.table}.${c.references.column}\`` : '—'} |`)
       .join('\n');
 
-    return `### 📋 Table / Entity: \`${table.name}\` (\`${table.schemaType}\`)
+    return `### Table / Entity: \`${table.name}\` (\`${table.schemaType}\`)
 **Source File**: \`${table.sourceFile}\`
 
 | Column | Type | Key | Nullable | References |
@@ -140,19 +140,19 @@ ${mermaidRels}
 
   return `# ${projectName} — Database & Entity Documentation
 
-## 🗄️ Schema Overview
+## Schema Overview
 - **Detected Database Ecosystems**: ${database.detectedTypes.map((t) => `\`${t}\``).join(', ') || 'Custom'}
 - **Total Tables / Entities**: ${database.tables.length}
 - **Total Relationships**: ${database.relationships.length}
 
 ---
 
-## 🔗 Entity Relationship Diagram
+## Entity Relationship Diagram
 ${mermaidERD}
 
 ---
 
-## 📑 Detailed Entity Definitions
+## Detailed Entity Definitions
 ${tableSections}
 `;
 }
@@ -170,7 +170,7 @@ export function generateApiDoc(snapshot: LocalAnalysisSnapshot): string {
 
   return `# ${projectName} — API Route Catalog
 
-## 📡 Endpoint Summary
+## Endpoint Summary
 - **Total Discovered Routes**: ${apiRoutes.length}
 
 | Method | Endpoint Path | Framework | Source Location |
@@ -200,7 +200,7 @@ export function generateSecurityDoc(snapshot: LocalAnalysisSnapshot): string {
 
   return `# ${projectName} — Security Audit Report
 
-## 🛡️ Scan Overview
+## Scan Overview
 - **Critical**: ${countBySeverity.critical}
 - **High**: ${countBySeverity.high}
 - **Medium**: ${countBySeverity.medium}
@@ -208,7 +208,7 @@ export function generateSecurityDoc(snapshot: LocalAnalysisSnapshot): string {
 
 ---
 
-## 🔍 Detailed Findings
+## Detailed Findings
 ${findingsList}
 `;
 }

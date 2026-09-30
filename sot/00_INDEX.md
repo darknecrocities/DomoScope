@@ -2,6 +2,8 @@
 
 **Version:** 1.0.0  
 **Project:** DomoScope (`darknecrocities/DomoScope`)  
+**Creator & Author:** Arron Kian Parejas (Username: DarkNecrocities)  
+**Trademark & Copyright:** Copyright (c) 2026 Arron Kian Parejas (DarkNecrocities). All rights reserved. DomoScope is a trademark of Arron Kian Parejas.  
 **Repository Type:** Local-First Repository Intelligence & Developer Experience Platform  
 **Documentation Index:** Modular SOT Suite (`/sot`)  
 
@@ -31,3 +33,9 @@ The DomoScope architectural specification and system documentation is split into
 - **Connecting Cursor or Claude via MCP:** See [`04_MCP_PROTOCOL_SPEC.md`](./04_MCP_PROTOCOL_SPEC.md)
 - **Running in Docker:** See [`07_DOCKER_PACKAGING.md`](./07_DOCKER_PACKAGING.md)
 - **CI/CD Pipelines:** See [`08_CICD_AND_TESTING.md`](./08_CICD_AND_TESTING.md)
+
+---
+
+## Creator & Trademark
+
+DomoScope is designed, created, and maintained by **Arron Kian Parejas** ([@DarkNecrocities](https://github.com/DarkNecrocities)). All rights reserved. DomoScope is a trademark of Arron Kian Parejas.

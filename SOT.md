@@ -1,6 +1,8 @@
 # DomoScope — System Source of Truth (SOT)
 **Version:** 1.0.0  
 **Status:** Approved & Living Document  
+**Creator & Author:** Arron Kian Parejas (Username: DarkNecrocities)  
+**Trademark & Copyright:** Copyright (c) 2026 Arron Kian Parejas (DarkNecrocities). All rights reserved. DomoScope is a trademark of Arron Kian Parejas.  
 **Target Runtimes:** Node.js >= 18, Modern Chromium/WebKit Browsers (WebGPU-enabled), Docker (Linux/x86_64 & ARM64)  
 **License:** MIT  
 
@@ -241,3 +243,12 @@ docker run -d \
 4. **Production Build**: Executes `npm run build` validating Rollup bundle generation and TypeScript compilation.
 5. **CLI Verification**: Executes `domoscope --help`, `domoscope doctor`, and `domoscope-mcp --list-tools`.
 6. **Docker Smoke Test**: Builds Docker image, starts container in CI, and verifies health check response via curl.
+
+---
+
+## 8. Authorship, Trademark & Intellectual Property
+
+* **Creator & Architect**: Arron Kian Parejas
+* **GitHub Username**: DarkNecrocities (`darknecrocities/DomoScope`)
+* **Trademark Notice**: DomoScope is an official trademark and intellectual property of Arron Kian Parejas. All rights reserved.
+* **Copyright**: Copyright (c) 2026 Arron Kian Parejas. Open source licensed under the MIT License.

@@ -14,4 +14,4 @@ Examples of behavior that contributes to a positive environment:
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project leaders responsible for enforcement. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project creator **Arron Kian Parejas** ([@DarkNecrocities](https://github.com/DarkNecrocities)) for enforcement. All complaints will be reviewed and investigated promptly and fairly.
