@@ -88,7 +88,7 @@ flowchart TD
 
 ### 2.3. Presentation & Serving Layer
 - **CLI (`bin/domoscope.js`, `src/services/local/localCli.ts`)**:
-  - Native zero-install command-line interface with 8 subcommands (`init`, `analyze`, `graph`, `docs`, `serve`, `watch`, `mcp`, `doctor`).
+  - Native zero-install command-line interface with 9 subcommands (`init`, `analyze`, `graph`, `docs`, `skill`, `serve`, `watch`, `mcp`, `doctor`).
 - **MCP Server (`bin/domoscope-mcp.js`, `src/services/mcpCore.ts`)**:
   - Model Context Protocol server exposing 16 registered tools and 3 prompts over stdio JSON-RPC and HTTP/SSE.
 - **Local Studio Server (`src/services/local/localServer.ts`)**:

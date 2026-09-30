@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseCliArgs, runCli } from '../src/services/local/localCli';
@@ -101,13 +101,20 @@ describe('Local CLI', () => {
         join(tempDir, 'package.json'),
         JSON.stringify({ name: 'cli-skill-app', dependencies: { react: '^18.0.0' } })
       );
+      await mkdir(join(tempDir, 'src', 'components'), { recursive: true });
+      await writeFile(
+        join(tempDir, 'src', 'components', 'Header.tsx'),
+        'export function Header() { return <header>Header</header>; }'
+      );
 
       const skillPath = join(tempDir, 'MY_SKILL.md');
-      const exitCode = await runCli(['skill', '--dir', tempDir, '--output', skillPath]);
+      const exitCode = await runCli(['skill', '--dir', tempDir, '--output', skillPath, '--no-cache']);
       expect(exitCode).toBe(0);
 
       const content = await readFile(skillPath, 'utf-8');
       expect(content).toContain('cli-skill-app');
+      expect(content).toContain('HeaderProps');
+      expect(content).not.toContain('Header.tsxProps');
       expect(content.length).toBeGreaterThan(50);
     });
   });

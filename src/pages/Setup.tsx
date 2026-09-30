@@ -88,7 +88,7 @@ export function SetupPage() {
 
   // Interactive Prompt Generator State
   const [promptAgent, setPromptAgent] = useState<'codex' | 'claude' | 'cursor' | 'antigravity' | 'windsurf' | 'cline' | 'aider'>('codex');
-  const [promptGoal, setPromptGoal] = useState<'blueprint' | 'erd' | 'api' | 'security' | 'blast_radius' | 'spec'>('blueprint');
+  const [promptGoal, setPromptGoal] = useState<'blueprint' | 'erd' | 'api' | 'security' | 'blast_radius' | 'spec' | 'skill'>('blueprint');
 
   // Local Directory Loading state
   const [isScanningLocal, setIsScanningLocal] = useState(false);
@@ -336,34 +336,37 @@ export function SetupPage() {
 
   // Generated Agent Prompt
   const generatedAgentPrompt = useMemo(() => {
-    const agentNames: Record<string, string> = {
-      codex: 'OpenAI Codex / ChatGPT',
-      claude: 'Claude 3.7 Sonnet',
-      cursor: 'Cursor AI Agent',
-      antigravity: 'Google Antigravity Agent',
-      windsurf: 'Windsurf Cascade Agent',
-      cline: 'Cline / Roo Code Agent',
-      aider: 'Aider Terminal Agent',
+    const agentRoles: Record<string, string> = {
+      codex: 'You are operating as OpenAI Codex / ChatGPT.',
+      claude: 'You are operating as Claude 3.7 Sonnet.',
+      cursor: 'You are operating as the Cursor AI Agent with MCP tool integration.',
+      antigravity: 'You are operating as Google Antigravity Agent with autonomous subagent delegation.',
+      windsurf: 'You are operating as Windsurf Cascade Agent.',
+      cline: 'You are operating as Cline / Roo Code with MCP protocol execution.',
+      aider: 'You are operating as Aider terminal pair programmer in architect mode.',
     };
 
-    const targetAgent = agentNames[promptAgent] || 'AI Agent';
+    const role = agentRoles[promptAgent] || 'You are operating as an autonomous software engineer.';
 
     if (promptGoal === 'blueprint') {
-      return `You are operating as a senior software architect. Connect to the DomoScope MCP server and call \`get_repository_architecture\` and \`get_reverse_engineer_blueprint\` for this repository. Break down the core subsystem contracts, entry points, component hierarchy, and design a step-by-step reconstruction blueprint with modern patterns.`;
+      return `${role} Connect to the DomoScope MCP server and call \`get_repository_architecture\` and \`get_reverse_engineer_blueprint\` for this repository. Break down the core subsystem contracts, entry points, component hierarchy, and design a step-by-step reconstruction blueprint with modern patterns.`;
     }
     if (promptGoal === 'erd') {
-      return `Connect to the DomoScope MCP server and call \`get_database_erd\` with format="sql" and format="mermaid". Extract all database entities, relations, primary keys, and foreign keys. Present a complete PostgreSQL/Supabase schema definition along with an ERD diagram.`;
+      return `${role} Connect to the DomoScope MCP server and call \`get_database_erd\` with format="sql" and format="mermaid". Extract all database entities, relations, primary keys, and foreign keys. Present a complete PostgreSQL/Supabase schema definition along with an ERD diagram.`;
     }
     if (promptGoal === 'api') {
-      return `Using the DomoScope MCP server, execute \`get_api_catalog\` across all discovered controllers and routes. Map every HTTP method, path, parameter payload, and handler. Highlight missing error handlers, rate-limiting gaps, and generate an OpenAPI 3.0 specification.`;
+      return `${role} Using the DomoScope MCP server, execute \`get_api_catalog\` across all discovered controllers and routes. Map every HTTP method, path, parameter payload, and handler. Highlight missing error handlers, rate-limiting gaps, and generate an OpenAPI 3.0 specification.`;
     }
     if (promptGoal === 'security') {
-      return `Call \`get_security_audit\` via the DomoScope MCP server. Analyze all flagged CWE security vulnerabilities, hardcoded secret leaks, unsafe query constructs, and insecure configurations. Output a prioritized remediation table with exact code fix patches.`;
+      return `${role} Call \`get_security_audit\` via the DomoScope MCP server. Analyze all flagged CWE security vulnerabilities, hardcoded secret leaks, unsafe query constructs, and insecure configurations. Output a prioritized remediation table with exact code fix patches.`;
     }
     if (promptGoal === 'blast_radius') {
-      return `Using the DomoScope MCP server, call \`get_dependency_graph\` and \`get_module_details\` on our core service layer. Identify all dependent modules, imports, and API routes that would be affected by a refactor. Calculate the blast radius and propose a zero-downtime migration strategy.`;
+      return `${role} Using the DomoScope MCP server, call \`get_dependency_graph\` and \`get_module_details\` on our core service layer. Identify all dependent modules, imports, and API routes that would be affected by a refactor. Calculate the blast radius and propose a zero-downtime migration strategy.`;
     }
-    return `Connect to the DomoScope MCP server and execute \`generate_markdown_spec\`. Produce a comprehensive 1,000+ line technical reverse-engineering specification documenting architecture, database entities, endpoints, dependencies, and deployment topology.`;
+    if (promptGoal === 'skill') {
+      return `${role} Connect to the DomoScope MCP server and execute \`get_reverse_engineer_blueprint\` with category="agent_skill", or ingest the repository's \`SKILL.md\` specification generated via \`npx domoscope skill\`. Read the structured architectural boundaries, entity relations, and API route contracts to execute coding tasks with zero unnecessary file discovery tokens.`;
+    }
+    return `${role} Connect to the DomoScope MCP server and execute \`generate_markdown_spec\`. Produce a comprehensive 1,000+ line technical reverse-engineering specification documenting architecture, database entities, endpoints, dependencies, and deployment topology.`;
   }, [promptAgent, promptGoal]);
 
   const percentageRemaining = Math.max(0, Math.min(100, Math.round((rateLimit.remaining / rateLimit.limit) * 100)));
@@ -484,7 +487,7 @@ export function SetupPage() {
             {[
               { label: '16 MCP Agent Tools', desc: 'Architecture, AST, ERD & Blast Radius', icon: Cpu },
               { label: '8 AI Agent Ecosystems', desc: 'Codex, Claude, Cursor, Antigravity, Cline, Aider', icon: Bot },
-              { label: 'Local CLI & Studio Daemon', desc: '8 subcommands + incremental watcher', icon: Terminal },
+              { label: 'Local CLI & Studio Daemon', desc: '9 subcommands + incremental watcher', icon: Terminal },
               { label: 'Zero-Leakage Privacy', desc: '100% Client-side AST parsing', icon: ShieldCheck },
             ].map((card, i) => {
               const Icon = card.icon;
@@ -509,7 +512,7 @@ export function SetupPage() {
           <div className="flex border-b border-zinc-200 overflow-x-auto text-xs font-mono">
             {[
               { id: 'mcp', label: '1. AI Agent MCP Protocol', icon: Bot, count: '8 Agents' },
-              { id: 'cli', label: '2. CLI & Subcommands', icon: Terminal, count: '8 Tools' },
+              { id: 'cli', label: '2. CLI & Subcommands', icon: Terminal, count: '9 Tools' },
               { id: 'local', label: '3. Local Studio & Privacy', icon: Laptop, count: 'Local DX' },
               { id: 'auth', label: '4. GitHub Token & Quota', icon: Key, count: '5k Limit' },
               { id: 'diagnostics', label: '5. Browser Diagnostics', icon: Activity, count: 'Doctor' },
@@ -841,6 +844,7 @@ export function SetupPage() {
                         { id: 'api', label: 'API Route Catalog' },
                         { id: 'security', label: 'Security & Vulnerabilities' },
                         { id: 'blast_radius', label: 'Refactor Blast Radius' },
+                        { id: 'skill', label: 'Agentic SKILL.md Pack' },
                         { id: 'spec', label: '1,000+ Line Markdown Spec' },
                       ].map((item) => (
                         <button
@@ -1048,7 +1052,7 @@ export function SetupPage() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wider font-mono flex items-center gap-2">
                     <Command className="w-4 h-4 text-zinc-900" />
-                    Complete CLI Subcommand Suite (8 Commands)
+                    Complete CLI Subcommand Suite (9 Commands)
                   </h3>
                   <span className="text-xs text-zinc-500 font-mono">Node.js &ge; 18.0</span>
                 </div>
@@ -1087,9 +1091,15 @@ export function SetupPage() {
                     },
                     {
                       cmd: 'domoscope docs',
-                      desc: 'Generates a complete 6-file reverse-engineering markdown documentation suite in the target directory.',
+                      desc: 'Generates a complete 7-file reverse-engineering markdown documentation suite in the target directory.',
                       flags: ['--output <dir>'],
                       example: 'npx domoscope docs --output ./domoscope-docs',
+                    },
+                    {
+                      cmd: 'domoscope skill',
+                      desc: 'Generates an autonomous AI agent SKILL.md specification file with complete architecture, entity models, and API contracts.',
+                      flags: ['--output <file>'],
+                      example: 'npx domoscope skill --output SKILL.md',
                     },
                     {
                       cmd: 'domoscope watch',

@@ -237,7 +237,8 @@ Duration:             ${snapshot.durationMs}ms (${snapshot.isIncremental ? 'Incr
 }
 
 async function handleGraph(rootDir: string, options: Record<string, any>): Promise<number> {
-  const snapshot = await runLocalAnalysis(rootDir, { verbose: Boolean(options.verbose) });
+  const noCache = options.cache === false || options['no-cache'] === true;
+  const snapshot = await runLocalAnalysis(rootDir, { noCache, verbose: Boolean(options.verbose) });
   const format = ((options.format as string) || 'mermaid').toLowerCase();
 
   if (format === 'json') {
@@ -272,7 +273,8 @@ async function handleDocs(rootDir: string, options: Record<string, any>): Promis
   const outputDir = (options.output as string) || (options.out as string) || path.join(rootDir, '.domoscope', 'docs');
   console.log(`\x1b[1m\x1b[37m[DomoScope Docs]\x1b[0m Generating documentation in \x1b[36m${outputDir}\x1b[0m...`);
 
-  const snapshot = await runLocalAnalysis(rootDir, { verbose: Boolean(options.verbose) });
+  const noCache = options.cache === false || options['no-cache'] === true;
+  const snapshot = await runLocalAnalysis(rootDir, { noCache, verbose: Boolean(options.verbose) });
   const docs = await generateAndSaveDocumentation(snapshot, outputDir);
 
   console.log(`\x1b[32m✓ Generated ${docs.length} documentation files:\x1b[0m`);
@@ -287,7 +289,8 @@ async function handleSkill(rootDir: string, options: Record<string, any>): Promi
   const outputPath = (options.output as string) || (options.out as string) || path.join(rootDir, 'SKILL.md');
   console.log(`\x1b[1m\x1b[37m[DomoScope Skill]\x1b[0m Generating AI Agent SKILL.md for \x1b[36m${rootDir}\x1b[0m...`);
 
-  const snapshot = await runLocalAnalysis(rootDir, { verbose: Boolean(options.verbose) });
+  const noCache = options.cache === false || options['no-cache'] === true;
+  const snapshot = await runLocalAnalysis(rootDir, { noCache, verbose: Boolean(options.verbose) });
   const skillContent = snapshot.reverseEngineer.agentSkill || snapshot.reverseEngineer.overview || `# AI Agent Engineering Skill Pack: ${snapshot.projectName}`;
 
   await fsp.writeFile(path.resolve(outputPath), skillContent, 'utf8');

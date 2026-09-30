@@ -159,13 +159,16 @@ docker run --rm -v $(pwd):/workspace domoscope doctor
 # 2. Analyze codebase and output structured metrics
 docker run --rm -v $(pwd):/workspace domoscope analyze
 
-# 3. Generate 6-file markdown documentation suite in ./docs
+# 3. Generate 7-file markdown documentation suite in ./docs
 docker run --rm -v $(pwd):/workspace domoscope docs --output /workspace/docs
 
-# 4. Export architectural dependency graph as Mermaid
+# 4. Generate autonomous AI agent SKILL.md specification
+docker run --rm -v $(pwd):/workspace domoscope skill --output /workspace/SKILL.md
+
+# 5. Export architectural dependency graph as Mermaid
 docker run --rm -v $(pwd):/workspace domoscope graph --format mermaid --output /workspace/architecture.mmd
 
-# 5. Run headless MCP server over stdio
+# 6. Run headless MCP server over stdio
 docker run -i --rm domoscope mcp
 ```
 

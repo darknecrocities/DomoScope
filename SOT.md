@@ -46,10 +46,11 @@ flowchart TD
     end
 
     subgraph OutputSurfaces ["🚀 Output & Consumption Surfaces"]
-        CLI["Zero-Install CLI (npx domoscope 8 commands)"]
+        CLI["Zero-Install CLI (npx domoscope 9 commands)"]
         LocalServer["Local Studio Daemon (HTTP/SSE on localhost:4004)"]
         WebStudio["React 19 Interactive Web Studio (Monaco, XYFlow, Tailwind)"]
-        DocsGen["6-File Markdown Suite Generator (.domoscope/docs/)"]
+        DocsGen["7-File Markdown Suite Generator (.domoscope/docs/)"]
+        SkillGen["Autonomous Agent SKILL.md Generator"]
         MCPEngine["Model Context Protocol (MCP) Server (Stdio & SSE)"]
     end
 
@@ -164,10 +165,11 @@ Generates 6 standardized markdown documents in `.domoscope/docs/` (or user-chose
 | **Analysis** | Cloud & Infra Detection | Detects AWS, GCP, Azure, Docker, Vercel, Supabase, Firebase configs | ✅ Done |
 | **AI / Agentic** | Model Context Protocol (MCP) | Full stdio & SSE MCP server with 16 tools for AI coding assistants | ✅ Done |
 | **AI / Agentic** | Autonomous Rebuild Blueprint | Phased implementation recipes and subagent delegation prompts | ✅ Done |
-| **AI / Agentic** | 6-File Markdown Suite | Automated `.md` doc generator (`domoscope docs`) | ✅ Done |
+| **AI / Agentic** | 7-File Markdown Suite | Automated `.md` doc generator (`domoscope docs`) | ✅ Done |
+| **AI / Agentic** | Autonomous Agent `SKILL.md` Pack | Exportable `SKILL.md` specification for Claude, Codex, Cursor (`domoscope skill`) | ✅ Done |
 | **AI / Agentic** | In-Browser WebGPU LLM | Local offline LLM execution via WebLLM (Qwen, Llama, DeepSeek) | ✅ Done |
 | **AI / Agentic** | Interactive Prompt Generator | UI wizard generating customized prompts for Cursor, Claude, Antigravity | ✅ Done |
-| **CLI & Runtime** | Zero-Install CLI | 8 executable subcommands via `npx domoscope <command>` | ✅ Done |
+| **CLI & Runtime** | Zero-Install CLI | 9 executable subcommands via `npx domoscope <command>` | ✅ Done |
 | **CLI & Runtime** | Incremental File Watcher | Debounced filesystem watcher with SHA-256 hot cache invalidation | ✅ Done |
 | **CLI & Runtime** | Local Studio Daemon | Localhost:4004 visual dashboard with real-time SSE updates | ✅ Done |
 | **Security** | Hardware Token Encryption | AES-GCM 256-bit encrypted GitHub token vault in IndexedDB | ✅ Done |
@@ -186,7 +188,8 @@ Generates 6 standardized markdown documents in `.domoscope/docs/` (or user-chose
 | `init` | `domoscope init` | Scans directory and creates recommended `.domoscope.json` config | `--force`, `--verbose` |
 | `analyze` | `domoscope analyze [path]` | Executes static analysis and outputs formatted metrics table | `--json`, `--output <file>`, `--no-cache` |
 | `graph` | `domoscope graph` | Exports dependency module graph | `--format <mermaid\|json>`, `--output <file>` |
-| `docs` | `domoscope docs` | Generates 6-file markdown documentation suite | `--output <dir>` |
+| `docs` | `domoscope docs` | Generates 7-file markdown documentation suite | `--output <dir>` |
+| `skill` | `domoscope skill` | Exports autonomous AI agent `SKILL.md` pack | `--output <file>` |
 | `serve` | `domoscope serve` | Launches local studio dashboard and REST/SSE daemon | `--port <num>`, `--host <ip>`, `--no-watch` |
 | `watch` | `domoscope watch` | Starts live terminal watcher with incremental cache diffing | `--verbose`, `-d, --dir` |
 | `mcp` | `domoscope mcp` | Starts stdio JSON-RPC 2.0 MCP server for AI coding agents | `--list-tools`, `--verbose` |

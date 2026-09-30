@@ -368,19 +368,20 @@ export function generateAgentSkillPack(
 
   lines.push(`## 3. Master Component Generation Directives`);
   components.forEach((c) => {
+    const compIdent = c.name.replace(/\.[a-zA-Z0-9]+$/, '').replace(/[^a-zA-Z0-9_$]/g, '') || 'Component';
     lines.push(`### Directive: \`${c.path}\``);
-    lines.push(`- **Action**: Implement component \`${c.name}\``);
+    lines.push(`- **Action**: Implement component \`${compIdent}\``);
     lines.push(`- **Styling**: Tailwind utility classes conforming to monochrome boundaries`);
     lines.push(`- **Interface**: Strictly type all props with TypeScript interfaces`);
     lines.push(`- **Code Blueprint**:`);
     lines.push(`\`\`\`tsx`);
     lines.push(`// Generated specification for ${c.path}`);
-    lines.push(`export interface ${c.name}Props {`);
-    lines.push(`  // Define specific props matching ${c.name}`);
+    lines.push(`export interface ${compIdent}Props {`);
+    lines.push(`  // Define specific props matching ${compIdent}`);
     lines.push(`  className?: string;`);
     lines.push(`}`);
-    lines.push(`export function ${c.name}(props: ${c.name}Props) {`);
-    lines.push(`  return <div className="p-4 bg-white border border-zinc-200 rounded-2xl">{/* ${c.name} content */}</div>;`);
+    lines.push(`export function ${compIdent}(props: ${compIdent}Props) {`);
+    lines.push(`  return <div className="p-4 bg-white border border-zinc-200 rounded-2xl">{/* ${compIdent} content */}</div>;`);
     lines.push(`}`);
     lines.push(`\`\`\``);
     lines.push(``);
@@ -586,12 +587,13 @@ function generateFrontendBlueprint(
 
   lines.push(`## 2. Component Hierarchy & Interface Contracts`);
   components.forEach((c) => {
-    lines.push(`### \`${c.name}\` (\`${c.path}\`)`);
+    const compIdent = c.name.replace(/\.[a-zA-Z0-9]+$/, '').replace(/[^a-zA-Z0-9_$]/g, '') || 'Component';
+    lines.push(`### \`${compIdent}\` (\`${c.path}\`)`);
     lines.push(`- **Module Path**: \`${c.path}\``);
     lines.push(`- **Category**: Component Primitive / View Container`);
     lines.push(`- **Props Contract Specification**:`);
     lines.push(`\`\`\`typescript`);
-    lines.push(`export interface ${c.name}Props {`);
+    lines.push(`export interface ${compIdent}Props {`);
     lines.push(`  // Input properties`);
     lines.push(`  data?: any;`);
     lines.push(`  className?: string;`);

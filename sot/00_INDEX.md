@@ -15,7 +15,7 @@ The DomoScope architectural specification and system documentation is split into
 |---|---|---|
 | [**01. Architecture Topology**](./01_ARCHITECTURE.md) | High-Level Architecture & Data Flows | System layers, data flow diagrams, boundaries, and runtime environments |
 | [**02. Feature Catalog**](./02_FEATURES_CATALOG.md) | Exhaustive Capabilities & Status | Detailed listing of all platform features and capabilities |
-| [**03. CLI Specification**](./03_CLI_SPECIFICATION.md) | 8 Subcommands & Command-Line Interface | `init`, `analyze`, `graph`, `docs`, `serve`, `watch`, `mcp`, `doctor` |
+| [**03. CLI Specification**](./03_CLI_SPECIFICATION.md) | 9 Subcommands & Command-Line Interface | `init`, `analyze`, `graph`, `docs`, `skill`, `serve`, `watch`, `mcp`, `doctor` |
 | [**04. MCP Protocol Specification**](./04_MCP_PROTOCOL_SPEC.md) | Model Context Protocol (MCP) Server | Stdio JSON-RPC & SSE transports, 16 tools, and prompt definitions |
 | [**05. Analysis Engines**](./05_ANALYSIS_ENGINES.md) | Deep Static AST, ERD, API & Security Engines | Polyglot parser details, entity extraction, route catalogs, regex entropy |
 | [**06. Reverse Engineering Spec**](./06_REVERSE_ENGINEERING_SPEC.md) | Autonomous Rebuilding & AI Blueprints | Phase-by-phase implementation recipes and agent delegation prompts |

@@ -39,16 +39,19 @@ npx domoscope analyze
 # 4. Export architectural dependency graph (Mermaid or JSON)
 npx domoscope graph --format mermaid --output architecture.mmd
 
-# 5. Generate complete 6-file markdown documentation suite
+# 5. Generate complete 7-file markdown documentation suite
 npx domoscope docs --output ./docs/architecture
 
-# 6. Launch local interactive studio dashboard on localhost:4004
+# 6. Generate autonomous AI agent SKILL.md specification
+npx domoscope skill --output SKILL.md
+
+# 7. Launch local interactive studio dashboard on localhost:4004
 npx domoscope serve --port 4004
 
-# 7. Start live file watcher with incremental re-analysis
+# 8. Start live file watcher with incremental re-analysis
 npx domoscope watch
 
-# 8. Run local Model Context Protocol (MCP) server for AI agents
+# 9. Run local Model Context Protocol (MCP) server for AI agents
 npx domoscope mcp
 ```
 

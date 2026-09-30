@@ -194,7 +194,7 @@ npx domoscope skill --output ./skills/my-repo-skill.md
 
 ---
 
-### 2.6. `domoscope serve`
+### 2.7. `domoscope serve`
 Launches the local visualizer studio daemon and REST/SSE server.
 
 **Usage:**
@@ -210,7 +210,7 @@ npx domoscope serve --port 4004 --host 0.0.0.0 --no-watch
 
 ---
 
-### 2.7. `domoscope watch`
+### 2.8. `domoscope watch`
 Runs a live, debounced terminal file watcher with incremental re-analysis.
 
 **Usage:**
@@ -227,7 +227,7 @@ npx domoscope watch [--verbose]
 
 ---
 
-### 2.8. `domoscope mcp`
+### 2.9. `domoscope mcp`
 Starts the stdio Model Context Protocol (MCP) server. See [`04_MCP_PROTOCOL_SPEC.md`](./04_MCP_PROTOCOL_SPEC.md) for full details.
 
 **Usage:**
