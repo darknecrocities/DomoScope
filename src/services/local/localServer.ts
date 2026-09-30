@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 export interface LocalServerOptions {
   rootDir: string;
   port?: number;
+  host?: string;
   watch?: boolean;
   distDir?: string;
   enableMcp?: boolean;
@@ -58,6 +59,7 @@ function sendJson(res: http.ServerResponse, data: any, statusCode = 200) {
 export async function startLocalServer(options: LocalServerOptions): Promise<RunningLocalServer> {
   const rootDir = path.resolve(options.rootDir);
   const initialPort = options.port || 4004;
+  const host = options.host || process.env.HOST || '0.0.0.0';
   const distDir = options.distDir || path.resolve(__dirname, '../../../dist');
 
   // Initialize analysis and watcher
@@ -217,7 +219,7 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Run
     const maxPort = initialPort + 50;
 
     function tryListen() {
-      server.listen(testPort, '127.0.0.1');
+      server.listen(testPort, host);
     }
 
     server.once('listening', () => {
@@ -240,7 +242,7 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Run
     tryListen();
   });
 
-  const url = `http://localhost:${port}`;
+  const url = `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`;
 
   return {
     server,

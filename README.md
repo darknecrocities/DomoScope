@@ -10,7 +10,7 @@
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Protocol%202024--11--05-black.svg)](https://modelcontextprotocol.io/)
 [![Tests](https://img.shields.io/badge/Vitest-100%25%20Passing-black.svg)](tests/)
 
-[Live App](https://domoscope.vercel.app) • [CLI Quickstart](#-cli-quickstart) • [MCP Server Setup](#-model-context-protocol-mcp-server) • [Reverse Engineering](#-autonomous-reverse-engineering-engine) • [Database ERD](#-polyglot-database-erd-engine) • [Documentation](#-getting-started)
+[Live App](https://domoscope.vercel.app) • [Architecture SOT](SOT.md) • [CLI Quickstart](#-cli-quickstart) • [MCP Server Setup](#-model-context-protocol-mcp-server) • [Reverse Engineering](#-autonomous-reverse-engineering-engine) • [Database ERD](#-polyglot-database-erd-engine) • [Documentation](#-getting-started)
 
 </div>
 

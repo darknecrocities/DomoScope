@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "agent": "universal",
+  "skills": [
+    {
+      "name": "tech-green-dark-mode-modern",
+      "source": "MengTo/Skills",
+      "version": "1.0.0",
+      "commit": "3d91ea4",
+      "installedAt": "2026-09-30T06:20:23.083Z",
+      "files": [
+        "SKILL.md",
+        "demo/preview.jpg",
+        "demo/PROMPT.md"
+      ],
+      "agent": "universal"
+    },
+    {
+      "name": "bento-grid-cyberpunk-layout-v28",
+      "source": "domoskills-official/bento-grid-cyberpunk-layout-v28",
+      "version": "1.28.0",
+      "commit": "5941606",
+      "installedAt": "2026-09-30T06:20:23.084Z",
+      "files": [
+        "SKILL.md"
+      ],
+      "agent": "universal"
+    }
+  ],
+  "lastUpdated": "2026-09-30T06:20:23.084Z"
+}

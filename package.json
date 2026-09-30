@@ -14,7 +14,12 @@
     "preview": "vite preview",
     "cli": "node bin/domoscope.js",
     "mcp": "node bin/domoscope-mcp.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docker:build": "docker build -t domoscope:latest .",
+    "docker:package": "docker build -t domoscope:latest -t domoscope:v1.0.0 .",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.85",
@@ -23,6 +28,7 @@
     "dagre": "^0.8.5",
     "framer-motion": "^13.4.4",
     "idb": "^8.0.3",
+    "jiti": "^1.21.7",
     "jszip": "^3.10.2",
     "lucide-react": "^1.48.0",
     "react": "^19.2.8",

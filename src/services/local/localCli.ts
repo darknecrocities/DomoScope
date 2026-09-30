@@ -282,11 +282,13 @@ async function handleDocs(rootDir: string, options: Record<string, any>): Promis
 
 async function handleServe(rootDir: string, options: Record<string, any>): Promise<number> {
   const port = options.port ? parseInt(options.port as string, 10) : 4004;
+  const host = (options.host as string) || process.env.HOST || '0.0.0.0';
   console.log(`\x1b[1m\x1b[37m[DomoScope Server]\x1b[0m Starting local studio for \x1b[36m${rootDir}\x1b[0m...`);
 
   const running = await startLocalServer({
     rootDir,
     port,
+    host,
     watch: options.watch !== false,
   });
 

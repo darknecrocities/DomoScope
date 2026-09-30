@@ -6,7 +6,6 @@ export interface OpenRepoItem {
   owner: string;
   repo: string;
 }
-
 const STORAGE_KEY = 'domoscope_open_repositories';
 
 function loadStoredRepos(): OpenRepoItem[] {
