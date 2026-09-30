@@ -28,10 +28,10 @@ flowchart TD
     end
 
     subgraph OutputSurfaces ["Output & Consumption Surfaces"]
-        CLI["Zero-Install CLI (npx domoscope 8 commands)"]
+        CLI["Zero-Install CLI (npx domoscope 10 commands)"]
         LocalServer["Local Studio Daemon (HTTP/SSE on localhost:4004)"]
         WebStudio["React 19 Interactive Web Studio (Monaco, XYFlow, Tailwind)"]
-        DocsGen["6-File Markdown Suite Generator (.domoscope/docs/)"]
+        DocsGen["7-File Markdown Suite Generator (.domoscope/docs/)"]
         MCPEngine["Model Context Protocol (MCP) Server (Stdio & SSE)"]
     end
 

@@ -45,13 +45,16 @@ npx domoscope docs --output ./docs/architecture
 # 6. Generate autonomous AI agent SKILL.md specification
 npx domoscope skill --output SKILL.md
 
-# 7. Launch local interactive studio dashboard on localhost:4004
+# 7. Compare two repositories side-by-side with dynamic grading
+npx domoscope compare ./repoA ./repoB --format markdown
+
+# 8. Launch local interactive studio dashboard on localhost:4004
 npx domoscope serve --port 4004
 
-# 8. Start live file watcher with incremental re-analysis
+# 9. Start live file watcher with incremental re-analysis
 npx domoscope watch
 
-# 9. Run local Model Context Protocol (MCP) server for AI agents
+# 10. Run local Model Context Protocol (MCP) server for AI agents
 npx domoscope mcp
 ```
 
@@ -64,6 +67,7 @@ npx domoscope mcp
 | `domoscope graph` | Exports module dependency and architectural graph | `--format <mermaid\|json>`, `--output <file>` |
 | `domoscope docs` | Generates 7 markdown guides & agent skill in `.domoscope/docs/` | `--output <dir>` |
 | `domoscope skill` | Exports ready-to-use `SKILL.md` pack for Claude, Cursor, Antigravity | `--output <file>` |
+| `domoscope compare` | Compares two projects side-by-side with dynamic architectural grading | `--format <table\|json\|markdown>`, `--output <file>` |
 | `domoscope serve` | Launches local dashboard and REST/SSE server | `--port <number>`, `--open`, `--no-open` |
 | `domoscope watch` | Runs debounced live terminal watcher with instant cache diffing | `-d, --dir`, `--verbose` |
 | `domoscope mcp` | Starts stdio JSON-RPC 2.0 MCP server for AI coding agents | `--verbose` |

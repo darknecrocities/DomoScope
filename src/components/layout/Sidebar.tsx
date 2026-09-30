@@ -12,6 +12,7 @@ import {
   Lightbulb,
   MessageSquare,
   Cpu,
+  Scale,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -29,6 +30,7 @@ export type WorkspaceTab =
   | 'security'
   | 'audit_report'
   | 'reverse_engineer'
+  | 'compare'
   | 'suggestions'
   | 'ask';
 
@@ -58,6 +60,7 @@ const NAV_ITEMS = [
   { id: 'security' as WorkspaceTab, label: 'Security & Patches', icon: Shield },
   { id: 'audit_report' as WorkspaceTab, label: 'Audit Report', icon: FileCheck },
   { id: 'reverse_engineer' as WorkspaceTab, label: 'Reverse Engineer', icon: Cpu },
+  { id: 'compare' as WorkspaceTab, label: 'Compare Repos', icon: Scale },
   { id: 'suggestions' as WorkspaceTab, label: 'Suggestions', icon: Lightbulb },
   { id: 'ask' as WorkspaceTab, label: 'Ask AI', icon: MessageSquare },
 ];

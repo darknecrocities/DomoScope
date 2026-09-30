@@ -117,5 +117,31 @@ describe('Local CLI', () => {
       expect(content).not.toContain('Header.tsxProps');
       expect(content.length).toBeGreaterThan(50);
     });
+
+    it('runs compare command to evaluate two projects side-by-side', async () => {
+      const dirA = join(tempDir, 'repoA');
+      const dirB = join(tempDir, 'repoB');
+      await mkdir(dirA, { recursive: true });
+      await mkdir(dirB, { recursive: true });
+
+      await writeFile(
+        join(dirA, 'package.json'),
+        JSON.stringify({ name: 'repo-alpha', dependencies: { react: '^18.0.0' } })
+      );
+      await writeFile(
+        join(dirB, 'package.json'),
+        JSON.stringify({ name: 'repo-beta', dependencies: { express: '^4.18.0' } })
+      );
+
+      const reportPath = join(tempDir, 'comparison.md');
+      const exitCode = await runCli(['compare', dirA, dirB, '--format', 'markdown', '--output', reportPath]);
+      expect(exitCode).toBe(0);
+
+      const content = await readFile(reportPath, 'utf-8');
+      expect(content).toContain('DomoScope Repository Comparison Report');
+      expect(content).toContain('repo-alpha');
+      expect(content).toContain('repo-beta');
+      expect(content).toContain('Executive Summary');
+    });
   });
 });

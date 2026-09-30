@@ -46,7 +46,7 @@ flowchart TD
     end
 
     subgraph OutputSurfaces ["Output & Consumption Surfaces"]
-        CLI["Zero-Install CLI (npx domoscope 9 commands)"]
+        CLI["Zero-Install CLI (npx domoscope 10 commands)"]
         LocalServer["Local Studio Daemon (HTTP/SSE on localhost:4004)"]
         WebStudio["React 19 Interactive Web Studio (Monaco, XYFlow, Tailwind)"]
         DocsGen["7-File Markdown Suite Generator (.domoscope/docs/)"]
@@ -169,7 +169,8 @@ Generates 6 standardized markdown documents in `.domoscope/docs/` (or user-chose
 | **AI / Agentic** | Autonomous Agent `SKILL.md` Pack | Exportable `SKILL.md` specification for Claude, Codex, Cursor (`domoscope skill`) | Done |
 | **AI / Agentic** | In-Browser WebGPU LLM | Local offline LLM execution via WebLLM (Qwen, Llama, DeepSeek) | Done |
 | **AI / Agentic** | Interactive Prompt Generator | UI wizard generating customized prompts for Cursor, Claude, Antigravity | Done |
-| **CLI & Runtime** | Zero-Install CLI | 9 executable subcommands via `npx domoscope <command>` | Done |
+| **Analysis & Diff** | Dual-Repository Comparison | Evaluates two repositories side-by-side with dynamic architectural grading | Done |
+| **CLI & Runtime** | Zero-Install CLI | 10 executable subcommands via `npx domoscope <command>` | Done |
 | **CLI & Runtime** | Incremental File Watcher | Debounced filesystem watcher with SHA-256 hot cache invalidation | Done |
 | **CLI & Runtime** | Local Studio Daemon | Localhost:4004 visual dashboard with real-time SSE updates | Done |
 | **Security** | Hardware Token Encryption | AES-GCM 256-bit encrypted GitHub token vault in IndexedDB | Done |
@@ -190,6 +191,7 @@ Generates 6 standardized markdown documents in `.domoscope/docs/` (or user-chose
 | `graph` | `domoscope graph` | Exports dependency module graph | `--format <mermaid\|json>`, `--output <file>` |
 | `docs` | `domoscope docs` | Generates 7-file markdown documentation suite | `--output <dir>` |
 | `skill` | `domoscope skill` | Exports autonomous AI agent `SKILL.md` pack | `--output <file>` |
+| `compare` | `domoscope compare <pathA> [pathB]` | Compares two projects side-by-side with dynamic architectural grading | `--format <table\|json\|markdown>`, `--output <file>` |
 | `serve` | `domoscope serve` | Launches local studio dashboard and REST/SSE daemon | `--port <num>`, `--host <ip>`, `--no-watch` |
 | `watch` | `domoscope watch` | Starts live terminal watcher with incremental cache diffing | `--verbose`, `-d, --dir` |
 | `mcp` | `domoscope mcp` | Starts stdio JSON-RPC 2.0 MCP server for AI coding agents | `--list-tools`, `--verbose` |

@@ -41,14 +41,14 @@ npx domoscope doctor [--verbose]
 =================================================================
 DomoScope Doctor — Environment & Repository Diagnostics
 =================================================================
-✓ Node.js Runtime:       v22.22.3 (>= 18 required)
-✓ Project Directory:     /Users/developer/my-project (Accessible)
-✓ Git Repository:        Active branch: main (commit: a4f8b91)
-✓ Local Cache Write:     /Users/developer/my-project/.domoscope (Writable)
-✓ Analysis Engines:      Prisma, SQL, Supabase, Firebase, MongoDB, TypeORM, AST Graph, API Discovery
-✓ MCP Server Readiness:  16 tools & 3 prompts registered (Protocol 2024-11-05)
+[OK] Node.js Runtime:       v22.22.3 (>= 18 required)
+[OK] Project Directory:     /Users/developer/my-project (Accessible)
+[OK] Git Repository:        Active branch: main (commit: a4f8b91)
+[OK] Local Cache Write:     /Users/developer/my-project/.domoscope (Writable)
+[OK] Analysis Engines:      Prisma, SQL, Supabase, Firebase, MongoDB, TypeORM, AST Graph, API Discovery
+[OK] MCP Server Readiness:  16 tools & 3 prompts registered (Protocol 2024-11-05)
 =================================================================
-✓ System is healthy and fully ready for DomoScope workflows!
+[OK] System is healthy and fully ready for DomoScope workflows!
 ```
 
 ---
@@ -192,9 +192,58 @@ npx domoscope skill
 npx domoscope skill --output ./skills/my-repo-skill.md
 ```
 
+### 2.7. `domoscope compare`
+Compares two software projects side-by-side and produces an architectural grading report with metric diffs and plain-English takeaways.
+
+**Usage:**
+```bash
+# Compare current directory against another project:
+npx domoscope compare ../other-repo
+
+# Compare two distinct repositories or paths:
+npx domoscope compare ./frontend ./backend
+
+# Export report in Markdown or JSON format:
+npx domoscope compare ./repoA ./repoB --format markdown --output comparison.md
+npx domoscope compare ./repoA ./repoB --json --output comparison.json
+```
+
+**Supported Options:**
+- `--format <table|json|markdown>`: Output format (default: `table`).
+- `--output <file>`: Destination file path for the comparison report.
+- `--no-cache`: Bypass local cache during analysis.
+- `--verbose`: Print detailed progress logs.
+
+**Sample Terminal Output:**
+```
+================================================================================
+DomoScope Repository Comparison & Architectural Grading
+================================================================================
+METRIC                        acme-frontend             acme-backend            
+--------------------------------------------------------------------------------
+Overall Health Score          A (91/100)                B+ (85/100)             
+Primary Framework             React (Next.js)           Express (Node)          
+Total Lines of Code           14,250                    28,400                  
+Total Files                   64                        112                     
+Dependencies                  18                        36                      
+Database Tables               6                         14                      
+API Endpoints                 8                         24                      
+Security Warnings             0                         2                       
+Rebuild Complexity            Moderate                  High                    
+--------------------------------------------------------------------------------
+KEY TAKEAWAYS & DIVERGENCES
+--------------------------------------------------------------------------------
+* Codebase Volume & Scale: acme-backend is approximately 2.0x larger in code volume than acme-frontend (28,400 vs 14,250 lines).
+* Framework & Core Stack: acme-frontend is built with React (Next.js), whereas acme-backend is powered by Express (Node).
+* Database & Persistence Models: acme-frontend maps 6 entities, while acme-backend defines 14 entities.
+* Security & Secret Hygiene: acme-frontend demonstrates a cleaner security posture (0 findings vs 2 in acme-backend).
+* Rebuild & Porting Effort: acme-frontend has a moderate rebuild complexity (3 phases), compared to high for acme-backend (4 phases).
+================================================================================
+```
+
 ---
 
-### 2.7. `domoscope serve`
+### 2.8. `domoscope serve`
 Launches the local visualizer studio daemon and REST/SSE server.
 
 **Usage:**
@@ -210,7 +259,7 @@ npx domoscope serve --port 4004 --host 0.0.0.0 --no-watch
 
 ---
 
-### 2.8. `domoscope watch`
+### 2.9. `domoscope watch`
 Runs a live, debounced terminal file watcher with incremental re-analysis.
 
 **Usage:**
@@ -222,12 +271,12 @@ npx domoscope watch [--verbose]
 ```
 [DomoScope Watch] Watching /Users/developer/my-project for changes...
 [21:40:12] File change: src/components/Dashboard.tsx
-Re-analyzing codebase... ✓ Updated snapshot: snap_1790776812 (146 files in 48ms)
+Re-analyzing codebase... [OK] Updated snapshot: snap_1790776812 (146 files in 48ms)
 ```
 
 ---
 
-### 2.9. `domoscope mcp`
+### 2.10. `domoscope mcp`
 Starts the stdio Model Context Protocol (MCP) server. See [`04_MCP_PROTOCOL_SPEC.md`](./04_MCP_PROTOCOL_SPEC.md) for full details.
 
 **Usage:**

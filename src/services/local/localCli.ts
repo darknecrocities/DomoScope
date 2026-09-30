@@ -7,6 +7,12 @@ import { LocalWatcher } from './localWatcher';
 import { startLocalServer } from './localServer';
 import { generateAndSaveDocumentation } from './localDocsGenerator';
 import { DOMOSCOPE_MCP_TOOLS, DOMOSCOPE_MCP_PROMPTS } from '../mcpCore';
+import {
+  fromLocalSnapshot,
+  compareRepositories,
+  generateComparisonMarkdown,
+  formatComparisonTerminal,
+} from '../repoComparison';
 
 export interface CliCommandContext {
   cwd: string;
@@ -84,6 +90,9 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
       return handleDocs(rootDir, options);
     case 'skill':
       return handleSkill(rootDir, options);
+    case 'compare':
+    case 'diff':
+      return handleCompare(positionals, options);
     case 'serve':
       return handleServe(rootDir, options);
     case 'watch':
@@ -112,6 +121,7 @@ function printHelp() {
   \x1b[32mgraph\x1b[0m      Export module dependency and architecture graph (JSON or Mermaid)
   \x1b[32mdocs\x1b[0m       Generate complete markdown documentation suite in .domoscope/docs/
   \x1b[32mskill\x1b[0m      Generate exportable SKILL.md pack for Claude, Cursor, and Antigravity
+  \x1b[32mcompare\x1b[0m    Compare two projects side-by-side with dynamic architectural grading
   \x1b[32mserve\x1b[0m      Launch local interactive DomoScope dashboard on localhost:4004
   \x1b[32mwatch\x1b[0m      Run live terminal file watcher with incremental re-analysis
   \x1b[32mmcp\x1b[0m        Launch local Model Context Protocol (MCP) server for AI coding agents
@@ -129,6 +139,8 @@ function printHelp() {
   $ npx domoscope analyze --json --output analysis.json
   $ npx domoscope graph --format mermaid
   $ npx domoscope docs --output ./docs/architecture
+  $ npx domoscope compare ../other-repo
+  $ npx domoscope compare ./repoA ./repoB --format markdown
   $ npx domoscope serve --port 4004
   $ npx domoscope doctor
 `);
@@ -296,6 +308,69 @@ async function handleSkill(rootDir: string, options: Record<string, any>): Promi
   await fsp.writeFile(path.resolve(outputPath), skillContent, 'utf8');
   console.log(`\x1b[32m✓ Generated Agentic Skill:\x1b[0m \x1b[1m${outputPath}\x1b[0m`);
   console.log(`  Drop into Claude Code, Cursor, Codex, or Antigravity!`);
+
+  return 0;
+}
+
+async function handleCompare(positionals: string[], options: Record<string, any>): Promise<number> {
+  let pathA = process.cwd();
+  let pathB = '';
+
+  if (positionals.length === 0) {
+    console.error(`\x1b[31m[DomoScope Compare Error]\x1b[0m Please provide at least one directory to compare against.`);
+    console.error(`Usage: npx domoscope compare <targetDir> or npx domoscope compare <dirA> <dirB>\n`);
+    return 1;
+  } else if (positionals.length === 1) {
+    pathB = path.resolve(positionals[0]);
+  } else {
+    pathA = path.resolve(positionals[0]);
+    pathB = path.resolve(positionals[1]);
+  }
+
+  if (!fs.existsSync(pathA)) {
+    console.error(`\x1b[31m[DomoScope Compare Error]\x1b[0m Base path does not exist: ${pathA}`);
+    return 1;
+  }
+  if (!fs.existsSync(pathB)) {
+    console.error(`\x1b[31m[DomoScope Compare Error]\x1b[0m Target path does not exist: ${pathB}`);
+    return 1;
+  }
+
+  const noCache = options.cache === false || options['no-cache'] === true;
+  const verbose = Boolean(options.verbose);
+
+  if (verbose) {
+    console.log(`Analyzing base project: ${pathA}...`);
+  }
+  const snapshotA = await runLocalAnalysis(pathA, { noCache, verbose });
+
+  if (verbose) {
+    console.log(`Analyzing target project: ${pathB}...`);
+  }
+  const snapshotB = await runLocalAnalysis(pathB, { noCache, verbose });
+
+  const inputA = fromLocalSnapshot(snapshotA);
+  const inputB = fromLocalSnapshot(snapshotB);
+
+  const comparison = compareRepositories(inputA, inputB);
+
+  const format = ((options.format as string) || (options.json ? 'json' : options.markdown ? 'markdown' : 'table')).toLowerCase();
+
+  let outputContent = '';
+  if (format === 'json') {
+    outputContent = JSON.stringify(comparison, null, 2);
+  } else if (format === 'markdown' || format === 'md') {
+    outputContent = generateComparisonMarkdown(comparison);
+  } else {
+    outputContent = formatComparisonTerminal(comparison);
+  }
+
+  if (options.output) {
+    await fsp.writeFile(path.resolve(options.output as string), outputContent, 'utf8');
+    console.log(`\x1b[32m✓ Comparison report written to:\x1b[0m ${options.output}`);
+  } else {
+    console.log(outputContent);
+  }
 
   return 0;
 }

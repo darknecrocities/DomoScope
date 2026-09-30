@@ -10,6 +10,7 @@ This document details all supported capabilities across DomoScope's intelligence
 |---|---|---|:---:|
 | **Codebase Intelligence** | Polyglot Framework Detection | 30+ frameworks identified (React, Next.js, Vue, FastAPI, Django, Express, Spring, Flutter, etc.) | Production |
 | **Codebase Intelligence** | Directed AST Dependency Graph | Interactive dependency graph with hub detection and Mermaid export | Production |
+| **Codebase Intelligence** | Dual-Repository Comparison & Grading | Side-by-side comparison of 2 repositories with dynamic architectural, scale, DB, API, security and rebuild grading | Production |
 | **Database & Models** | Polyglot Database ERD Engine | Prisma, SQL DDL (PostgreSQL, MySQL, SQLite), Mongoose, TypeORM with Mermaid ERD generation | Production |
 | **API & Networking** | Automated API Route Catalog | Discovers REST routes across Express, Next.js App/Pages router, FastAPI, Flask, Django, Spring Boot, Gin | Production |
 | **Security & Safety** | Secret & Credential Leak Scanner | High-entropy scanner for AWS keys, GitHub tokens, database connection strings, JWTs, and private keys | Production |
@@ -21,7 +22,7 @@ This document details all supported capabilities across DomoScope's intelligence
 | **AI & Agentic DX** | Autonomous Agent `SKILL.md` Generator | Dedicated skill generator (`domoscope skill`) for Claude Code, Cursor, Codex, and Antigravity | Production |
 | **AI & Agentic DX** | In-Browser WebGPU LLM Engine | Offline local LLM inference via `@mlc-ai/web-llm` (Qwen, Llama, DeepSeek) directly in browser | Production |
 | **AI & Agentic DX** | Interactive Agent Prompt Wizard | Generates custom prompts for Cursor, Claude, Antigravity, Windsurf, Cline | Production |
-| **CLI & Runtime** | Zero-Install Node CLI | 9 executable subcommands (`doctor`, `init`, `analyze`, `graph`, `docs`, `skill`, `serve`, `watch`, `mcp`) | Production |
+| **CLI & Runtime** | Zero-Install Node CLI | 10 executable subcommands (`doctor`, `init`, `analyze`, `graph`, `docs`, `skill`, `compare`, `serve`, `watch`, `mcp`) | Production |
 | **CLI & Runtime** | Incremental File Watcher | Debounced file watcher with instant SHA-256 hot cache invalidation | Production |
 | **CLI & Runtime** | Local Studio Daemon | Localhost:4004 visual studio with live SSE reload | Production |
 | **Packaging & CI/CD** | Multi-Stage Dockerfile | Production-ready Alpine container running Node 22 as unprivileged user | Production |

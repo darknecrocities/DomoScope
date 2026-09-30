@@ -126,7 +126,9 @@ export function AppBar({
           </div>
 
           <span className="text-zinc-300">/</span>
-          <span className="font-bold text-zinc-900 capitalize font-sans">{activeTab}</span>
+          <span className="font-bold text-zinc-900 capitalize font-sans">
+            {activeTab === 'compare' ? 'Compare Repos' : activeTab}
+          </span>
         </div>
       </div>
 

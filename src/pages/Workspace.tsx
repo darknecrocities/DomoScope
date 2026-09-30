@@ -30,6 +30,8 @@ import { AskPanel } from '../components/workspace/AskPanel';
 import { ApiCatalogTab } from '../components/workspace/ApiCatalogTab';
 import { AuditReportTab } from '../components/workspace/AuditReportTab';
 import { ReverseEngineerTab } from '../components/workspace/ReverseEngineerTab';
+import { CompareTab } from '../components/workspace/CompareTab';
+import { parseApiEndpoints } from '../services/apiRouteCatalog';
 import { generateAuditReportHtml } from '../services/auditReportGenerator';
 import { ResizableDivider } from '../components/common/ResizableDivider';
 import { SearchModal } from '../components/common/SearchModal';
@@ -594,6 +596,20 @@ export function WorkspacePage() {
                     setSelectedFile(path);
                     handleTabChange('files');
                   }}
+                />
+              )}
+
+              {activeTab === 'compare' && (
+                <CompareTab
+                  currentOwner={owner || ''}
+                  currentRepo={repo || ''}
+                  currentAnalysis={analysis}
+                  currentDatabaseSchema={databaseSchema}
+                  currentDependencies={dependencies}
+                  currentSecurityFindings={securityFindings}
+                  currentApiRoutes={analysis ? parseApiEndpoints(files.map((f) => ({ path: f.path, content: fileContents.get(f.path) }))) : []}
+                  openRepositories={openRepos}
+                  onSelectRepo={(o, r) => switchRepository(o, r)}
                 />
               )}
 

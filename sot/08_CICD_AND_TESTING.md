@@ -13,18 +13,18 @@ DomoScope enforces strict test-driven reliability. Codebase static analysis and 
 
 ### Key Testing Principles:
 1. **Real Code Fixtures:** Tests parse realistic multi-framework project files (TypeScript, Prisma, SQL DDL, Python, JSON) rather than fragile mocked strings.
-2. **Sub-Second Execution:** The entire 25-suite test harness runs in under 1 second using Vitest's parallel worker threads.
-3. **End-to-End CLI Verification:** Subcommands (`init`, `doctor`, `analyze`, `graph`, `docs`) execute against isolated temporary directories and assert correct filesystem side-effects and exit codes.
+2. **Sub-Second Execution:** The entire 26-suite test harness runs in under 1 second using Vitest's parallel worker threads.
+3. **End-to-End CLI Verification:** Subcommands (`init`, `doctor`, `analyze`, `graph`, `docs`, `compare`) execute against isolated temporary directories and assert correct filesystem side-effects and exit codes.
 4. **Resilient Error Recovery:** Cache corruption, missing git directories, unparseable source files, and unknown CLI flags are tested to verify clean error handling without unhandled exceptions.
 
 ---
 
-## 2. Test Suite Catalog (25 Suites, 156 Assertions)
+## 2. Test Suite Catalog (26 Suites, 170 Assertions)
 
 ```
-Test Files  25 passed (25)
-Tests       156 passed (156)
-Duration    ~800ms
+Test Files  26 passed (26)
+Tests       170 passed (170)
+Duration    ~660ms
 ```
 
 | Suite Name | Scope & Assertions |
@@ -34,11 +34,12 @@ Duration    ~800ms
 | `graphBuilder.test.ts` | Verifies directed dependency graph creation, import edge counts, and circular import handling |
 | `localAnalysisEngine.test.ts` | Tests full analysis pipeline from filesystem traversal to structured snapshot |
 | `localCacheManager.test.ts` | Verifies cache hit/miss semantics, SHA-256 diffing, and recovery from corrupted JSON |
-| `localCli.test.ts` | Full CLI argument parser and execution for `init`, `analyze`, `graph`, `docs`, and `doctor` |
-| `localDocsGenerator.test.ts` | Validates generation of all 6 markdown documentation files with Mermaid blocks |
+| `localCli.test.ts` | Full CLI argument parser and execution for `init`, `analyze`, `graph`, `docs`, `doctor`, and `compare` |
+| `localDocsGenerator.test.ts` | Validates generation of all 7 markdown documentation files with Mermaid blocks |
 | `localScanner.test.ts` | Tests `.gitignore` adherence, file limits, binary filtering, and path containment |
 | `markdownSpecGenerator.test.ts`| Asserts generation of complete 1,000+ line technical specification |
 | `mcpServer.test.ts` | Verifies 16 MCP tool registrations, JSON-RPC 2.0 requests, and error formats |
+| `repoComparison.test.ts` | Validates multi-dimensional grading (A+ to D), metric deltas, plain-English takeaways, and markdown/terminal outputs |
 | `securityScanner.test.ts` | Verifies detection of AWS keys, GitHub tokens, database URLs, and private keys |
 | `reverseEngineerGenerator.test.ts` | Validates generation of phased rebuilding recipes and subagent prompts |
 | `cloudServicesDetector.test.ts`| Detects cloud configuration files (Docker, AWS, GCP, Vercel, Supabase) |
