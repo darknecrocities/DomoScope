@@ -28,7 +28,7 @@ describe('Local Docs Generator', () => {
     const outputDir = join(tempDir, 'generated-docs');
     const generated = await generateLocalDocs(snapshot, { outputDir });
 
-    expect(generated.length).toBe(6);
+    expect(generated.length).toBe(7);
 
     const files = generated.map((g) => g.path);
     expect(files).toContain('PROJECT_OVERVIEW.md');
@@ -37,6 +37,7 @@ describe('Local Docs Generator', () => {
     expect(files).toContain('API_REFERENCE.md');
     expect(files).toContain('SECURITY_AUDIT.md');
     expect(files).toContain('REVERSE_ENGINEER_SPEC.md');
+    expect(files).toContain('SKILL.md');
 
     for (const doc of generated) {
       expect(doc.content.length).toBeGreaterThan(50);

@@ -161,7 +161,7 @@ graph TD
 ---
 
 ### 2.5. `domoscope docs`
-Generates a complete 6-file reverse-engineering markdown documentation suite in the specified output directory (default: `.domoscope/docs/`).
+Generates a complete 7-file reverse-engineering markdown documentation suite in the specified output directory (default: `.domoscope/docs/`).
 
 **Usage:**
 ```bash
@@ -176,6 +176,21 @@ npx domoscope docs --output ./docs/architecture
 4. `API_REFERENCE.md`: Route table with HTTP methods, paths, frameworks, and source file line references.
 5. `SECURITY_AUDIT.md`: Categorized audit report by severity with remediation guidelines.
 6. `REVERSE_ENGINEER_SPEC.md`: 1,000+ line actionable technical specification and AI prompts.
+7. `SKILL.md`: Autonomous AI Agent Skill Definition ready for Claude Code, Cursor, Codex, or Antigravity.
+
+---
+
+### 2.6. `domoscope skill`
+Generates an exportable `SKILL.md` agent skill pack for the repository.
+
+**Usage:**
+```bash
+# Output to SKILL.md in project root:
+npx domoscope skill
+
+# Custom output destination:
+npx domoscope skill --output ./skills/my-repo-skill.md
+```
 
 ---
 

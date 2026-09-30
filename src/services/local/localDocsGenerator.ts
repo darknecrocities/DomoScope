@@ -230,6 +230,7 @@ export async function generateAndSaveDocumentation(
     { relativePath: 'API_REFERENCE.md', path: 'API_REFERENCE.md', title: 'API Reference', content: generateApiDoc(snapshot) },
     { relativePath: 'SECURITY_AUDIT.md', path: 'SECURITY_AUDIT.md', title: 'Security Audit', content: generateSecurityDoc(snapshot) },
     { relativePath: 'REVERSE_ENGINEER_SPEC.md', path: 'REVERSE_ENGINEER_SPEC.md', title: 'Reverse Engineering Specification', content: snapshot.reverseEngineer.overview || 'Specification generated.' },
+    { relativePath: 'SKILL.md', path: 'SKILL.md', title: 'Autonomous AI Agent Skill Definition', content: snapshot.reverseEngineer.agentSkill || snapshot.reverseEngineer.overview || 'Skill definition generated.' },
   ];
 
   for (const doc of docs) {

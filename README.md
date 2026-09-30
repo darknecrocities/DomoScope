@@ -59,7 +59,8 @@ npx domoscope mcp
 | `domoscope init` | Inspects current project and creates `.domoscope.json` configuration | `-d, --dir`, `--force` |
 | `domoscope analyze` | Executes unified static analysis and outputs structured summary | `--json`, `--output <file>`, `--no-cache` |
 | `domoscope graph` | Exports module dependency and architectural graph | `--format <mermaid\|json>`, `--output <file>` |
-| `domoscope docs` | Generates 6 markdown guides in `.domoscope/docs/` | `--output <dir>` |
+| `domoscope docs` | Generates 7 markdown guides & agent skill in `.domoscope/docs/` | `--output <dir>` |
+| `domoscope skill` | Exports ready-to-use `SKILL.md` pack for Claude, Cursor, Antigravity | `--output <file>` |
 | `domoscope serve` | Launches local dashboard and REST/SSE server | `--port <number>`, `--open`, `--no-open` |
 | `domoscope watch` | Runs debounced live terminal watcher with instant cache diffing | `-d, --dir`, `--verbose` |
 | `domoscope mcp` | Starts stdio JSON-RPC 2.0 MCP server for AI coding agents | `--verbose` |

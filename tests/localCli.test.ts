@@ -92,6 +92,23 @@ describe('Local CLI', () => {
       const overviewDoc = await readFile(join(docsOutDir, 'PROJECT_OVERVIEW.md'), 'utf-8');
       expect(overviewDoc).toContain('cli-docs-app');
       expect(overviewDoc).toContain('Express');
+      const skillDoc = await readFile(join(docsOutDir, 'SKILL.md'), 'utf-8');
+      expect(skillDoc.length).toBeGreaterThan(50);
+    });
+
+    it('runs skill command to generate standalone SKILL.md file', async () => {
+      await writeFile(
+        join(tempDir, 'package.json'),
+        JSON.stringify({ name: 'cli-skill-app', dependencies: { react: '^18.0.0' } })
+      );
+
+      const skillPath = join(tempDir, 'MY_SKILL.md');
+      const exitCode = await runCli(['skill', '--dir', tempDir, '--output', skillPath]);
+      expect(exitCode).toBe(0);
+
+      const content = await readFile(skillPath, 'utf-8');
+      expect(content).toContain('cli-skill-app');
+      expect(content.length).toBeGreaterThan(50);
     });
   });
 });

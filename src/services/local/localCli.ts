@@ -82,6 +82,8 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
       return handleGraph(rootDir, options);
     case 'docs':
       return handleDocs(rootDir, options);
+    case 'skill':
+      return handleSkill(rootDir, options);
     case 'serve':
       return handleServe(rootDir, options);
     case 'watch':
@@ -109,6 +111,7 @@ function printHelp() {
   \x1b[32manalyze\x1b[0m    Execute static analysis and output structured architectural summary
   \x1b[32mgraph\x1b[0m      Export module dependency and architecture graph (JSON or Mermaid)
   \x1b[32mdocs\x1b[0m       Generate complete markdown documentation suite in .domoscope/docs/
+  \x1b[32mskill\x1b[0m      Generate exportable SKILL.md pack for Claude, Cursor, and Antigravity
   \x1b[32mserve\x1b[0m      Launch local interactive DomoScope dashboard on localhost:4004
   \x1b[32mwatch\x1b[0m      Run live terminal file watcher with incremental re-analysis
   \x1b[32mmcp\x1b[0m        Launch local Model Context Protocol (MCP) server for AI coding agents
@@ -276,6 +279,20 @@ async function handleDocs(rootDir: string, options: Record<string, any>): Promis
   for (const doc of docs) {
     console.log(`  • \x1b[1m${doc.relativePath}\x1b[0m — ${doc.title}`);
   }
+
+  return 0;
+}
+
+async function handleSkill(rootDir: string, options: Record<string, any>): Promise<number> {
+  const outputPath = (options.output as string) || (options.out as string) || path.join(rootDir, 'SKILL.md');
+  console.log(`\x1b[1m\x1b[37m[DomoScope Skill]\x1b[0m Generating AI Agent SKILL.md for \x1b[36m${rootDir}\x1b[0m...`);
+
+  const snapshot = await runLocalAnalysis(rootDir, { verbose: Boolean(options.verbose) });
+  const skillContent = snapshot.reverseEngineer.agentSkill || snapshot.reverseEngineer.overview || `# AI Agent Engineering Skill Pack: ${snapshot.projectName}`;
+
+  await fsp.writeFile(path.resolve(outputPath), skillContent, 'utf8');
+  console.log(`\x1b[32m✓ Generated Agentic Skill:\x1b[0m \x1b[1m${outputPath}\x1b[0m`);
+  console.log(`  Drop into Claude Code, Cursor, Codex, or Antigravity!`);
 
   return 0;
 }
