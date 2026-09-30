@@ -180,7 +180,7 @@ export function ReverseEngineerTab({
         title: 'UI Component Tree & Page Routing',
         description: `Assemble interactive visual screens, navigation routes, and design system tokens.`,
         tasks: [
-          { id: 'p4_t1', text: `Configure application router from entry point (${analysis?.entryPoints[0] || 'src/main.tsx'})` },
+          { id: 'p4_t1', text: `Configure application router from entry point (${analysis?.entryPoints[0] || frameworkResult.primary.entryPoint || 'primary entry point'})` },
           { id: 'p4_t2', text: `Recreate primary component tree: ${componentFiles.map((c) => c.name).slice(0, 4).join(', ') || 'UI Views'}` },
           { id: 'p4_t3', text: `Apply styling discipline (${frameworkResult.primary.stylingEcosystem || 'Tailwind CSS'})` },
         ],
@@ -359,7 +359,7 @@ export function ReverseEngineerTab({
   const aiPrompts = useMemo(() => {
     const primary = frameworkResult.primary;
     const topDeps = dependencies.slice(0, 8).map((d) => d.name).join(', ');
-    const entry = analysis?.entryPoints[0] || 'src/main.tsx';
+    const entry = analysis?.entryPoints[0] || primary.entryPoint || 'primary entry point';
 
     return [
       {

@@ -210,7 +210,7 @@ function generateFullStackBlueprint(
   lines.push(`| **Routing Engine** | \`${primaryFramework.routingType}\` | Client/Server router | Screen transitions and URL synchronization |`);
   lines.push(`| **Styling Engine** | \`${primaryFramework.stylingEcosystem || 'Tailwind CSS'}\` | Utility-first | Strict monochrome design system |`);
   lines.push(`| **Total Scanned Files** | \`${files.length} source files\` | Complete repository | Full structural footprint |`);
-  lines.push(`| **Entry Points** | \`${analysis?.entryPoints.join(', ') || 'src/main.tsx'}\` | System bootstrap | Application initialization |`);
+  lines.push(`| **Entry Points** | \`${analysis?.entryPoints.join(', ') || primaryFramework.entryPoint || 'Standard bootstrap entry'}\` | System bootstrap | Application initialization |`);
   lines.push(``);
 
   // 4. Complete Directory Topology

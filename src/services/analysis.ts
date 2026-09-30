@@ -116,13 +116,61 @@ function detectTools(files: RepoFile[]): string[] {
 }
 
 function detectEntryPoints(files: RepoFile[]): string[] {
+  const filePaths = new Set(files.map((f) => f.path));
+
+  // Determine repository ecosystem to prioritize idiomatic entry points
+  const isFlutter = files.some((f) => /\.dart$/i.test(f.path)) || filePaths.has('pubspec.yaml');
+  const isPython = files.some((f) => /\.py$/i.test(f.path)) || filePaths.has('requirements.txt') || filePaths.has('pyproject.toml');
+  const isGo = files.some((f) => /\.go$/i.test(f.path)) || filePaths.has('go.mod');
+  const isRust = files.some((f) => /\.rs$/i.test(f.path)) || filePaths.has('Cargo.toml');
+  const isPhp = files.some((f) => /\.php$/i.test(f.path)) || filePaths.has('composer.json');
+  const isNext = files.some((f) => /next\.config/i.test(f.path)) || Array.from(filePaths).some((p) => /^app\/(page|layout)\.[jt]sx?$/i.test(p));
+  const isVue = files.some((f) => /\.vue$/i.test(f.path));
+  const isSvelte = files.some((f) => /\.svelte$/i.test(f.path));
+
+  let prioritizedCandidates: string[] = [];
+
+  if (isFlutter) {
+    prioritizedCandidates = ['lib/main.dart', 'lib/app.dart'];
+  } else if (isPython) {
+    prioritizedCandidates = ['main.py', 'app.py', 'manage.py', 'src/main.py', 'src/app.py', 'wsgi.py'];
+  } else if (isGo) {
+    prioritizedCandidates = ['cmd/main.go', 'main.go', 'cmd/server/main.go', 'cmd/app/main.go'];
+  } else if (isRust) {
+    prioritizedCandidates = ['src/main.rs', 'src/lib.rs'];
+  } else if (isPhp) {
+    prioritizedCandidates = ['public/index.php', 'index.php', 'artisan'];
+  } else if (isNext) {
+    prioritizedCandidates = ['app/page.tsx', 'pages/index.tsx', 'app/page.jsx', 'pages/index.jsx', 'app/layout.tsx'];
+  } else if (isVue) {
+    prioritizedCandidates = ['src/main.ts', 'src/main.js', 'src/App.vue'];
+  } else if (isSvelte) {
+    prioritizedCandidates = ['src/routes/+page.svelte', 'src/app.html', 'src/main.ts', 'src/main.js'];
+  } else {
+    prioritizedCandidates = [
+      'src/main.tsx',
+      'src/main.ts',
+      'src/index.tsx',
+      'src/index.ts',
+      'src/App.tsx',
+      'src/index.js',
+      'src/server.ts',
+      'src/server.js',
+      'src/app.ts',
+      'index.js',
+      'server.js',
+    ];
+  }
+
   const commonEntries = [
+    ...prioritizedCandidates,
     'src/main.tsx',
     'src/main.ts',
     'src/index.tsx',
     'src/index.ts',
     'src/App.tsx',
     'src/App.vue',
+    'src/routes/+page.svelte',
     'src/index.js',
     'src/server.ts',
     'src/server.js',
@@ -131,13 +179,17 @@ function detectEntryPoints(files: RepoFile[]): string[] {
     'pages/index.tsx',
     'main.py',
     'app.py',
+    'manage.py',
     'cmd/main.go',
     'main.go',
     'src/main.rs',
+    'src/lib.rs',
+    'lib/main.dart',
+    'public/index.php',
   ];
 
-  const filePaths = new Set(files.map((f) => f.path));
-  const found = commonEntries.filter((e) => filePaths.has(e));
+  const uniqueCandidates = Array.from(new Set(commonEntries));
+  const found = uniqueCandidates.filter((e) => filePaths.has(e));
 
   // If no common entries matched, look for files named main or index at root or src
   if (found.length === 0) {

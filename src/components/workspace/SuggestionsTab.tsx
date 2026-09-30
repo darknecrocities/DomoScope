@@ -67,7 +67,7 @@ export function SuggestionsTab({
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
 
   // Generate standard repository setup checklist
-  const { items, stats } = useMemo(() => {
+  const { items, stats, frameworkResult } = useMemo(() => {
     return generateSetupChecklist({
       analysis,
       files,
@@ -169,9 +169,17 @@ export function SuggestionsTab({
                 Repository Setup & Standards Checklist
               </h1>
             </div>
-            <p className="text-xs text-zinc-600 font-sans max-w-xl leading-relaxed">
-              Standard repository configuration, essential documentation, security hygiene, and tooling verification.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <p className="text-xs text-zinc-600 font-sans max-w-xl leading-relaxed">
+                Standard repository configuration, essential documentation, security hygiene, and tooling verification.
+              </p>
+              {frameworkResult?.primary && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-zinc-100 border border-zinc-200 rounded text-[11px] font-mono text-zinc-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                  Tailored for {frameworkResult.primary.name} ({frameworkResult.ecosystem.language || analysis.metadata?.language || 'Ecosystem'})
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-center">

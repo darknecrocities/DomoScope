@@ -282,4 +282,215 @@ describe('Repository Setup & Standards Checklist Engine', () => {
     expect(markdown).toContain('## Checklist Overview');
     expect(markdown).not.toMatch(/[\u{1F300}-\u{1F9FF}]/u); // Zero emojis
   });
+
+  it('dynamically adapts suggestions for Python repositories without React or main.ts references', () => {
+    const pythonFiles: RepoFile[] = [
+      {
+        path: 'app.py',
+        name: 'app.py',
+        type: 'blob',
+        extension: 'py',
+        category: 'service',
+        content: 'from fastapi import FastAPI\napp = FastAPI()',
+      },
+      {
+        path: 'requirements.txt',
+        name: 'requirements.txt',
+        type: 'blob',
+        extension: 'txt',
+        category: 'config',
+        content: 'fastapi==0.110.0\nuvicorn==0.28.0',
+      },
+    ];
+
+    const pythonAnalysis: RepoAnalysis = {
+      ...mockAnalysis,
+      metadata: { ...mockMetadata, language: 'Python' },
+      files: pythonFiles,
+      categoriesCount: { component: 0, service: 1, api: 0, database: 0, config: 1, test: 0, style: 0, doc: 0, file: 0, folder: 0 },
+      languages: { Python: 100 },
+      entryPoints: [],
+    };
+
+    const { items } = generateSetupChecklist({
+      analysis: pythonAnalysis,
+      files: pythonFiles,
+      databaseSchema: null,
+      securityFindings: [],
+      dependencies: [],
+    });
+
+    const entryItem = items.find((i) => i.id === 'setup-entrypoint');
+    expect(entryItem).toBeDefined();
+    // Must NOT contain main.tsx or main.ts
+    expect(entryItem?.targetFiles?.[0]).not.toContain('main.tsx');
+    expect(entryItem?.targetFiles?.[0]).toMatch(/main\.py|app\.py/);
+
+    const errorItem = items.find((i) => i.id === 'setup-error-boundary');
+    expect(errorItem).toBeDefined();
+    expect(errorItem?.title).not.toContain('React');
+    expect(errorItem?.title).toContain('Exception Handler');
+
+    const testItem = items.find((i) => i.id === 'setup-testing');
+    expect(testItem).toBeDefined();
+    expect(testItem?.title).toContain('pytest');
+
+    const typeItem = items.find((i) => i.id === 'setup-typescript');
+    expect(typeItem).toBeDefined();
+    expect(typeItem?.title).toContain('mypy');
+  });
+
+  it('dynamically adapts suggestions for Go repositories with native static type safety and go test', () => {
+    const goFiles: RepoFile[] = [
+      {
+        path: 'go.mod',
+        name: 'go.mod',
+        type: 'blob',
+        extension: 'mod',
+        category: 'config',
+        content: 'module github.com/test-owner/test-repo\n\ngo 1.22',
+      },
+      {
+        path: 'main.go',
+        name: 'main.go',
+        type: 'blob',
+        extension: 'go',
+        category: 'service',
+        content: 'package main\nfunc main() {}',
+      },
+    ];
+
+    const goAnalysis: RepoAnalysis = {
+      ...mockAnalysis,
+      metadata: { ...mockMetadata, language: 'Go' },
+      files: goFiles,
+      categoriesCount: { component: 0, service: 1, api: 0, database: 0, config: 1, test: 0, style: 0, doc: 0, file: 0, folder: 0 },
+      languages: { Go: 100 },
+      entryPoints: ['main.go'],
+    };
+
+    const { items } = generateSetupChecklist({
+      analysis: goAnalysis,
+      files: goFiles,
+      databaseSchema: null,
+      securityFindings: [],
+      dependencies: [],
+    });
+
+    const typeItem = items.find((i) => i.id === 'setup-typescript');
+    expect(typeItem).toBeDefined();
+    expect(typeItem?.status).toBe('completed');
+    expect(typeItem?.title).toContain('Static Type Safety (Go');
+
+    const testItem = items.find((i) => i.id === 'setup-testing');
+    expect(testItem).toBeDefined();
+    expect(testItem?.title).toContain('go test');
+
+    const lintItem = items.find((i) => i.id === 'setup-linting');
+    expect(lintItem).toBeDefined();
+    expect(lintItem?.title).toContain('golangci-lint');
+  });
+
+  it('dynamically adapts suggestions for Flutter repositories without Node dependencies', () => {
+    const flutterFiles: RepoFile[] = [
+      {
+        path: 'pubspec.yaml',
+        name: 'pubspec.yaml',
+        type: 'blob',
+        extension: 'yaml',
+        category: 'config',
+        content: 'name: flutter_app\nenvironment:\n  sdk: ">=3.0.0 <4.0.0"\ndependencies:\n  flutter:\n    sdk: flutter',
+      },
+      {
+        path: 'lib/main.dart',
+        name: 'main.dart',
+        type: 'blob',
+        extension: 'dart',
+        category: 'component',
+        content: 'import "package:flutter/material.dart";\nvoid main() => runApp(const MyApp());',
+      },
+    ];
+
+    const flutterAnalysis: RepoAnalysis = {
+      ...mockAnalysis,
+      metadata: { ...mockMetadata, language: 'Dart' },
+      files: flutterFiles,
+      categoriesCount: { component: 1, service: 0, api: 0, database: 0, config: 1, test: 0, style: 0, doc: 0, file: 0, folder: 0 },
+      languages: { Dart: 100 },
+      entryPoints: ['lib/main.dart'],
+    };
+
+    const { items } = generateSetupChecklist({
+      analysis: flutterAnalysis,
+      files: flutterFiles,
+      databaseSchema: null,
+      securityFindings: [],
+      dependencies: [],
+    });
+
+    const entryItem = items.find((i) => i.id === 'setup-entrypoint');
+    expect(entryItem?.actionFile).toBe('lib/main.dart');
+
+    const errorItem = items.find((i) => i.id === 'setup-error-boundary');
+    expect(errorItem).toBeDefined();
+    expect(errorItem?.title).toContain('Flutter');
+    expect(errorItem?.title).not.toContain('React');
+
+    const typeItem = items.find((i) => i.id === 'setup-typescript');
+    expect(typeItem?.status).toBe('completed');
+    expect(typeItem?.title).toContain('Dart');
+  });
+
+  it('dynamically adapts suggestions for Express backend APIs with centralized error middleware', () => {
+    const expressFiles: RepoFile[] = [
+      {
+        path: 'package.json',
+        name: 'package.json',
+        type: 'blob',
+        extension: 'json',
+        category: 'config',
+        content: JSON.stringify({
+          name: 'express-api',
+          dependencies: { express: '^4.19.0', cors: '^2.8.5' },
+          devDependencies: { typescript: '^5.0.0' },
+        }),
+      },
+      {
+        path: 'src/server.ts',
+        name: 'server.ts',
+        type: 'blob',
+        extension: 'ts',
+        category: 'service',
+        content: 'import express from "express";\nconst app = express();\napp.listen(3000);',
+      },
+    ];
+
+    const expressAnalysis: RepoAnalysis = {
+      ...mockAnalysis,
+      metadata: { ...mockMetadata, language: 'TypeScript' },
+      files: expressFiles,
+      categoriesCount: { component: 0, service: 1, api: 0, database: 0, config: 1, test: 0, style: 0, doc: 0, file: 0, folder: 0 },
+      languages: { TypeScript: 100 },
+      entryPoints: ['src/server.ts'],
+    };
+
+    const { items } = generateSetupChecklist({
+      analysis: expressAnalysis,
+      files: expressFiles,
+      databaseSchema: null,
+      securityFindings: [],
+      dependencies: [{ name: 'express', version: '^4.19.0', isDev: false, ecosystem: 'npm', manifestPath: 'package.json', usedInFiles: [] }],
+    });
+
+    const errorItem = items.find((i) => i.id === 'setup-error-boundary');
+    expect(errorItem).toBeDefined();
+    expect(errorItem?.title).not.toContain('React');
+    expect(errorItem?.title).toContain('Centralized Error Handling');
+    expect(errorItem?.targetFiles?.[0]).toBe('src/middleware/errorHandler.ts');
+
+    const testItem = items.find((i) => i.id === 'setup-testing');
+    expect(testItem).toBeDefined();
+    expect(testItem?.codeSnippet?.code).toContain("environment: 'node'");
+    expect(testItem?.codeSnippet?.code).not.toContain('jsdom');
+  });
 });

@@ -6,6 +6,7 @@ import {
   RepoDependency,
   ApiEndpoint,
 } from '../types';
+import { detectFrameworks, FrameworkDetectionResult } from './frameworkDetector';
 
 export type ChecklistStatus = 'completed' | 'needs_setup';
 export type ChecklistCategory =
@@ -47,6 +48,7 @@ export interface ChecklistStats {
 export interface SetupChecklistResult {
   items: SetupChecklistItem[];
   stats: ChecklistStats;
+  frameworkResult?: FrameworkDetectionResult;
 }
 
 /**
@@ -63,6 +65,7 @@ export function generateSetupChecklist(params: {
   securityFindings?: SecurityFinding[];
   dependencies?: RepoDependency[];
   apiRoutes?: ApiEndpoint[];
+  frameworkResult?: FrameworkDetectionResult;
 }): SetupChecklistResult {
   const {
     analysis,
@@ -71,6 +74,7 @@ export function generateSetupChecklist(params: {
     databaseSchema = null,
     securityFindings = [],
     dependencies = [],
+    frameworkResult: customFrameworkResult,
   } = params;
 
   const items: SetupChecklistItem[] = [];
@@ -83,6 +87,31 @@ export function generateSetupChecklist(params: {
   const sourceFiles = files.filter(
     (f) => f.type === 'blob' && !/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|lock|map)$/i.test(f.path)
   );
+  const pkgJsonContent = getFileContent('package.json');
+
+  // Dynamic Polyglot Framework & Architecture Detection
+  const frameworkResult = customFrameworkResult || detectFrameworks(files, fileContents, dependencies);
+  const primaryFramework = frameworkResult.primary;
+  const frameworkName = primaryFramework?.name || 'Standard Application';
+  const frameworkId = primaryFramework?.id || 'vanilla';
+  const frameworkCategory = primaryFramework?.category || 'Full-Stack';
+  const language = frameworkResult.ecosystem.language || analysis.metadata?.language || 'JavaScript';
+
+  // Language & ecosystem flags
+  const isPython = /python/i.test(language) || files.some((f) => /\.py$/i.test(f.path)) || files.some((f) => /requirements\.txt|pyproject\.toml|Pipfile/i.test(f.name));
+  const isGo = /go/i.test(language) || files.some((f) => /\.go$/i.test(f.path)) || files.some((f) => f.name === 'go.mod');
+  const isRust = /rust/i.test(language) || files.some((f) => /\.rs$/i.test(f.path)) || files.some((f) => f.name === 'Cargo.toml');
+  const isFlutter = /dart|flutter/i.test(language) || files.some((f) => /\.dart$/i.test(f.path)) || files.some((f) => f.name === 'pubspec.yaml');
+  const isPhp = /php/i.test(language) || files.some((f) => /\.php$/i.test(f.path)) || files.some((f) => f.name === 'composer.json');
+  const isRuby = /ruby/i.test(language) || files.some((f) => /\.rb$/i.test(f.path)) || files.some((f) => f.name === 'Gemfile');
+
+  // Framework archetype flags
+  const isReact = frameworkId === 'react' || frameworkId === 'nextjs' || frameworkId === 'remix' || dependencies.some((d) => d.name.toLowerCase() === 'react') || sourceFiles.some((f) => /from ['"]react['"]/i.test(getFileContent(f.path)));
+  const isVue = frameworkId === 'vue' || frameworkId === 'nuxt' || dependencies.some((d) => d.name.toLowerCase() === 'vue') || sourceFiles.some((f) => /\.vue$/i.test(f.path));
+  const isSvelte = frameworkId === 'svelte' || frameworkId === 'sveltekit' || dependencies.some((d) => d.name.toLowerCase().includes('svelte')) || sourceFiles.some((f) => /\.svelte$/i.test(f.path));
+  const isAngular = frameworkId === 'angular' || dependencies.some((d) => d.name.toLowerCase().includes('@angular/core'));
+  const isNext = frameworkId === 'nextjs';
+  const isBackend = frameworkCategory === 'Backend API' || ['express', 'fastify', 'nestjs', 'hono', 'koa', 'fastapi', 'flask', 'django', 'gin', 'fiber', 'actix', 'axum'].includes(frameworkId);
 
   // =========================================================================
   // 1. .gitignore Setup
@@ -197,8 +226,7 @@ pnpm-debug.log*
 ${analysis.metadata?.description || 'A modern software application.'}
 
 ## Prerequisites
-- Node.js >= 18.0.0
-- npm, pnpm, or yarn
+${isPython ? '- Python >= 3.10\n- pip, poetry, or uv' : isGo ? '- Go >= 1.22' : isRust ? '- Rust toolchain (cargo)' : isFlutter ? '- Flutter SDK >= 3.20' : '- Node.js >= 18.0.0\n- npm, pnpm, or yarn'}
 
 ## Getting Started
 
@@ -210,7 +238,7 @@ cd ${analysis.metadata?.repo || 'repo'}
 
 2. Install dependencies:
 \`\`\`bash
-npm install
+${isPython ? 'pip install -r requirements.txt' : isGo ? 'go mod download' : isRust ? 'cargo build' : isFlutter ? 'flutter pub get' : 'npm install'}
 \`\`\`
 
 3. Configure environment variables:
@@ -218,9 +246,9 @@ npm install
 cp .env.example .env
 \`\`\`
 
-4. Start the development server:
+4. Start the application:
 \`\`\`bash
-npm run dev
+${isPython ? 'python main.py' : isGo ? 'go run .' : isRust ? 'cargo run' : isFlutter ? 'flutter run' : 'npm run dev'}
 \`\`\`
 
 ## Architecture & Structure
@@ -251,58 +279,150 @@ npm run dev
       tags: ['dependencies', 'npm', 'reproducibility'],
     });
   } else {
+    let lockName = 'package-lock.json';
+    let lockCmd = 'npm i --package-lock-only';
+    let lockTag = 'npm';
+    if (isPython) {
+      lockName = 'poetry.lock';
+      lockCmd = 'poetry lock (or uv lock)';
+      lockTag = 'python';
+    } else if (isGo) {
+      lockName = 'go.sum';
+      lockCmd = 'go mod tidy';
+      lockTag = 'go';
+    } else if (isRust) {
+      lockName = 'Cargo.lock';
+      lockCmd = 'cargo generate-lockfile';
+      lockTag = 'rust';
+    } else if (isFlutter) {
+      lockName = 'pubspec.lock';
+      lockCmd = 'flutter pub get';
+      lockTag = 'flutter';
+    }
+
     items.push({
       id: 'setup-lockfile',
       title: 'Deterministic Dependency Lockfile',
       status: 'needs_setup',
       category: 'essential',
-      summary: 'No package-lock.json, pnpm-lock.yaml, or yarn.lock file found committed.',
+      summary: `No ${lockName} or committed lockfile found for ${frameworkName}.`,
       explanation: 'Without a committed lockfile, installs can pull differing minor/patch dependency versions across environments, resulting in non-reproducible builds.',
-      targetFiles: ['package-lock.json'],
+      targetFiles: [lockName],
       actionText: 'Generate Lockfile',
-      tags: ['dependencies', 'npm', 'reproducibility'],
-      agentPrompt: `Generate and commit a deterministic lockfile in \`${repoName}\` using \`npm i --package-lock-only\` or \`pnpm install\`.`,
+      tags: ['dependencies', lockTag, 'reproducibility'],
+      agentPrompt: `Generate and commit a deterministic lockfile in \`${repoName}\` using \`${lockCmd}\`.`,
     });
   }
 
   // =========================================================================
-  // 4. Runtime & Node Version Pinning (.nvmrc / .node-version)
+  // 4. Runtime & Toolchain Version Pinning (.nvmrc / go.mod / .python-version)
   // =========================================================================
-  const nodeVersionFile = files.find((f) => /^\.(nvmrc|node-version)$/i.test(f.name));
-  const pkgJsonContent = getFileContent('package.json');
-  const hasEngines = /"engines"\s*:\s*\{[^}]*"node"/i.test(pkgJsonContent);
-
-  if (nodeVersionFile || hasEngines) {
+  if (isGo) {
+    const goModContent = getFileContent('go.mod');
+    const hasGoVer = /go\s+(\d+\.\d+)/i.test(goModContent);
     items.push({
       id: 'setup-node-version',
-      title: 'Runtime & Node.js Version Pinning',
-      status: 'completed',
+      title: 'Go Toolchain & Language Version (go.mod)',
+      status: hasGoVer ? 'completed' : 'needs_setup',
       category: 'essential',
-      summary: `Node runtime version is explicitly pinned${nodeVersionFile ? ` via ${nodeVersionFile.name}` : ' via package.json engines'}.`,
-      explanation: 'Pinning the exact Node.js version prevents runtime discrepancies and unsupported API errors between team members and CI pipelines.',
-      actionText: nodeVersionFile ? 'Open Version File' : 'Open package.json',
-      actionFile: nodeVersionFile ? nodeVersionFile.path : 'package.json',
-      targetFiles: nodeVersionFile ? [nodeVersionFile.path] : ['package.json'],
-      tags: ['node', 'dx', 'runtime'],
+      summary: hasGoVer ? `Go language directive is explicitly pinned in go.mod (${goModContent.match(/go\s+(\d+\.\d+)/i)?.[0] || 'go 1.22'}).` : 'No explicit go directive declared in go.mod.',
+      explanation: 'Pinning the Go language version prevents toolchain discrepancies across team members and CI pipelines.',
+      actionText: 'Open go.mod',
+      actionFile: 'go.mod',
+      targetFiles: ['go.mod'],
+      tags: ['go', 'dx', 'runtime'],
     });
-  } else {
+  } else if (isRust) {
+    const hasRustToolchain = files.some((f) => /^rust-toolchain(\.toml)?$/i.test(f.name));
     items.push({
       id: 'setup-node-version',
-      title: 'Runtime & Node.js Version Pinning (.nvmrc)',
-      status: 'needs_setup',
+      title: 'Rust Toolchain Channel (rust-toolchain.toml)',
+      status: hasRustToolchain ? 'completed' : 'needs_setup',
       category: 'essential',
-      summary: 'No .nvmrc, .node-version, or package.json "engines" field declared.',
-      explanation: 'Declaring a target Node.js version guarantees developers and CI environments execute the exact supported JavaScript runtime version.',
-      targetFiles: ['.nvmrc'],
-      actionText: 'Add .nvmrc',
-      tags: ['node', 'dx', 'runtime'],
-      agentPrompt: `Create an \`.nvmrc\` file containing \`20.18.0\` (or LTS) at the root of \`${repoName}\` to pin the runtime version.`,
+      summary: hasRustToolchain ? 'Rust toolchain channel is pinned via rust-toolchain.toml.' : 'No rust-toolchain.toml found to pin compiler channel.',
+      explanation: 'Pinning the exact Rust compiler channel ensures deterministic builds across CI and developer machines.',
+      targetFiles: ['rust-toolchain.toml'],
+      actionText: 'Add rust-toolchain.toml',
+      tags: ['rust', 'dx', 'runtime'],
       codeSnippet: {
-        language: 'text',
-        filename: '.nvmrc',
-        code: `20.18.0`,
+        language: 'toml',
+        filename: 'rust-toolchain.toml',
+        code: `[toolchain]
+channel = "stable"`,
       },
     });
+  } else if (isPython) {
+    const pyVerFile = files.find((f) => /^\.(python-version|runtime\.txt)$/i.test(f.name));
+    const hasPyVer = Boolean(pyVerFile) || /requires-python/i.test(getFileContent('pyproject.toml'));
+    items.push({
+      id: 'setup-node-version',
+      title: 'Python Runtime Version Pinning (.python-version)',
+      status: hasPyVer ? 'completed' : 'needs_setup',
+      category: 'essential',
+      summary: hasPyVer ? `Python runtime version is explicitly pinned${pyVerFile ? ` via ${pyVerFile.name}` : ' in pyproject.toml'}.` : 'No .python-version or pyproject.toml requires-python declared.',
+      explanation: 'Declaring a target Python version guarantees developers and CI environments execute the exact supported interpreter version.',
+      targetFiles: ['.python-version'],
+      actionText: 'Add .python-version',
+      tags: ['python', 'dx', 'runtime'],
+      codeSnippet: {
+        language: 'text',
+        filename: '.python-version',
+        code: '3.11',
+      },
+    });
+  } else if (isFlutter) {
+    const pubspec = getFileContent('pubspec.yaml');
+    const hasSdk = /sdk:\s*['"]?[^'"]+['"]?/i.test(pubspec);
+    items.push({
+      id: 'setup-node-version',
+      title: 'Flutter SDK Version Pinning (pubspec.yaml)',
+      status: hasSdk ? 'completed' : 'needs_setup',
+      category: 'essential',
+      summary: hasSdk ? 'Dart/Flutter SDK constraints are declared in pubspec.yaml.' : 'No SDK constraints declared in pubspec.yaml.',
+      explanation: 'Declaring SDK constraints in pubspec.yaml ensures compatibility with the target Flutter framework release.',
+      actionText: 'Open pubspec.yaml',
+      actionFile: 'pubspec.yaml',
+      targetFiles: ['pubspec.yaml'],
+      tags: ['flutter', 'dart', 'runtime'],
+    });
+  } else {
+    // Node.js ecosystem
+    const nodeVersionFile = files.find((f) => /^\.(nvmrc|node-version)$/i.test(f.name));
+    const pkgJsonContent = getFileContent('package.json');
+    const hasEngines = /"engines"\s*:\s*\{[^}]*"node"/i.test(pkgJsonContent);
+
+    if (nodeVersionFile || hasEngines) {
+      items.push({
+        id: 'setup-node-version',
+        title: 'Runtime & Node.js Version Pinning',
+        status: 'completed',
+        category: 'essential',
+        summary: `Node runtime version is explicitly pinned${nodeVersionFile ? ` via ${nodeVersionFile.name}` : ' via package.json engines'}.`,
+        explanation: 'Pinning the exact Node.js version prevents runtime discrepancies and unsupported API errors between team members and CI pipelines.',
+        actionText: nodeVersionFile ? 'Open Version File' : 'Open package.json',
+        actionFile: nodeVersionFile ? nodeVersionFile.path : 'package.json',
+        targetFiles: nodeVersionFile ? [nodeVersionFile.path] : ['package.json'],
+        tags: ['node', 'dx', 'runtime'],
+      });
+    } else {
+      items.push({
+        id: 'setup-node-version',
+        title: 'Runtime & Node.js Version Pinning (.nvmrc)',
+        status: 'needs_setup',
+        category: 'essential',
+        summary: 'No .nvmrc, .node-version, or package.json "engines" field declared.',
+        explanation: 'Declaring a target Node.js version guarantees developers and CI environments execute the exact supported JavaScript runtime version.',
+        targetFiles: ['.nvmrc'],
+        actionText: 'Add .nvmrc',
+        tags: ['node', 'dx', 'runtime'],
+        agentPrompt: `Create an \`.nvmrc\` file containing \`20.18.0\` (or LTS) at the root of \`${repoName}\` to pin the runtime version.`,
+        codeSnippet: {
+          language: 'text',
+          filename: '.nvmrc',
+          code: `20.18.0`,
+        },
+      });
+    }
   }
 
   // =========================================================================
@@ -497,10 +617,11 @@ If you discover a security vulnerability within this project, please send an ema
   }
 
   // =========================================================================
-  // 9. Automated Test Suite (Vitest / Jest / Pytest)
+  // 9. Automated Test Suite (Vitest / Jest / Pytest / Go test / Cargo test)
   // =========================================================================
   const testFilesCount = analysis.categoriesCount?.test || 0;
   if (testFilesCount > 0) {
+    const testTag = isPython ? 'pytest' : isGo ? 'go-test' : isRust ? 'cargo-test' : isFlutter ? 'flutter-test' : 'vitest';
     items.push({
       id: 'setup-testing',
       title: 'Automated Test Suite (Unit & Integration)',
@@ -511,22 +632,116 @@ If you discover a security vulnerability within this project, please send an ema
       actionText: 'View Test Files',
       actionFile: sourceFiles.find((f) => f.category === 'test')?.path,
       targetFiles: sourceFiles.filter((f) => f.category === 'test').map((f) => f.path).slice(0, 3),
-      tags: ['testing', 'quality', 'vitest'],
+      tags: ['testing', 'quality', testTag],
     });
-  } else {
+  } else if (isGo) {
     items.push({
       id: 'setup-testing',
-      title: 'Automated Test Suite (Unit & Integration)',
+      title: 'Automated Test Suite (go test)',
       status: 'needs_setup',
       category: 'quality',
-      summary: 'No automated test files (.test.ts, .spec.ts, or tests/ directory) detected.',
-      explanation: 'Without automated unit testing, regressions can easily go undetected until reaching production. Setting up Vitest or Jest enables fast, localized verification.',
+      summary: 'No Go test files (*_test.go) detected in repository packages.',
+      explanation: 'Go includes a first-class built-in testing framework with "go test ./..." for unit, benchmark, and fuzz testing.',
+      targetFiles: ['main_test.go'],
+      actionText: 'Setup Go Tests',
+      tags: ['testing', 'quality', 'go-test'],
+      agentPrompt: `Create a starter unit test in \`main_test.go\` for \`${repoName}\` using Go's testing package.`,
+      codeSnippet: {
+        language: 'go',
+        filename: 'main_test.go',
+        code: `package main
+
+import "testing"
+
+func TestMainLogic(t *testing.T) {
+\twant := true
+\tif got := true; got != want {
+\t\tt.Errorf("got %v, want %v", got, want)
+\t}
+}`,
+      },
+    });
+  } else if (isRust) {
+    items.push({
+      id: 'setup-testing',
+      title: 'Automated Test Suite (cargo test)',
+      status: 'needs_setup',
+      category: 'quality',
+      summary: 'No Rust test modules or tests/ directory detected.',
+      explanation: 'Cargo provides built-in test harness execution via "cargo test" for unit and integration testing.',
+      targetFiles: ['tests/integration_test.rs'],
+      actionText: 'Setup Cargo Tests',
+      tags: ['testing', 'quality', 'cargo-test'],
+      agentPrompt: `Create an integration test in \`tests/integration_test.rs\` for \`${repoName}\`.`,
+      codeSnippet: {
+        language: 'rust',
+        filename: 'tests/integration_test.rs',
+        code: `#[test]
+fn test_basic_invariants() {
+    assert_eq!(2 + 2, 4);
+}`,
+      },
+    });
+  } else if (isPython) {
+    items.push({
+      id: 'setup-testing',
+      title: 'Automated Test Suite (pytest)',
+      status: 'needs_setup',
+      category: 'quality',
+      summary: 'No Python test files (test_*.py or tests/ directory) detected.',
+      explanation: 'pytest provides test discovery, fixture management, and parameterized test execution for Python codebases.',
+      targetFiles: ['tests/test_main.py'],
+      actionText: 'Setup pytest',
+      tags: ['testing', 'quality', 'pytest'],
+      agentPrompt: `Configure pytest and create a starter test in \`tests/test_main.py\` for \`${repoName}\`.`,
+      codeSnippet: {
+        language: 'python',
+        filename: 'tests/test_main.py',
+        code: `def test_sample():
+    assert 1 + 1 == 2
+`,
+      },
+    });
+  } else if (isFlutter) {
+    items.push({
+      id: 'setup-testing',
+      title: 'Automated Test Suite (flutter_test)',
+      status: 'needs_setup',
+      category: 'quality',
+      summary: 'No Flutter test files in test/ directory detected.',
+      explanation: 'Flutter provides the flutter_test package for fast headless unit, widget, and golden file testing.',
+      targetFiles: ['test/unit_test.dart'],
+      actionText: 'Setup Flutter Test',
+      tags: ['testing', 'quality', 'flutter-test'],
+      agentPrompt: `Create a unit test in \`test/unit_test.dart\` for \`${repoName}\` using package:flutter_test.`,
+      codeSnippet: {
+        language: 'dart',
+        filename: 'test/unit_test.dart',
+        code: `import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('initial sanity check', () {
+    expect(42, 42);
+  });
+}`,
+      },
+    });
+  } else {
+    // JavaScript / TypeScript ecosystem
+    const testEnv = isReact ? 'jsdom' : 'node';
+    items.push({
+      id: 'setup-testing',
+      title: 'Automated Test Suite (Vitest / Jest)',
+      status: 'needs_setup',
+      category: 'quality',
+      summary: `No automated test files (.test.ts${isReact ? ', .test.tsx' : ''}, or tests/ directory) detected.`,
+      explanation: 'Without automated unit testing, regressions can easily go undetected until reaching production. Setting up Vitest enables fast, localized verification.',
       targetFiles: ['vitest.config.ts', 'tests/'],
       actionText: 'Setup Vitest',
       tags: ['testing', 'quality', 'vitest'],
       agentPrompt: `Configure Vitest in \`${repoName}\`:
 1. Add \`vitest\` to \`devDependencies\` in \`package.json\`.
-2. Create \`vitest.config.ts\`.
+2. Create \`vitest.config.ts\` with \`${testEnv}\` environment.
 3. Create a starter unit test in \`tests/example.test.ts\` verifying core functionality.
 4. Add \`"test": "vitest run"\` script to package.json.`,
       codeSnippet: {
@@ -537,8 +752,8 @@ If you discover a security vulnerability within this project, please send an ema
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node', // or 'jsdom' for React components
-    include: ['tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    environment: '${testEnv}',
+    include: ['tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts${isReact ? ',jsx,tsx' : ''}}'],
   },
 });`,
       },
@@ -561,6 +776,182 @@ export default defineConfig({
       actionFile: ciFiles[0].path,
       targetFiles: ciFiles.map((f) => f.path),
       tags: ['ci-cd', 'github-actions', 'automation'],
+    });
+  } else if (isGo) {
+    items.push({
+      id: 'setup-ci',
+      title: 'Continuous Integration Pipeline (GitHub Actions)',
+      status: 'needs_setup',
+      category: 'quality',
+      summary: 'No automated CI/CD pipeline (.github/workflows) detected.',
+      explanation: 'A CI pipeline automatically runs formatting checks, tests, and builds on every pull request, preventing broken code from landing on main.',
+      targetFiles: ['.github/workflows/ci.yml'],
+      actionText: 'Setup GitHub Actions',
+      tags: ['ci-cd', 'github-actions', 'go'],
+      agentPrompt: `Create a GitHub Actions CI workflow in \`.github/workflows/ci.yml\` for \`${repoName}\` that runs on push and pull_request to main, sets up Go 1.22, runs tests (\`go test ./...\`), and builds (\`go build ./...\`).`,
+      codeSnippet: {
+        language: 'yaml',
+        filename: '.github/workflows/ci.yml',
+        code: `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Build & Test Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Run Tests
+        run: go test -v ./...
+
+      - name: Build
+        run: go build -v ./...`,
+      },
+    });
+  } else if (isRust) {
+    items.push({
+      id: 'setup-ci',
+      title: 'Continuous Integration Pipeline (GitHub Actions)',
+      status: 'needs_setup',
+      category: 'quality',
+      summary: 'No automated CI/CD pipeline (.github/workflows) detected.',
+      explanation: 'A CI pipeline automatically runs formatting checks, tests, and builds on every pull request, preventing broken code from landing on main.',
+      targetFiles: ['.github/workflows/ci.yml'],
+      actionText: 'Setup GitHub Actions',
+      tags: ['ci-cd', 'github-actions', 'rust'],
+      agentPrompt: `Create a GitHub Actions CI workflow in \`.github/workflows/ci.yml\` for \`${repoName}\` that installs the Rust toolchain, runs \`cargo test\`, and runs \`cargo build\`.`,
+      codeSnippet: {
+        language: 'yaml',
+        filename: '.github/workflows/ci.yml',
+        code: `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Rust Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Tests
+        run: cargo test --verbose
+
+      - name: Build
+        run: cargo build --release --verbose`,
+      },
+    });
+  } else if (isPython) {
+    items.push({
+      id: 'setup-ci',
+      title: 'Continuous Integration Pipeline (GitHub Actions)',
+      status: 'needs_setup',
+      category: 'quality',
+      summary: 'No automated CI/CD pipeline (.github/workflows) detected.',
+      explanation: 'A CI pipeline automatically runs linters and test suites on every pull request, preventing regressions.',
+      targetFiles: ['.github/workflows/ci.yml'],
+      actionText: 'Setup GitHub Actions',
+      tags: ['ci-cd', 'github-actions', 'python'],
+      agentPrompt: `Create a GitHub Actions CI workflow in \`.github/workflows/ci.yml\` for \`${repoName}\` that sets up Python 3.11, installs requirements, and runs pytest.`,
+      codeSnippet: {
+        language: 'yaml',
+        filename: '.github/workflows/ci.yml',
+        code: `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Python Test Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt || pip install pytest
+
+      - name: Run test suite
+        run: pytest`,
+      },
+    });
+  } else if (isFlutter) {
+    items.push({
+      id: 'setup-ci',
+      title: 'Continuous Integration Pipeline (GitHub Actions)',
+      status: 'needs_setup',
+      category: 'quality',
+      summary: 'No automated CI/CD pipeline (.github/workflows) detected.',
+      explanation: 'A CI pipeline automatically runs Flutter analyze and test suites on every pull request.',
+      targetFiles: ['.github/workflows/ci.yml'],
+      actionText: 'Setup GitHub Actions',
+      tags: ['ci-cd', 'github-actions', 'flutter'],
+      agentPrompt: `Create a GitHub Actions CI workflow in \`.github/workflows/ci.yml\` for \`${repoName}\` using subosito/flutter-action.`,
+      codeSnippet: {
+        language: 'yaml',
+        filename: '.github/workflows/ci.yml',
+        code: `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Flutter Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test`,
+      },
     });
   } else {
     items.push({
@@ -661,57 +1052,157 @@ updates:
   }
 
   // =========================================================================
-  // 12. Code Formatting & Linting Standards (ESLint / Prettier / Biome)
+  // 12. Code Formatting & Linting Standards
   // =========================================================================
-  const linterFile = files.find((f) =>
-    /^(eslint\.config\.|^\.eslintrc|\.prettierrc|biome\.json)/i.test(f.name)
-  );
-  const hasLinterDep = dependencies.some((d) => /eslint|prettier|biome/i.test(d.name));
-
-  if (linterFile || hasLinterDep) {
+  if (isGo) {
+    const hasGolangCi = files.some((f) => /^\.golangci\.(ya?ml|json|toml)$/i.test(f.name));
     items.push({
       id: 'setup-linting',
-      title: 'Code Formatting & Linter Standards',
-      status: 'completed',
+      title: 'Go Linter & Static Analysis (golangci-lint)',
+      status: hasGolangCi ? 'completed' : 'needs_setup',
       category: 'tooling',
-      summary: `Configured via ${linterFile ? linterFile.name : 'installed linter dependencies'}.`,
-      explanation: 'Linters and formatters enforce uniform code styling, detect common syntax antipatterns, and prevent styling debates in code reviews.',
-      actionText: linterFile ? 'Open Linter Config' : undefined,
-      actionFile: linterFile ? linterFile.path : undefined,
-      targetFiles: linterFile ? [linterFile.path] : [],
-      tags: ['tooling', 'eslint', 'formatting'],
+      summary: hasGolangCi ? 'Configured via .golangci.yml.' : 'No .golangci.yml configuration found to aggregate Go linters.',
+      explanation: 'golangci-lint runs fast parallel linters including errcheck, govet, and staticcheck to catch bugs before commit.',
+      actionText: hasGolangCi ? 'Open Config' : 'Setup golangci-lint',
+      actionFile: hasGolangCi ? '.golangci.yml' : undefined,
+      targetFiles: ['.golangci.yml'],
+      tags: ['tooling', 'go', 'linting'],
+      agentPrompt: `Configure \`.golangci.yml\` in \`${repoName}\` with errcheck, govet, and staticcheck.`,
+      codeSnippet: {
+        language: 'yaml',
+        filename: '.golangci.yml',
+        code: `version: 2
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused`,
+      },
+    });
+  } else if (isRust) {
+    const hasRustfmt = files.some((f) => /^\.?rustfmt\.toml$/i.test(f.name));
+    items.push({
+      id: 'setup-linting',
+      title: 'Rust Code Formatting & Clippy (rustfmt / clippy)',
+      status: hasRustfmt ? 'completed' : 'needs_setup',
+      category: 'tooling',
+      summary: hasRustfmt ? 'Standardized via rustfmt.toml.' : 'No rustfmt.toml configuration found for formatting conventions.',
+      explanation: 'rustfmt ensures uniform Rust formatting, while clippy catches idiomatic antipatterns and performance gotchas.',
+      actionText: hasRustfmt ? 'Open Config' : 'Add rustfmt.toml',
+      targetFiles: ['rustfmt.toml'],
+      tags: ['tooling', 'rust', 'formatting'],
+      agentPrompt: `Create a \`rustfmt.toml\` in \`${repoName}\` to enforce codebase formatting standards.`,
+      codeSnippet: {
+        language: 'toml',
+        filename: 'rustfmt.toml',
+        code: `edition = "2021"
+max_width = 100
+use_small_heuristics = "Default"`,
+      },
+    });
+  } else if (isPython) {
+    const hasRuff = files.some((f) => /^ruff\.toml$/i.test(f.name) || /^\.flake8$/i.test(f.name)) || /\[tool\.ruff\]/i.test(getFileContent('pyproject.toml'));
+    items.push({
+      id: 'setup-linting',
+      title: 'Python Linter & Code Formatter (Ruff / Flake8)',
+      status: hasRuff ? 'completed' : 'needs_setup',
+      category: 'tooling',
+      summary: hasRuff ? 'Python linter configuration detected.' : 'No Ruff, Flake8, or Black configuration detected.',
+      explanation: 'Automated Python linters enforce PEP 8 formatting and catch unused imports, undefined variables, and type warnings.',
+      actionText: hasRuff ? 'Open Config' : 'Setup Ruff',
+      targetFiles: ['ruff.toml'],
+      tags: ['tooling', 'python', 'ruff', 'linting'],
+      agentPrompt: `Configure Ruff in \`ruff.toml\` or \`pyproject.toml\` for \`${repoName}\`.`,
+      codeSnippet: {
+        language: 'toml',
+        filename: 'ruff.toml',
+        code: `line-length = 88
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "UP"]`,
+      },
+    });
+  } else if (isFlutter) {
+    const hasAnalysisOptions = files.some((f) => /^analysis_options\.ya?ml$/i.test(f.name));
+    items.push({
+      id: 'setup-linting',
+      title: 'Dart & Flutter Linter Rules (analysis_options.yaml)',
+      status: hasAnalysisOptions ? 'completed' : 'needs_setup',
+      category: 'tooling',
+      summary: hasAnalysisOptions ? 'Linter rules active via analysis_options.yaml.' : 'No analysis_options.yaml found for Dart/Flutter linting.',
+      explanation: 'analysis_options.yaml enforces Flutter community linter rules and static type pedantic checks.',
+      actionText: hasAnalysisOptions ? 'Open Config' : 'Add analysis_options.yaml',
+      targetFiles: ['analysis_options.yaml'],
+      tags: ['tooling', 'flutter', 'dart', 'linting'],
+      agentPrompt: `Create an \`analysis_options.yaml\` in \`${repoName}\` including \`package:flutter_lints/flutter.yaml\`.`,
+      codeSnippet: {
+        language: 'yaml',
+        filename: 'analysis_options.yaml',
+        code: `include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    prefer_const_constructors: true
+    avoid_print: true`,
+      },
     });
   } else {
-    items.push({
-      id: 'setup-linting',
-      title: 'Code Formatting & Linter Standards',
-      status: 'needs_setup',
-      category: 'tooling',
-      summary: 'No ESLint, Prettier, or Biome configuration file detected.',
-      explanation: 'Configuring an automated linter catches unhandled promises, missing imports, and unused variables before runtime execution.',
-      targetFiles: ['eslint.config.js', '.prettierrc'],
-      actionText: 'Setup ESLint',
-      tags: ['tooling', 'eslint', 'formatting'],
-      agentPrompt: `Set up ESLint and Prettier in \`${repoName}\` with recommended TypeScript and React rules.`,
-      codeSnippet: {
-        language: 'javascript',
-        filename: 'eslint.config.js',
-        code: `import js from '@eslint/js';
+    // JavaScript / TypeScript ecosystem
+    const linterFile = files.find((f) =>
+      /^(eslint\.config\.|^\.eslintrc|\.prettierrc|biome\.json)/i.test(f.name)
+    );
+    const hasLinterDep = dependencies.some((d) => /eslint|prettier|biome/i.test(d.name));
+
+    if (linterFile || hasLinterDep) {
+      items.push({
+        id: 'setup-linting',
+        title: 'Code Formatting & Linter Standards',
+        status: 'completed',
+        category: 'tooling',
+        summary: `Configured via ${linterFile ? linterFile.name : 'installed linter dependencies'}.`,
+        explanation: 'Linters and formatters enforce uniform code styling, detect common syntax antipatterns, and prevent styling debates in code reviews.',
+        actionText: linterFile ? 'Open Linter Config' : undefined,
+        actionFile: linterFile ? linterFile.path : undefined,
+        targetFiles: linterFile ? [linterFile.path] : [],
+        tags: ['tooling', 'eslint', 'formatting'],
+      });
+    } else {
+      const lintTargetRules = isReact ? 'TypeScript and React' : isVue ? 'TypeScript and Vue' : isSvelte ? 'TypeScript and Svelte' : 'TypeScript';
+      items.push({
+        id: 'setup-linting',
+        title: 'Code Formatting & Linter Standards',
+        status: 'needs_setup',
+        category: 'tooling',
+        summary: 'No ESLint, Prettier, or Biome configuration file detected.',
+        explanation: 'Configuring an automated linter catches unhandled promises, missing imports, and unused variables before runtime execution.',
+        targetFiles: ['eslint.config.js', '.prettierrc'],
+        actionText: 'Setup ESLint',
+        tags: ['tooling', 'eslint', 'formatting'],
+        agentPrompt: `Set up ESLint and Prettier in \`${repoName}\` with recommended ${lintTargetRules} rules.`,
+        codeSnippet: {
+          language: 'javascript',
+          filename: 'eslint.config.js',
+          code: `import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   { ignores: ['dist', 'node_modules'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ['**/*.{ts,tsx}'],
+    files: ['**/*.{ts${isReact ? ',tsx' : isVue ? ',vue' : ''}}'],
     rules: {
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
 );`,
-      },
-    });
+        },
+      });
+    }
   }
 
   // =========================================================================
@@ -847,8 +1338,7 @@ Thank you for contributing!
    \`\`\`
 2. Ensure all tests pass:
    \`\`\`bash
-   npm test
-   npm run build
+   ${isGo ? 'go test ./...\ngo build ./...' : isRust ? 'cargo test\ncargo build' : isPython ? 'pytest' : isFlutter ? 'flutter test\nflutter analyze' : 'npm test\nnpm run build'}
    \`\`\`
 3. Open a Pull Request with a clear description of your changes.`,
       },
@@ -856,40 +1346,100 @@ Thank you for contributing!
   }
 
   // =========================================================================
-  // 16. TypeScript & Static Typing (tsconfig.json)
+  // 16. Static Typing & Compiler Standards
   // =========================================================================
-  const tsconfigFile = files.find((f) => /^tsconfig(\..+)?\.json$/i.test(f.name));
-  const hasTsFiles = sourceFiles.some((f) => /\.(ts|tsx)$/i.test(f.path));
-
-  if (tsconfigFile || hasTsFiles) {
+  if (isGo) {
     items.push({
       id: 'setup-typescript',
-      title: 'TypeScript & Type Safety (tsconfig.json)',
+      title: 'Static Type Safety (Go Compiler)',
       status: 'completed',
       category: 'architecture',
-      summary: 'Static type checking is active across the codebase.',
-      explanation: 'Strict typing prevents null reference crashes, provides IDE autocomplete, and validates component props at compile time.',
-      actionText: tsconfigFile ? 'Open tsconfig.json' : undefined,
-      actionFile: tsconfigFile ? tsconfigFile.path : undefined,
-      targetFiles: tsconfigFile ? [tsconfigFile.path] : [],
-      tags: ['typescript', 'typing', 'tooling'],
+      summary: 'Strict static type checking is enforced natively by the Go compiler.',
+      explanation: 'Go enforces static compile-time type safety natively across all structs, interfaces, and packages without external configuration.',
+      targetFiles: ['go.mod'],
+      tags: ['go', 'type-safety', 'architecture'],
     });
-  } else {
+  } else if (isRust) {
     items.push({
       id: 'setup-typescript',
-      title: 'TypeScript & Type Safety (tsconfig.json)',
-      status: 'needs_setup',
+      title: 'Static Type Safety & Memory Model (Rust)',
+      status: 'completed',
       category: 'architecture',
-      summary: 'No TypeScript configuration detected. Code is untyped JavaScript.',
-      explanation: 'Adopting TypeScript adds compile-time type safety, refactoring safety, and self-documenting interface definitions.',
-      targetFiles: ['tsconfig.json'],
-      actionText: 'Setup TypeScript',
-      tags: ['typescript', 'typing', 'tooling'],
-      agentPrompt: `Initialize TypeScript in \`${repoName}\` by creating \`tsconfig.json\` with strict type checking.`,
+      summary: 'Strict compile-time static types, algebraic data types, and ownership are enforced natively by rustc.',
+      explanation: 'Rust provides zero-cost abstractions, strict algebraic types (Result, Option), and compile-time thread safety without external typecheckers.',
+      targetFiles: ['Cargo.toml'],
+      tags: ['rust', 'type-safety', 'architecture'],
+    });
+  } else if (isFlutter) {
+    items.push({
+      id: 'setup-typescript',
+      title: 'Sound Null Safety & Static Typing (Dart)',
+      status: 'completed',
+      category: 'architecture',
+      summary: 'Sound null safety and static type checking are enforced natively by the Dart analyzer.',
+      explanation: 'Dart provides complete sound null safety at compile time, eliminating null pointer exceptions in production.',
+      targetFiles: ['pubspec.yaml'],
+      tags: ['dart', 'flutter', 'type-safety'],
+    });
+  } else if (isPython) {
+    const pyprojectContent = getFileContent('pyproject.toml');
+    const hasMypy = files.some((f) => /^\.?mypy\.ini$/i.test(f.name) || /^pyrightconfig\.json$/i.test(f.name)) || /\[tool\.(mypy|pyright)\]/i.test(pyprojectContent);
+    items.push({
+      id: 'setup-typescript',
+      title: 'Static Type Checking (mypy / pyright)',
+      status: hasMypy ? 'completed' : 'needs_setup',
+      category: 'architecture',
+      summary: hasMypy ? 'Static type checking is configured for Python type annotations.' : 'No static type checker (mypy or pyright) configured for Python code.',
+      explanation: 'Configuring mypy or pyright validates PEP 484 type annotations at CI time, catching attribute errors before runtime.',
+      targetFiles: ['pyproject.toml'],
+      actionText: hasMypy ? 'Open Config' : 'Setup mypy',
+      tags: ['python', 'typing', 'mypy'],
+      agentPrompt: `Configure mypy in \`pyproject.toml\` for \`${repoName}\` with strict type checking.`,
       codeSnippet: {
-        language: 'json',
-        filename: 'tsconfig.json',
-        code: `{
+        language: 'toml',
+        filename: 'pyproject.toml',
+        code: `[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true`,
+      },
+    });
+  } else {
+    // JavaScript / TypeScript ecosystem
+    const tsconfigFile = files.find((f) => /^tsconfig(\..+)?\.json$/i.test(f.name));
+    const hasTsFiles = sourceFiles.some((f) => /\.(ts|tsx)$/i.test(f.path));
+
+    if (tsconfigFile || hasTsFiles) {
+      items.push({
+        id: 'setup-typescript',
+        title: 'TypeScript & Type Safety (tsconfig.json)',
+        status: 'completed',
+        category: 'architecture',
+        summary: 'Static type checking is active across the codebase.',
+        explanation: 'Strict typing prevents null reference crashes, provides IDE autocomplete, and validates component props at compile time.',
+        actionText: tsconfigFile ? 'Open tsconfig.json' : undefined,
+        actionFile: tsconfigFile ? tsconfigFile.path : undefined,
+        targetFiles: tsconfigFile ? [tsconfigFile.path] : [],
+        tags: ['typescript', 'typing', 'tooling'],
+      });
+    } else {
+      const jsxConfig = isReact ? '\n    "jsx": "react-jsx",' : isVue ? '\n    "jsx": "preserve",' : '';
+      items.push({
+        id: 'setup-typescript',
+        title: 'TypeScript & Type Safety (tsconfig.json)',
+        status: 'needs_setup',
+        category: 'architecture',
+        summary: 'No TypeScript configuration detected. Code is untyped JavaScript.',
+        explanation: 'Adopting TypeScript adds compile-time type safety, refactoring safety, and self-documenting interface definitions.',
+        targetFiles: ['tsconfig.json'],
+        actionText: 'Setup TypeScript',
+        tags: ['typescript', 'typing', 'tooling'],
+        agentPrompt: `Initialize TypeScript in \`${repoName}\` by creating \`tsconfig.json\` with strict type checking.`,
+        codeSnippet: {
+          language: 'json',
+          filename: 'tsconfig.json',
+          code: `{
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
@@ -899,8 +1449,7 @@ Thank you for contributing!
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
+    "noEmit": true,${jsxConfig}
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -908,25 +1457,51 @@ Thank you for contributing!
   },
   "include": ["src"]
 }`,
-      },
-    });
+        },
+      });
+    }
   }
 
   // =========================================================================
   // 17. Application Bootstrap & Entry Point
   // =========================================================================
+  const candidateEntries = primaryFramework?.entryPoint
+    ? [primaryFramework.entryPoint]
+    : isFlutter
+    ? ['lib/main.dart']
+    : isGo
+    ? ['cmd/main.go', 'main.go']
+    : isRust
+    ? ['src/main.rs', 'src/lib.rs']
+    : isPython
+    ? ['main.py', 'app.py', 'src/main.py']
+    : isNext
+    ? ['app/page.tsx', 'pages/index.tsx']
+    : isVue
+    ? ['src/main.ts', 'src/App.vue']
+    : isSvelte
+    ? ['src/routes/+page.svelte', 'src/main.js']
+    : isBackend
+    ? ['src/index.ts', 'src/server.ts', 'src/app.ts', 'server.js', 'index.js']
+    : isReact
+    ? ['src/main.tsx', 'src/index.tsx', 'src/App.tsx']
+    : ['src/index.ts', 'src/main.ts', 'index.js'];
+
+  const expectedEntry = candidateEntries[0];
+
   if (analysis.entryPoints && analysis.entryPoints.length > 0) {
+    const detectedEntry = analysis.entryPoints[0];
     items.push({
       id: 'setup-entrypoint',
       title: 'Application Bootstrap & Entry Point',
       status: 'completed',
       category: 'architecture',
-      summary: `Standard initialization entry point detected at ${analysis.entryPoints[0]}.`,
-      explanation: 'A designated entry point bootstraps global providers, error boundaries, routing engines, and dependency injections.',
+      summary: `Standard initialization entry point detected at ${detectedEntry}.`,
+      explanation: `A designated entry point bootstraps ${frameworkName} services, routing, and dependency injections.`,
       actionText: 'Open Entry Point',
-      actionFile: analysis.entryPoints[0],
-      targetFiles: [analysis.entryPoints[0]],
-      tags: ['architecture', 'bootstrap'],
+      actionFile: detectedEntry,
+      targetFiles: [detectedEntry],
+      tags: ['architecture', 'bootstrap', frameworkId],
     });
   } else {
     items.push({
@@ -934,48 +1509,47 @@ Thank you for contributing!
       title: 'Application Bootstrap & Entry Point',
       status: 'needs_setup',
       category: 'architecture',
-      summary: 'No standard application entry point (e.g. main.tsx, index.ts, server.ts) detected.',
-      explanation: 'Establishing a clear bootstrap file provides a single starting point for build tools, test runners, and developers.',
-      targetFiles: ['src/main.tsx', 'src/index.ts'],
-      actionText: 'Create Entry Point',
-      tags: ['architecture', 'bootstrap'],
-      agentPrompt: `Create a standard bootstrap entry point in \`src/main.tsx\` or \`src/index.ts\` for \`${repoName}\`.`,
+      summary: `No standard application entry point (e.g. ${candidateEntries.slice(0, 3).join(', ')}) detected.`,
+      explanation: `Establishing a clear bootstrap file (${expectedEntry}) provides a single starting point for build tools, test runners, and developers.`,
+      targetFiles: candidateEntries.slice(0, 2),
+      actionText: `Create ${expectedEntry}`,
+      tags: ['architecture', 'bootstrap', frameworkId],
+      agentPrompt: `Create a standard bootstrap entry point in \`${expectedEntry}\` for \`${repoName}\` configured for ${frameworkName}.`,
     });
   }
 
   // =========================================================================
-  // 18. Client-Side Error Boundary & Crash Isolation
+  // 18. Crash Resilience & Error Handling Architecture
   // =========================================================================
-  const hasErrorBoundary = sourceFiles.some((f) => /ErrorBoundary|componentDidCatch/i.test(getFileContent(f.path)));
-  const isFrontendProject = sourceFiles.some((f) => /\.(tsx|jsx|vue|svelte)$/i.test(f.path));
-
-  if (hasErrorBoundary) {
-    items.push({
-      id: 'setup-error-boundary',
-      title: 'UI Error Boundary & Crash Isolation',
-      status: 'completed',
-      category: 'architecture',
-      summary: 'React Error Boundary is configured to catch and isolate unhandled render exceptions.',
-      explanation: 'Error Boundaries prevent rendering crashes in one component from blanking the entire browser viewport.',
-      targetFiles: sourceFiles.filter((f) => /ErrorBoundary/i.test(f.path)).map((f) => f.path),
-      tags: ['react', 'resilience', 'architecture'],
-    });
-  } else if (isFrontendProject) {
-    items.push({
-      id: 'setup-error-boundary',
-      title: 'UI Error Boundary & Crash Isolation',
-      status: 'needs_setup',
-      category: 'architecture',
-      summary: 'No React ErrorBoundary detected to catch unexpected rendering exceptions.',
-      explanation: 'An unhandled render error in any React component will unmount the entire component tree unless caught by an ErrorBoundary.',
-      targetFiles: ['src/components/common/ErrorBoundary.tsx'],
-      actionText: 'Add ErrorBoundary',
-      tags: ['react', 'resilience', 'architecture'],
-      agentPrompt: `Create a reusable \`ErrorBoundary.tsx\` in \`src/components/common/\` for \`${repoName}\` that catches React rendering errors and displays a fallback error card with a retry button.`,
-      codeSnippet: {
-        language: 'typescript',
-        filename: 'src/components/common/ErrorBoundary.tsx',
-        code: `import React, { Component, ErrorInfo, ReactNode } from 'react';
+  if (isReact) {
+    const hasErrorBoundary = sourceFiles.some((f) => /ErrorBoundary|componentDidCatch/i.test(getFileContent(f.path)));
+    if (hasErrorBoundary) {
+      items.push({
+        id: 'setup-error-boundary',
+        title: 'React Error Boundary & Crash Isolation',
+        status: 'completed',
+        category: 'architecture',
+        summary: 'React Error Boundary is configured to catch and isolate unhandled render exceptions.',
+        explanation: 'Error Boundaries prevent rendering crashes in one component from unmounting the entire component tree.',
+        targetFiles: sourceFiles.filter((f) => /ErrorBoundary/i.test(f.path)).map((f) => f.path),
+        tags: ['react', 'resilience', 'architecture'],
+      });
+    } else {
+      items.push({
+        id: 'setup-error-boundary',
+        title: 'React Error Boundary & Crash Isolation',
+        status: 'needs_setup',
+        category: 'architecture',
+        summary: 'No React ErrorBoundary detected to catch unexpected rendering exceptions.',
+        explanation: 'An unhandled render error in any React component will unmount the entire component tree unless caught by an ErrorBoundary.',
+        targetFiles: ['src/components/common/ErrorBoundary.tsx'],
+        actionText: 'Add ErrorBoundary',
+        tags: ['react', 'resilience', 'architecture'],
+        agentPrompt: `Create a reusable \`ErrorBoundary.tsx\` in \`src/components/common/\` for \`${repoName}\` that catches React rendering errors and displays a fallback error card with a retry button.`,
+        codeSnippet: {
+          language: 'typescript',
+          filename: 'src/components/common/ErrorBoundary.tsx',
+          code: `import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -1010,7 +1584,182 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }`,
+        },
+      });
+    }
+  } else if (isVue) {
+    const hasVueError = sourceFiles.some((f) => /onErrorCaptured|app\.config\.errorHandler/i.test(getFileContent(f.path)));
+    items.push({
+      id: 'setup-error-boundary',
+      title: 'Vue Error Handling & Crash Resilience',
+      status: hasVueError ? 'completed' : 'needs_setup',
+      category: 'architecture',
+      summary: hasVueError ? 'Vue global errorHandler or onErrorCaptured hook is active.' : 'No global app.config.errorHandler or onErrorCaptured hook configured.',
+      explanation: 'Capturing unhandled component exceptions in Vue prevents silent UI failures and reports crashes to monitoring services.',
+      actionText: hasVueError ? 'Open Handler' : 'Configure errorHandler',
+      targetFiles: ['src/main.ts'],
+      tags: ['vue', 'resilience', 'architecture'],
+      agentPrompt: `Configure \`app.config.errorHandler\` in \`src/main.ts\` for \`${repoName}\` to catch and log unhandled Vue component errors.`,
+      codeSnippet: {
+        language: 'typescript',
+        filename: 'src/main.ts',
+        code: `import { createApp } from 'vue';
+import App from './App.vue';
+
+const app = createApp(App);
+
+app.config.errorHandler = (err, instance, info) => {
+  console.error('Unhandled Vue Component Error:', err, info);
+};
+
+app.mount('#app');`,
       },
+    });
+  } else if (isSvelte) {
+    const hasSvelteError = files.some((f) => /\+error\.svelte$/i.test(f.name)) || sourceFiles.some((f) => /handleError/i.test(getFileContent(f.path)));
+    items.push({
+      id: 'setup-error-boundary',
+      title: 'Svelte Error Boundary & Route Fallbacks',
+      status: hasSvelteError ? 'completed' : 'needs_setup',
+      category: 'architecture',
+      summary: hasSvelteError ? 'SvelteKit +error.svelte fallback route is configured.' : 'No +error.svelte or handleError hook configured for route failure isolation.',
+      explanation: 'SvelteKit +error.svelte renders a contextual fallback when a load function or component throws an unhandled error.',
+      actionText: hasSvelteError ? 'Open Error Route' : 'Add +error.svelte',
+      targetFiles: ['src/routes/+error.svelte'],
+      tags: ['svelte', 'resilience', 'architecture'],
+      agentPrompt: `Create a standard \`src/routes/+error.svelte\` in \`${repoName}\` to display user-friendly error details when routes fail.`,
+      codeSnippet: {
+        language: 'svelte',
+        filename: 'src/routes/+error.svelte',
+        code: `<script>
+  import { page } from '$app/stores';
+</script>
+
+<div class="error-container">
+  <h1>{$page.status}: {$page.error?.message || 'Unexpected Error'}</h1>
+  <a href="/">Return to Dashboard</a>
+</div>`,
+      },
+    });
+  } else if (isFlutter) {
+    const hasFlutterError = sourceFiles.some((f) => /FlutterError\.onError|PlatformDispatcher\.instance\.onError/i.test(getFileContent(f.path)));
+    items.push({
+      id: 'setup-error-boundary',
+      title: 'Flutter Crash Handling & Error Callbacks',
+      status: hasFlutterError ? 'completed' : 'needs_setup',
+      category: 'architecture',
+      summary: hasFlutterError ? 'Global FlutterError.onError or PlatformDispatcher crash handlers detected.' : 'No global FlutterError.onError or PlatformDispatcher error handler detected.',
+      explanation: 'Configuring FlutterError.onError and PlatformDispatcher.instance.onError catches both framework layout errors and asynchronous Dart isolate crashes.',
+      actionText: hasFlutterError ? 'Open Handler' : 'Configure Error Handler',
+      targetFiles: ['lib/main.dart'],
+      tags: ['flutter', 'resilience', 'architecture'],
+      agentPrompt: `Set up \`FlutterError.onError\` and \`PlatformDispatcher.instance.onError\` in \`lib/main.dart\` for \`${repoName}\`.`,
+      codeSnippet: {
+        language: 'dart',
+        filename: 'lib/main.dart',
+        code: `import 'dart:ui';
+import 'package:flutter/material.dart';
+
+void main() {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Uncaught async error: $error');
+    return true;
+  };
+
+  runApp(const MyApp());
+}`,
+      },
+    });
+  } else if (isBackend) {
+    const hasErrorHandler = sourceFiles.some((f) =>
+      /\(err,\s*req,\s*res,\s*next\)|@app\.exception_handler|ExceptionFilter|gin\.Recovery|recover\(\)/i.test(getFileContent(f.path))
+    );
+    if (isPython) {
+      items.push({
+        id: 'setup-error-boundary',
+        title: 'Centralized Exception Handler Middleware',
+        status: hasErrorHandler ? 'completed' : 'needs_setup',
+        category: 'architecture',
+        summary: hasErrorHandler ? 'Global exception handler is configured.' : `No global exception handler detected in ${frameworkName}.`,
+        explanation: 'A centralized error handler captures unhandled exceptions and formats structured JSON error responses instead of leaking internal traces.',
+        actionText: hasErrorHandler ? 'Open Handler' : 'Add Exception Handler',
+        targetFiles: ['main.py'],
+        tags: [frameworkId, 'backend', 'resilience', 'architecture'],
+        agentPrompt: `Add a global exception handler in \`main.py\` for \`${repoName}\` to return uniform JSON responses on 500 errors.`,
+        codeSnippet: {
+          language: 'python',
+          filename: 'main.py',
+          code: `@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"error": "InternalServerError", "message": str(exc)},
+    )`,
+        },
+      });
+    } else if (isGo) {
+      items.push({
+        id: 'setup-error-boundary',
+        title: 'Panic Recovery & Error Middleware',
+        status: hasErrorHandler ? 'completed' : 'needs_setup',
+        category: 'architecture',
+        summary: hasErrorHandler ? 'Panic recovery middleware is configured.' : 'No recovery middleware detected to capture runtime panics.',
+        explanation: 'Recovery middleware intercepts unhandled panics inside HTTP handlers, writing HTTP 500 responses and preventing server crashes.',
+        actionText: hasErrorHandler ? 'Open Handler' : 'Add Recovery Middleware',
+        targetFiles: ['cmd/main.go'],
+        tags: ['go', 'backend', 'resilience', 'architecture'],
+        agentPrompt: `Attach recovery middleware in \`cmd/main.go\` for \`${repoName}\` to prevent panics from terminating the process.`,
+        codeSnippet: {
+          language: 'go',
+          filename: 'cmd/main.go',
+          code: `r := gin.New()
+r.Use(gin.Recovery()) // Catches panics and writes 500 error response`,
+        },
+      });
+    } else {
+      // Node.js Backend (Express, Fastify, Nest, etc.)
+      items.push({
+        id: 'setup-error-boundary',
+        title: 'Centralized Error Handling Middleware',
+        status: hasErrorHandler ? 'completed' : 'needs_setup',
+        category: 'architecture',
+        summary: hasErrorHandler ? 'Global error-handling middleware is active.' : `No centralized error-handling middleware detected in ${frameworkName}.`,
+        explanation: 'A designated 4-argument error middleware (err, req, res, next) catches unhandled route promises and formats standard HTTP responses.',
+        actionText: hasErrorHandler ? 'Open Handler' : 'Add Error Middleware',
+        targetFiles: ['src/middleware/errorHandler.ts'],
+        tags: [frameworkId, 'backend', 'resilience', 'architecture'],
+        agentPrompt: `Create a centralized \`errorHandler.ts\` middleware in \`src/middleware/\` for \`${repoName}\`.`,
+        codeSnippet: {
+          language: 'typescript',
+          filename: 'src/middleware/errorHandler.ts',
+          code: `import { Request, Response, NextFunction } from 'express';
+
+export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
+  console.error('Unhandled API Error:', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message,
+  });
+}`,
+        },
+      });
+    }
+  } else {
+    // Generic / other frontend or library
+    const hasUncaught = sourceFiles.some((f) => /window\.onerror|process\.on\(['"]uncaughtException/i.test(getFileContent(f.path)));
+    items.push({
+      id: 'setup-error-boundary',
+      title: 'Global Uncaught Exception Handler',
+      status: hasUncaught ? 'completed' : 'needs_setup',
+      category: 'architecture',
+      summary: hasUncaught ? 'Global uncaught exception handler is registered.' : 'No global uncaught exception listener detected.',
+      explanation: 'Registering global exception handlers intercepts uncaught asynchronous rejections before they crash the process or runtime.',
+      targetFiles: [expectedEntry],
+      actionText: hasUncaught ? 'Open Handler' : 'Add Error Handler',
+      tags: ['resilience', 'architecture'],
     });
   }
 
@@ -1123,6 +1872,7 @@ export class ErrorBoundary extends Component<Props, State> {
       completionPercentage,
       byCategory,
     },
+    frameworkResult,
   };
 }
 
