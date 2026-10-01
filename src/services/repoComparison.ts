@@ -326,12 +326,21 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
 
   // Dynamic Sub-metrics for Architecture
   const archDensity = nodes > 0 ? edges / nodes : 0;
+  const hierarchyScore = Math.max(60, Math.min(99, Math.round(100 - Math.abs(fileToDirRatio - 8.5) * 1.5)));
+  const entryScore = entryCount === 0 ? 68 : entryCount === 1 ? 92 : entryCount <= 4 ? Math.min(98, 92 + entryCount * 2) : 96;
+  const couplingScore = archDensity === 0
+    ? 70
+    : archDensity >= 1.0 && archDensity <= 3.5
+    ? Math.max(75, Math.min(99, Math.round(98 - Math.abs(archDensity - 2.0) * 4)))
+    : Math.max(60, Math.min(90, Math.round(90 - Math.abs(archDensity - 2.5) * 6)));
+  const frameworkScore = repo.primaryFramework ? Math.min(98, 90 + Math.min(8, (repo.secondaryFrameworks?.length || 0) * 2)) : 80;
+
   const archSubMetrics: SubMetricScore[] = [
     {
       id: 'arch-hierarchy',
       name: 'Directory Hierarchy & Nesting',
       weight: 25,
-      score: fileToDirRatio <= 15 ? 95 : fileToDirRatio <= 30 ? 86 : 72,
+      score: hierarchyScore,
       status: fileToDirRatio <= 15 ? 'optimal' : fileToDirRatio <= 30 ? 'moderate' : 'warning',
       observation: `Directory partitioning ratio of ${fileToDirRatio.toFixed(1)} files per directory across ${repo.stats.totalDirs} directories.`,
       benchmark: 'Target: 4 to 15 files per directory for clean component isolation.',
@@ -340,7 +349,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'arch-entry',
       name: 'Entry Point Discoverability',
       weight: 25,
-      score: entryCount >= 1 ? 96 : 74,
+      score: entryScore,
       status: entryCount >= 1 ? 'optimal' : 'warning',
       observation: entryCount > 0
         ? `Identified ${entryCount} primary execution entry point${entryCount === 1 ? '' : 's'}.`
@@ -351,7 +360,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'arch-coupling',
       name: 'Import Graph Coupling & Density',
       weight: 25,
-      score: archDensity >= 1.2 && archDensity <= 4.5 ? 94 : archDensity > 0 ? 84 : 70,
+      score: couplingScore,
       status: archDensity >= 1.2 && archDensity <= 4.5 ? 'optimal' : archDensity > 0 ? 'moderate' : 'warning',
       observation: `Interconnection density of ${archDensity.toFixed(2)} import edges per module (${edges} edges across ${nodes} nodes).`,
       benchmark: 'Target: 1.2 to 4.5 edges per node to avoid cyclic dependencies.',
@@ -360,7 +369,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'arch-framework',
       name: 'Framework Architecture Alignment',
       weight: 25,
-      score: repo.primaryFramework ? 92 : 80,
+      score: frameworkScore,
       status: repo.primaryFramework ? 'optimal' : 'moderate',
       observation: `Structured according to ${repo.primaryFramework || repo.primaryLanguage || 'Standard'} project conventions.`,
       benchmark: 'Target: Idiomatic file organization conforming to primary framework norms.',
@@ -368,12 +377,19 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
   ];
 
   // Dynamic Sub-metrics for Scale
+  const densityScore = avgLinesPerFile <= 0
+    ? 80
+    : Math.max(55, Math.min(99, Math.round(100 - (avgLinesPerFile / 24))));
+  const partitioningScore = Math.max(60, Math.min(99, Math.round(100 - Math.abs(fileToDirRatio - 12) * 1.4)));
+  const depsScore = Math.max(55, Math.min(99, Math.round(99 - (repo.dependencies.direct * 0.65))));
+  const volumeScore = Math.max(60, Math.min(99, Math.round(99 - Math.log10(Math.max(10, totalLoc)) * 4.2)));
+
   const scaleSubMetrics: SubMetricScore[] = [
     {
       id: 'scale-density',
       name: 'Lines-per-File Density',
       weight: 25,
-      score: avgLinesPerFile <= 200 ? 96 : avgLinesPerFile <= 400 ? 88 : avgLinesPerFile <= 700 ? 76 : 62,
+      score: densityScore,
       status: avgLinesPerFile <= 250 ? 'optimal' : avgLinesPerFile <= 500 ? 'moderate' : 'warning',
       observation: `Average file size of ${avgLinesPerFile} lines across ${repo.stats.totalFiles.toLocaleString()} files.`,
       benchmark: 'Target: Under 250 lines per file for modularity and testability.',
@@ -382,7 +398,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'scale-partitioning',
       name: 'Folder Partitioning Balance',
       weight: 25,
-      score: fileToDirRatio <= 25 ? 94 : fileToDirRatio <= 40 ? 82 : 68,
+      score: partitioningScore,
       status: fileToDirRatio <= 25 ? 'optimal' : fileToDirRatio <= 40 ? 'moderate' : 'warning',
       observation: `Distribution of ${fileToDirRatio.toFixed(1)} files per directory.`,
       benchmark: 'Target: Under 25 files per folder to avoid flat folder dumping.',
@@ -391,7 +407,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'scale-deps',
       name: 'Dependency Footprint',
       weight: 25,
-      score: repo.dependencies.direct <= 20 ? 95 : repo.dependencies.direct <= 45 ? 85 : 72,
+      score: depsScore,
       status: repo.dependencies.direct <= 25 ? 'optimal' : repo.dependencies.direct <= 50 ? 'moderate' : 'warning',
       observation: `${repo.dependencies.direct} direct dependencies (${repo.dependencies.dev} development packages).`,
       benchmark: 'Target: Under 25 direct dependencies to minimize supply-chain surface.',
@@ -400,7 +416,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'scale-volume',
       name: 'Codebase Volume Manageability',
       weight: 25,
-      score: totalLoc <= 50000 ? 95 : totalLoc <= 150000 ? 86 : 74,
+      score: volumeScore,
       status: totalLoc <= 50000 ? 'optimal' : totalLoc <= 150000 ? 'moderate' : 'warning',
       observation: `Total code volume of ${totalLoc.toLocaleString()} lines of code across ${repo.stats.totalFiles} files.`,
       benchmark: 'Target: Structured module boundaries preventing uncontrolled LOC sprawl.',
@@ -409,12 +425,16 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
 
   // Dynamic Sub-metrics for Database
   const dbRelRatio = tables > 0 ? rels / tables : 0;
+  const dbModelingScore = tables > 0 ? Math.min(98, 86 + Math.min(12, tables)) : 80;
+  const dbRelationsScore = tables > 0 ? (rels > 0 ? Math.min(99, 88 + Math.min(10, rels * 2)) : 74) : 82;
+  const dbEcosystemScore = repo.database.detectedTypes.length > 0 ? Math.min(98, 92 + repo.database.detectedTypes.length * 2) : 82;
+  const dbNormScore = tables > 0 ? (dbRelRatio >= 0.8 && dbRelRatio <= 2.5 ? Math.min(98, Math.round(96 - Math.abs(dbRelRatio - 1.2) * 5)) : 78) : 84;
   const dbSubMetrics: SubMetricScore[] = [
     {
       id: 'db-modeling',
       name: 'Entity Schema Modeling',
       weight: 25,
-      score: tables > 0 ? (tables <= 30 ? 94 : 85) : 80,
+      score: dbModelingScore,
       status: tables > 0 ? 'optimal' : 'moderate',
       observation: tables > 0
         ? `Mapped ${tables} distinct database tables and domain entities.`
@@ -425,7 +445,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'db-relations',
       name: 'Relational Integrity & Associations',
       weight: 25,
-      score: tables > 0 ? (rels > 0 ? 96 : 74) : 82,
+      score: dbRelationsScore,
       status: tables > 0 ? (rels > 0 ? 'optimal' : 'warning') : 'moderate',
       observation: rels > 0
         ? `Discovered ${rels} explicit foreign keys and relational mappings.`
@@ -438,7 +458,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'db-ecosystem',
       name: 'ORM & Type Safety Ecosystem',
       weight: 25,
-      score: repo.database.detectedTypes.length > 0 ? 95 : 82,
+      score: dbEcosystemScore,
       status: repo.database.detectedTypes.length > 0 ? 'optimal' : 'moderate',
       observation: repo.database.detectedTypes.length > 0
         ? `Engineered with ${repo.database.detectedTypes.join(', ')} schema tooling.`
@@ -449,7 +469,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'db-normalization',
       name: 'Relational Cardinality Ratio',
       weight: 25,
-      score: tables > 0 ? (dbRelRatio >= 0.5 ? 94 : 80) : 82,
+      score: dbNormScore,
       status: tables > 0 ? (dbRelRatio >= 0.5 ? 'optimal' : 'moderate') : 'moderate',
       observation: tables > 0
         ? `Cardinality ratio of ${dbRelRatio.toFixed(2)} relationships per declared table.`
@@ -459,12 +479,17 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
   ];
 
   // Dynamic Sub-metrics for API Surface
+  const apiVolumeScore = routes > 0 ? Math.min(98, 84 + Math.min(14, Math.round(routes * 0.7))) : 80;
+  const apiMethodsScore = methods > 0 ? Math.min(99, 80 + methods * 4) : 82;
+  const apiCrudScore = methods >= 4 ? 98 : methods === 3 ? 94 : methods >= 1 ? 86 : 80;
+  const apiSepScore = routes > 0 ? (routes > 5 ? 95 : 90) : 82;
+
   const apiSubMetrics: SubMetricScore[] = [
     {
       id: 'api-breadth',
       name: 'Endpoint Surface Breadth',
       weight: 25,
-      score: routes > 0 ? (routes <= 50 ? 94 : 86) : 82,
+      score: apiVolumeScore,
       status: routes > 0 ? 'optimal' : 'moderate',
       observation: routes > 0
         ? `Exposes ${routes} distinct API endpoints and request handlers.`
@@ -475,7 +500,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'api-methods',
       name: 'HTTP Verb & CRUD Coverage',
       weight: 25,
-      score: routes > 0 ? (methods >= 3 ? 96 : methods >= 2 ? 88 : 78) : 82,
+      score: apiMethodsScore,
       status: routes > 0 ? (methods >= 3 ? 'optimal' : 'moderate') : 'moderate',
       observation: routes > 0
         ? `Implements ${methods} HTTP verbs: ${repo.apiRoutes.methods.join(', ') || 'GET'}.`
@@ -486,7 +511,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'api-modularity',
       name: 'Routing Paradigm Modularity',
       weight: 25,
-      score: routes > 0 ? 92 : 82,
+      score: apiCrudScore,
       status: 'optimal',
       observation: routes > 0
         ? `Organized according to ${repo.primaryFramework || 'Standard'} router paradigms.`
@@ -497,7 +522,7 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
       id: 'api-separation',
       name: 'Client/Server Boundary Clarity',
       weight: 25,
-      score: 90,
+      score: apiSepScore,
       status: 'optimal',
       observation: routes > 0
         ? 'Explicit boundary between public HTTP interface and backend business services.'
