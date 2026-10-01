@@ -610,6 +610,10 @@ export function WorkspacePage() {
                   currentApiRoutes={analysis ? parseApiEndpoints(files.map((f) => ({ path: f.path, content: fileContents.get(f.path) }))) : []}
                   openRepositories={openRepos}
                   onSelectRepo={(o, r) => switchRepository(o, r)}
+                  onAskAi={(prompt) => {
+                    setExplainPrompt(prompt);
+                    setIsAskPanelOpen(true);
+                  }}
                 />
               )}
 

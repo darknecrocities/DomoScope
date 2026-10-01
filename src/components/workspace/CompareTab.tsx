@@ -14,6 +14,14 @@ import {
   FileCode,
   FolderTree,
   Package,
+  Sparkles,
+  Bot,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  CheckCircle2,
+  ArrowRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   ComparableRepoInput,
@@ -38,6 +46,7 @@ interface CompareTabProps {
   currentApiRoutes?: any[];
   openRepositories?: Array<{ owner: string; repo: string }>;
   onSelectRepo?: (owner: string, repo: string) => void;
+  onAskAi?: (prompt: string) => void;
 }
 
 const PRESET_REPOS = [
@@ -56,6 +65,7 @@ export const CompareTab: React.FC<CompareTabProps> = ({
   currentSecurityFindings = [],
   currentApiRoutes = [],
   openRepositories = [],
+  onAskAi,
 }) => {
   const currentProjectName = `${currentOwner}/${currentRepo}`;
 
@@ -85,6 +95,18 @@ export const CompareTab: React.FC<CompareTabProps> = ({
   const [compareError, setCompareError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [downloaded, setDownloaded] = useState<boolean>(false);
+  const [activePillarTab, setActivePillarTab] = useState<
+    'all' | 'architecture' | 'scale' | 'database' | 'apiSurface' | 'security' | 'ai'
+  >('all');
+  const [expandedPillars, setExpandedPillars] = useState<Record<string, boolean>>({
+    architecture: true,
+    scale: true,
+    database: true,
+    apiSurface: true,
+    security: true,
+  });
+  const [isAiSynthesizing, setIsAiSynthesizing] = useState<boolean>(false);
+  const [aiCopied, setAiCopied] = useState<boolean>(false);
 
   // Initialize with a default comparison if not yet loaded
   const comparisonResult = useMemo<RepoComparisonResult>(() => {
@@ -222,7 +244,73 @@ export const CompareTab: React.FC<CompareTabProps> = ({
     setTimeout(() => setDownloaded(false), 2000);
   };
 
-  const { repoA, repoB, metrics, takeaways } = comparisonResult;
+  const handleTogglePillar = (key: string) => {
+    setExpandedPillars((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const allPillarsExpanded = Object.values(expandedPillars).every(Boolean);
+
+  const handleToggleAllPillars = () => {
+    const nextState = !allPillarsExpanded;
+    setExpandedPillars({
+      architecture: nextState,
+      scale: nextState,
+      database: nextState,
+      apiSurface: nextState,
+      security: nextState,
+    });
+  };
+
+  const handleCopyAiReview = async () => {
+    if (!comparisonResult.aiReview) return;
+    const { aiReview } = comparisonResult;
+    const text = `# AI Score Quality & Architectural Review
+${aiReview.headline}
+
+## Executive Summary
+${aiReview.executiveSummary}
+
+## Architectural Tradeoffs
+${aiReview.architecturalTradeoffs.map((t) => `* ${t.title}: ${t.description}\n  Recommendation: ${t.recommendation}`).join('\n\n')}
+
+## Code Maintainability
+${aiReview.maintainabilityDebtAssessment}
+
+## Security Hygiene
+${aiReview.securityHygieneVerdict}
+
+## Autonomous Agent Rebuild Prompt
+${aiReview.agentRebuildFeasibility.agentTaskDelegationPrompt}
+`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setAiCopied(true);
+      setTimeout(() => setAiCopied(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleTriggerAiPrompt = () => {
+    const prompt = comparisonResult.aiReview.agentRebuildFeasibility.agentTaskDelegationPrompt;
+    if (onAskAi) {
+      onAskAi(prompt);
+    } else {
+      handleCopyAiReview();
+    }
+  };
+
+  const handleRegenerateAiReview = () => {
+    setIsAiSynthesizing(true);
+    setTimeout(() => {
+      setIsAiSynthesizing(false);
+    }, 600);
+  };
+
+  const { repoA, repoB, metrics, takeaways, pillars = [], aiReview } = comparisonResult;
 
   return (
     <div className="flex-1 overflow-y-auto bg-white p-6 font-sans">
@@ -514,68 +602,579 @@ export const CompareTab: React.FC<CompareTabProps> = ({
           </div>
         </div>
 
-        {/* 5-Dimension Architectural Breakdown */}
-        <div className="border border-zinc-200 rounded-lg p-5 bg-white space-y-4">
-          <div className="border-b border-zinc-100 pb-3">
-            <h3 className="text-sm font-bold text-zinc-900">Multi-Dimensional Evaluation</h3>
-            <p className="text-xs text-zinc-500">Grading across the 5 primary software engineering pillars</p>
+        {/* Score Quality Evaluation System */}
+        <div className="space-y-6">
+          <div className="border border-zinc-200 rounded-lg p-5 bg-white space-y-4">
+            {/* Header with Title and Global Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-zinc-900 tracking-tight">Score Quality</h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 border border-zinc-200">
+                    5 Diagnostic Pillars
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Detailed architectural rubric, dynamic telemetry benchmarks, and autonomous engineering synthesis.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActivePillarTab(activePillarTab === 'ai' ? 'all' : 'ai')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md transition-colors ${
+                    activePillarTab === 'ai'
+                      ? 'bg-zinc-900 text-white font-medium'
+                      : 'border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>AI Synthesis</span>
+                </button>
+
+                <button
+                  onClick={handleToggleAllPillars}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 rounded-md transition-colors"
+                >
+                  {allPillarsExpanded ? (
+                    <>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                      <span>Collapse All</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      <span>Expand All</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Pillar Navigation Tabs */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {[
+                { id: 'all', label: `All Pillars (${pillars.length})`, icon: SlidersHorizontal },
+                { id: 'architecture', label: 'Architecture', icon: Layers },
+                { id: 'scale', label: 'Maintainability', icon: FileCode },
+                { id: 'database', label: 'Database', icon: Database },
+                { id: 'apiSurface', label: 'API Surface', icon: Globe },
+                { id: 'security', label: 'Security', icon: Shield },
+                { id: 'ai', label: 'AI Review', icon: Sparkles },
+              ].map((tab) => {
+                const TabIcon = tab.icon;
+                const isActive = activePillarTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActivePillarTab(tab.id as any)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md transition-colors ${
+                      isActive
+                        ? 'bg-zinc-900 text-white font-medium'
+                        : 'border border-zinc-200 bg-white hover:border-zinc-300 text-zinc-700'
+                    }`}
+                  >
+                    <TabIcon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Pillar Evaluation Cards */}
+            {activePillarTab !== 'ai' && (
+              <div className="space-y-4 pt-2">
+                {pillars
+                  .filter((p) => activePillarTab === 'all' || activePillarTab === p.key)
+                  .map((pillar) => {
+                    const isExpanded = !!expandedPillars[pillar.key];
+                    const PillarIcon =
+                      pillar.key === 'architecture'
+                        ? Layers
+                        : pillar.key === 'scale'
+                        ? FileCode
+                        : pillar.key === 'database'
+                        ? Database
+                        : pillar.key === 'apiSurface'
+                        ? Globe
+                        : Shield;
+
+                    const winnerLabel =
+                      pillar.winner === 'base'
+                        ? `${repoA.summary.name} leads (+${pillar.deltaScore} pts)`
+                        : pillar.winner === 'compare'
+                        ? `${repoB.summary.name} leads (+${pillar.deltaScore} pts)`
+                        : 'Parity (Tied)';
+
+                    return (
+                      <div
+                        key={pillar.key}
+                        className="border border-zinc-200 rounded-lg p-5 bg-white space-y-4 hover:border-zinc-300 transition-colors"
+                      >
+                        {/* Pillar Card Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-md bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-900">
+                              <PillarIcon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-xs font-bold text-zinc-900">{pillar.title}</h4>
+                                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded">
+                                  Weight: {pillar.weight}%
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-zinc-500 mt-0.5">{pillar.dimA.details}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 sm:self-center">
+                            <span className="text-xs font-mono font-medium px-2.5 py-1 rounded bg-zinc-100 border border-zinc-200 text-zinc-800">
+                              {winnerLabel}
+                            </span>
+                            <button
+                              onClick={() => handleTogglePillar(pillar.key)}
+                              className="p-1 rounded text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+                              title={isExpanded ? 'Collapse rubric' : 'Expand rubric'}
+                            >
+                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Side-by-Side Dual Meter Progress */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-zinc-50/70 border border-zinc-100 rounded-lg p-3.5">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-semibold text-zinc-900">{repoA.summary.name}</span>
+                              <span className="font-mono font-bold text-zinc-900">
+                                {pillar.dimA.grade} ({pillar.dimA.score}/100)
+                              </span>
+                            </div>
+                            <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className="bg-zinc-900 h-full rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, Math.max(0, pillar.dimA.score))}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-semibold text-zinc-800">{repoB.summary.name}</span>
+                              <span className="font-mono font-bold text-zinc-700">
+                                {pillar.dimB.grade} ({pillar.dimB.score}/100)
+                              </span>
+                            </div>
+                            <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className="bg-zinc-600 h-full rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, Math.max(0, pillar.dimB.score))}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Engineering Verdict & Comparative Observations */}
+                        <div className="border-l-2 border-zinc-900 bg-zinc-50/80 rounded-r-md p-3.5 space-y-2">
+                          <div className="text-xs font-semibold text-zinc-900 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-zinc-900" />
+                            <span>Engineering Verdict</span>
+                          </div>
+                          <p className="text-xs text-zinc-700 leading-relaxed">{pillar.verdict}</p>
+                          {pillar.comparativeObservations.length > 0 && (
+                            <div className="space-y-1 pt-1 border-t border-zinc-200">
+                              {pillar.comparativeObservations.map((obs, obsIdx) => (
+                                <div key={obsIdx} className="text-xs text-zinc-600 flex items-start gap-1.5">
+                                  <span className="text-zinc-400 select-none">•</span>
+                                  <span>{obs}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Dynamic Diagnostic Telemetry */}
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                            Diagnostic Telemetry
+                          </span>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {Object.entries(pillar.dimA.telemetry).map(([k, valA]) => {
+                              const valB = pillar.dimB.telemetry[k];
+                              const formattedKey = k
+                                .replace(/([A-Z])/g, ' $1')
+                                .replace(/^./, (str) => str.toUpperCase());
+                              return (
+                                <div
+                                  key={k}
+                                  className="bg-white border border-zinc-200 rounded p-2.5 text-xs space-y-1"
+                                >
+                                  <div className="text-zinc-500 text-[10px] truncate" title={formattedKey}>
+                                    {formattedKey}
+                                  </div>
+                                  <div className="flex items-center justify-between font-mono">
+                                    <span className="font-semibold text-zinc-900">{String(valA)}</span>
+                                    <span className="text-zinc-300">/</span>
+                                    <span className="text-zinc-600">{String(valB ?? '-')}</span>
+                                  </div>
+                                  <div className="text-[9px] text-zinc-400">
+                                    {repoA.summary.name.split('/')[1] || repoA.summary.name} vs{' '}
+                                    {repoB.summary.name.split('/')[1] || repoB.summary.name}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Detailed Sub-Metrics Rubric (Collapsible) */}
+                        {isExpanded && (
+                          <div className="space-y-3 pt-2 border-t border-zinc-100">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                                Sub-Metrics Evaluation Rubric
+                              </span>
+                              <span className="text-[10px] text-zinc-400 font-mono">
+                                4 Specific Diagnostic Criteria
+                              </span>
+                            </div>
+
+                            <div className="space-y-2.5">
+                              {pillar.dimA.subMetrics.map((subA, subIdx) => {
+                                const subB = pillar.dimB.subMetrics[subIdx] || subA;
+
+                                const renderStatus = (status: 'optimal' | 'moderate' | 'warning') => {
+                                  if (status === 'optimal') {
+                                    return (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 text-white font-medium">
+                                        <CheckCircle2 className="w-3 h-3" /> Optimal
+                                      </span>
+                                    );
+                                  }
+                                  if (status === 'moderate') {
+                                    return (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-200 text-zinc-900 font-medium">
+                                        Moderate
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded border border-zinc-400 bg-zinc-100 text-zinc-900 font-medium">
+                                      <AlertCircle className="w-3 h-3" /> Review Needed
+                                    </span>
+                                  );
+                                };
+
+                                return (
+                                  <div
+                                    key={subA.id}
+                                    className="border border-zinc-200 rounded-lg p-3 bg-zinc-50/40 space-y-2"
+                                  >
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-zinc-200/60 pb-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-zinc-900">{subA.name}</span>
+                                        <span className="text-[10px] font-mono text-zinc-400">
+                                          Weight: {subA.weight}%
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-1.5 text-xs font-mono">
+                                          <span className="font-bold text-zinc-900">{subA.score}</span>
+                                          <span className="text-zinc-300">vs</span>
+                                          <span className="font-semibold text-zinc-600">{subB.score}</span>
+                                        </div>
+                                        {renderStatus(subA.status)}
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-zinc-600">
+                                      <div className="space-y-1">
+                                        <span className="text-[10px] uppercase font-semibold text-zinc-500">
+                                          {repoA.summary.name} Observation
+                                        </span>
+                                        <p className="text-zinc-700 leading-normal">{subA.observation}</p>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <span className="text-[10px] uppercase font-semibold text-zinc-500">
+                                          {repoB.summary.name} Observation
+                                        </span>
+                                        <p className="text-zinc-700 leading-normal">{subB.observation}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="text-[10px] text-zinc-500 pt-1 border-t border-zinc-100 flex items-center gap-1.5 font-mono">
+                                      <span className="font-semibold text-zinc-700">Benchmark Target:</span>
+                                      <span>{subA.benchmark}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actionable Recommendations */}
+                        {((pillar.dimA.recommendations && pillar.dimA.recommendations.length > 0) ||
+                          (pillar.dimB.recommendations && pillar.dimB.recommendations.length > 0)) && (
+                          <div className="bg-white border border-zinc-200 rounded p-3 text-xs space-y-1.5">
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                              Actionable Recommendations
+                            </span>
+                            <div className="space-y-1 text-zinc-600">
+                              {pillar.dimA.recommendations?.map((rec, rIdx) => (
+                                <div key={rIdx} className="flex items-start gap-1.5">
+                                  <ArrowRight className="w-3.5 h-3.5 text-zinc-900 mt-0.5 shrink-0" />
+                                  <span>
+                                    <strong className="text-zinc-900 font-medium">
+                                      {repoA.summary.name}:
+                                    </strong>{' '}
+                                    {rec}
+                                  </span>
+                                </div>
+                              ))}
+                              {pillar.dimB.recommendations?.map((rec, rIdx) => (
+                                <div key={rIdx} className="flex items-start gap-1.5">
+                                  <ArrowRight className="w-3.5 h-3.5 text-zinc-500 mt-0.5 shrink-0" />
+                                  <span>
+                                    <strong className="text-zinc-700 font-medium">
+                                      {repoB.summary.name}:
+                                    </strong>{' '}
+                                    {rec}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
 
-          <div className="space-y-3">
-            {[
-              {
-                title: 'Architecture & Modularity',
-                dimA: repoA.grade.breakdown.architecture,
-                dimB: repoB.grade.breakdown.architecture,
-              },
-              {
-                title: 'Code Scale & Maintainability',
-                dimA: repoA.grade.breakdown.scale,
-                dimB: repoB.grade.breakdown.scale,
-              },
-              {
-                title: 'Database Architecture',
-                dimA: repoA.grade.breakdown.database,
-                dimB: repoB.grade.breakdown.database,
-              },
-              {
-                title: 'API Connectivity & Routing',
-                dimA: repoA.grade.breakdown.apiSurface,
-                dimB: repoB.grade.breakdown.apiSurface,
-              },
-              {
-                title: 'Security & Secret Hygiene',
-                dimA: repoA.grade.breakdown.security,
-                dimB: repoB.grade.breakdown.security,
-              },
-            ].map((row, idx) => (
-              <div key={idx} className="border border-zinc-100 rounded-lg p-4 bg-zinc-50/40">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-bold text-zinc-900">{row.title}</h4>
-                  <div className="flex items-center gap-4 text-xs font-mono">
-                    <span className="font-semibold text-zinc-900">
-                      {repoA.summary.name}: {row.dimA.grade} ({row.dimA.score})
+          {/* AI Score Quality & Architectural Synthesis */}
+          {aiReview && (activePillarTab === 'all' || activePillarTab === 'ai') && (
+            <div className="border border-zinc-300 rounded-lg p-6 bg-zinc-50/60 space-y-6">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-md bg-zinc-900 flex items-center justify-center text-white">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-zinc-900 tracking-tight">
+                        AI Score Quality & Architectural Synthesis
+                      </h3>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 text-white font-medium">
+                        Autonomous Review
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Synthesized analysis, architectural tradeoffs, rebuilding feasibility, and delegation prompts.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleRegenerateAiReview}
+                    disabled={isAiSynthesizing}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-300 rounded-md hover:bg-zinc-100 text-zinc-900 transition-colors disabled:opacity-50"
+                    title="Refresh AI evaluation synthesis"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isAiSynthesizing ? 'animate-spin' : ''}`} />
+                    <span>{isAiSynthesizing ? 'Synthesizing...' : 'Regenerate'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleCopyAiReview}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-300 rounded-md hover:bg-zinc-100 text-zinc-900 transition-colors"
+                    title="Copy AI synthesis to clipboard"
+                  >
+                    {aiCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{aiCopied ? 'Copied' : 'Copy Synthesis'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleTriggerAiPrompt}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white rounded-md transition-colors"
+                    title="Open side assistant with rebuild prompt"
+                  >
+                    <Bot className="w-3.5 h-3.5" />
+                    <span>Ask AI Assistant</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Headline Callout */}
+              <div className="border-l-2 border-zinc-900 bg-white p-4 rounded-r-md border border-zinc-200">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block mb-1">
+                  Synthesis Headline
+                </span>
+                <h4 className="text-xs font-bold text-zinc-900 leading-snug">{aiReview.headline}</h4>
+                <p className="text-xs text-zinc-600 mt-2 leading-relaxed">{aiReview.executiveSummary}</p>
+              </div>
+
+              {/* Architectural Tradeoffs */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-900">Key Architectural Tradeoffs</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    {aiReview.architecturalTradeoffs.length} Identified Patterns
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {aiReview.architecturalTradeoffs.map((item, idx) => (
+                    <div key={idx} className="bg-white border border-zinc-200 rounded-lg p-3.5 space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-900 font-mono text-[10px] flex items-center justify-center font-bold">
+                          {idx + 1}
+                        </span>
+                        <h5 className="text-xs font-bold text-zinc-900">{item.title}</h5>
+                      </div>
+                      <p className="text-xs text-zinc-600 leading-normal">{item.description}</p>
+                      <div className="bg-zinc-50 border border-zinc-100 rounded p-2 text-xs text-zinc-800 space-y-0.5">
+                        <span className="text-[10px] font-semibold text-zinc-500 block uppercase">
+                          Recommendation
+                        </span>
+                        <span>{item.recommendation}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Deep Domain Verdicts: Maintainability, Security, Database, API */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 border-b border-zinc-100 pb-2">
+                    <FileCode className="w-4 h-4 text-zinc-900" />
+                    <span>Maintainability & Technical Debt</span>
+                  </div>
+                  <p className="text-xs text-zinc-600 leading-relaxed">
+                    {aiReview.maintainabilityDebtAssessment}
+                  </p>
+                </div>
+
+                <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 border-b border-zinc-100 pb-2">
+                    <Shield className="w-4 h-4 text-zinc-900" />
+                    <span>Security & Secret Hygiene Verdict</span>
+                  </div>
+                  <p className="text-xs text-zinc-600 leading-relaxed">{aiReview.securityHygieneVerdict}</p>
+                </div>
+
+                <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 border-b border-zinc-100 pb-2">
+                    <Database className="w-4 h-4 text-zinc-900" />
+                    <span>Database Architecture & Data Integrity</span>
+                  </div>
+                  <p className="text-xs text-zinc-600 leading-relaxed">
+                    {aiReview.databaseIntegrityComparison}
+                  </p>
+                </div>
+
+                <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 border-b border-zinc-100 pb-2">
+                    <Globe className="w-4 h-4 text-zinc-900" />
+                    <span>API Connectivity & Surface Structure</span>
+                  </div>
+                  <p className="text-xs text-zinc-600 leading-relaxed">{aiReview.apiSurfaceCritique}</p>
+                </div>
+              </div>
+
+              {/* Autonomous Agent Rebuilding Prompt */}
+              <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-zinc-900" />
+                    <h4 className="text-xs font-bold text-zinc-900">
+                      Autonomous Agent Rebuilding Prompt
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-2 font-mono text-[11px]">
+                    <span className="px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-700">
+                      Complexity: {aiReview.agentRebuildFeasibility.complexityEstimate}
                     </span>
-                    <span className="text-zinc-400">vs</span>
-                    <span className="font-semibold text-zinc-700">
-                      {repoB.summary.name}: {row.dimB.grade} ({row.dimB.score})
+                    <span className="px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-700">
+                      {aiReview.agentRebuildFeasibility.estimatedPhasesCount} Plan Phases
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-zinc-600 pt-1">
-                  <div className="border-l-2 border-zinc-900 pl-2">
-                    <span className="font-medium text-zinc-800">{repoA.summary.name}: </span>
-                    {row.dimA.details}
-                  </div>
-                  <div className="border-l-2 border-zinc-300 pl-2">
-                    <span className="font-medium text-zinc-800">{repoB.summary.name}: </span>
-                    {row.dimB.details}
+                <p className="text-xs text-zinc-600">
+                  {aiReview.agentRebuildFeasibility.recommendedStrategy}
+                </p>
+
+                <div className="relative">
+                  <pre className="text-[11px] font-mono bg-zinc-900 text-zinc-100 p-4 rounded-lg overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-64 border border-zinc-800">
+                    {aiReview.agentRebuildFeasibility.agentTaskDelegationPrompt}
+                  </pre>
+                  <div className="absolute right-3 top-3 flex items-center gap-2">
+                    <button
+                      onClick={handleTriggerAiPrompt}
+                      className="px-2.5 py-1 text-[10px] font-medium bg-white text-zinc-900 hover:bg-zinc-100 rounded transition-colors"
+                    >
+                      Load into AI Assistant
+                    </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Prioritized Action Items */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-900">Prioritized Action Items</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">Ranked by Engineering Impact</span>
+                </div>
+
+                <div className="border border-zinc-200 rounded-lg overflow-hidden bg-white">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium text-[11px]">
+                        <th className="py-2.5 px-4 w-24">Priority</th>
+                        <th className="py-2.5 px-4 w-36">Target Repo</th>
+                        <th className="py-2.5 px-4">Action Item</th>
+                        <th className="py-2.5 px-4 w-44">Expected Impact</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {aiReview.keyActionItems.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-zinc-50/50">
+                          <td className="py-2.5 px-4">
+                            {item.priority === 'high' ? (
+                              <span className="inline-block px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded bg-zinc-900 text-white">
+                                High
+                              </span>
+                            ) : item.priority === 'medium' ? (
+                              <span className="inline-block px-2 py-0.5 text-[10px] font-mono font-semibold uppercase rounded bg-zinc-200 text-zinc-900">
+                                Medium
+                              </span>
+                            ) : (
+                              <span className="inline-block px-2 py-0.5 text-[10px] font-mono uppercase rounded border border-zinc-300 bg-white text-zinc-600">
+                                Low
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-4 font-mono text-zinc-700 text-[11px] font-medium">
+                            {item.targetRepo}
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-800">{item.action}</td>
+                          <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">
+                            {item.expectedImpact}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

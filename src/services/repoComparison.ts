@@ -56,11 +56,67 @@ export interface ComparableRepoInput {
 
 export type LetterGrade = 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D';
 
+export interface SubMetricScore {
+  id: string;
+  name: string;
+  weight: number; // percentage e.g. 25
+  score: number; // 0-100
+  status: 'optimal' | 'moderate' | 'warning';
+  observation: string;
+  benchmark: string;
+}
+
 export interface DimensionScore {
   score: number;
   label: string;
   grade: LetterGrade;
   details: string;
+  subMetrics: SubMetricScore[];
+  telemetry: Record<string, string | number>;
+  recommendations: string[];
+}
+
+export interface PillarComparison {
+  key: 'architecture' | 'scale' | 'database' | 'apiSurface' | 'security';
+  title: string;
+  weight: number;
+  dimA: DimensionScore;
+  dimB: DimensionScore;
+  deltaScore: number;
+  winner: 'base' | 'compare' | 'tie';
+  verdict: string;
+  comparativeObservations: string[];
+}
+
+export interface AiQualityTradeoff {
+  title: string;
+  description: string;
+  recommendation: string;
+}
+
+export interface AiActionItem {
+  priority: 'high' | 'medium' | 'low';
+  targetRepo: string;
+  action: string;
+  expectedImpact: string;
+}
+
+export interface AiQualityReview {
+  headline: string;
+  executiveSummary: string;
+  architecturalTradeoffs: AiQualityTradeoff[];
+  maintainabilityDebtAssessment: string;
+  databaseIntegrityComparison: string;
+  apiSurfaceCritique: string;
+  securityHygieneVerdict: string;
+  agentRebuildFeasibility: {
+    recommendedStrategy: string;
+    complexityEstimate: string;
+    estimatedPhasesCount: number;
+    agentTaskDelegationPrompt: string;
+  };
+  keyActionItems: AiActionItem[];
+  generatedAt: string;
 }
 
 export interface RepoGrade {
@@ -116,6 +172,8 @@ export interface RepoComparisonResult {
     securityRisksCount: MetricComparison<number>;
     healthScore: MetricComparison<number>;
   };
+  pillars: PillarComparison[];
+  aiReview: AiQualityReview;
   takeaways: ComparisonTakeaway[];
   generatedAt: string;
 }
@@ -266,6 +324,261 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
   const rebuildSummary =
     `Estimated ${complexity.toLowerCase()} rebuild complexity spanning ${phases} structured implementation phases.`;
 
+  // Dynamic Sub-metrics for Architecture
+  const archDensity = nodes > 0 ? edges / nodes : 0;
+  const archSubMetrics: SubMetricScore[] = [
+    {
+      id: 'arch-hierarchy',
+      name: 'Directory Hierarchy & Nesting',
+      weight: 25,
+      score: fileToDirRatio <= 15 ? 95 : fileToDirRatio <= 30 ? 86 : 72,
+      status: fileToDirRatio <= 15 ? 'optimal' : fileToDirRatio <= 30 ? 'moderate' : 'warning',
+      observation: `Directory partitioning ratio of ${fileToDirRatio.toFixed(1)} files per directory across ${repo.stats.totalDirs} directories.`,
+      benchmark: 'Target: 4 to 15 files per directory for clean component isolation.',
+    },
+    {
+      id: 'arch-entry',
+      name: 'Entry Point Discoverability',
+      weight: 25,
+      score: entryCount >= 1 ? 96 : 74,
+      status: entryCount >= 1 ? 'optimal' : 'warning',
+      observation: entryCount > 0
+        ? `Identified ${entryCount} primary execution entry point${entryCount === 1 ? '' : 's'}.`
+        : 'No standardized entry points detected in root or source directory.',
+      benchmark: 'Target: Explicit entry point declarations (e.g. main, index, app, server).',
+    },
+    {
+      id: 'arch-coupling',
+      name: 'Import Graph Coupling & Density',
+      weight: 25,
+      score: archDensity >= 1.2 && archDensity <= 4.5 ? 94 : archDensity > 0 ? 84 : 70,
+      status: archDensity >= 1.2 && archDensity <= 4.5 ? 'optimal' : archDensity > 0 ? 'moderate' : 'warning',
+      observation: `Interconnection density of ${archDensity.toFixed(2)} import edges per module (${edges} edges across ${nodes} nodes).`,
+      benchmark: 'Target: 1.2 to 4.5 edges per node to avoid cyclic dependencies.',
+    },
+    {
+      id: 'arch-framework',
+      name: 'Framework Architecture Alignment',
+      weight: 25,
+      score: repo.primaryFramework ? 92 : 80,
+      status: repo.primaryFramework ? 'optimal' : 'moderate',
+      observation: `Structured according to ${repo.primaryFramework || repo.primaryLanguage || 'Standard'} project conventions.`,
+      benchmark: 'Target: Idiomatic file organization conforming to primary framework norms.',
+    },
+  ];
+
+  // Dynamic Sub-metrics for Scale
+  const scaleSubMetrics: SubMetricScore[] = [
+    {
+      id: 'scale-density',
+      name: 'Lines-per-File Density',
+      weight: 25,
+      score: avgLinesPerFile <= 200 ? 96 : avgLinesPerFile <= 400 ? 88 : avgLinesPerFile <= 700 ? 76 : 62,
+      status: avgLinesPerFile <= 250 ? 'optimal' : avgLinesPerFile <= 500 ? 'moderate' : 'warning',
+      observation: `Average file size of ${avgLinesPerFile} lines across ${repo.stats.totalFiles.toLocaleString()} files.`,
+      benchmark: 'Target: Under 250 lines per file for modularity and testability.',
+    },
+    {
+      id: 'scale-partitioning',
+      name: 'Folder Partitioning Balance',
+      weight: 25,
+      score: fileToDirRatio <= 25 ? 94 : fileToDirRatio <= 40 ? 82 : 68,
+      status: fileToDirRatio <= 25 ? 'optimal' : fileToDirRatio <= 40 ? 'moderate' : 'warning',
+      observation: `Distribution of ${fileToDirRatio.toFixed(1)} files per directory.`,
+      benchmark: 'Target: Under 25 files per folder to avoid flat folder dumping.',
+    },
+    {
+      id: 'scale-deps',
+      name: 'Dependency Footprint',
+      weight: 25,
+      score: repo.dependencies.direct <= 20 ? 95 : repo.dependencies.direct <= 45 ? 85 : 72,
+      status: repo.dependencies.direct <= 25 ? 'optimal' : repo.dependencies.direct <= 50 ? 'moderate' : 'warning',
+      observation: `${repo.dependencies.direct} direct dependencies (${repo.dependencies.dev} development packages).`,
+      benchmark: 'Target: Under 25 direct dependencies to minimize supply-chain surface.',
+    },
+    {
+      id: 'scale-volume',
+      name: 'Codebase Volume Manageability',
+      weight: 25,
+      score: totalLoc <= 50000 ? 95 : totalLoc <= 150000 ? 86 : 74,
+      status: totalLoc <= 50000 ? 'optimal' : totalLoc <= 150000 ? 'moderate' : 'warning',
+      observation: `Total code volume of ${totalLoc.toLocaleString()} lines of code across ${repo.stats.totalFiles} files.`,
+      benchmark: 'Target: Structured module boundaries preventing uncontrolled LOC sprawl.',
+    },
+  ];
+
+  // Dynamic Sub-metrics for Database
+  const dbRelRatio = tables > 0 ? rels / tables : 0;
+  const dbSubMetrics: SubMetricScore[] = [
+    {
+      id: 'db-modeling',
+      name: 'Entity Schema Modeling',
+      weight: 25,
+      score: tables > 0 ? (tables <= 30 ? 94 : 85) : 80,
+      status: tables > 0 ? 'optimal' : 'moderate',
+      observation: tables > 0
+        ? `Mapped ${tables} distinct database tables and domain entities.`
+        : 'Codebase operates without declared database models or persistent entities.',
+      benchmark: 'Target: Declared data models with typed properties.',
+    },
+    {
+      id: 'db-relations',
+      name: 'Relational Integrity & Associations',
+      weight: 25,
+      score: tables > 0 ? (rels > 0 ? 96 : 74) : 82,
+      status: tables > 0 ? (rels > 0 ? 'optimal' : 'warning') : 'moderate',
+      observation: rels > 0
+        ? `Discovered ${rels} explicit foreign keys and relational mappings.`
+        : tables > 0
+        ? 'Entities lack explicit foreign key relationships or association definitions.'
+        : 'Stateless architecture with no relational dependencies.',
+      benchmark: 'Target: Explicit foreign key associations between dependent tables.',
+    },
+    {
+      id: 'db-ecosystem',
+      name: 'ORM & Type Safety Ecosystem',
+      weight: 25,
+      score: repo.database.detectedTypes.length > 0 ? 95 : 82,
+      status: repo.database.detectedTypes.length > 0 ? 'optimal' : 'moderate',
+      observation: repo.database.detectedTypes.length > 0
+        ? `Engineered with ${repo.database.detectedTypes.join(', ')} schema tooling.`
+        : 'Custom or inferred database models without dedicated ORM manifest.',
+      benchmark: 'Target: Typed ORM (Prisma, TypeORM, SQL DDL, Mongoose) for safe persistence.',
+    },
+    {
+      id: 'db-normalization',
+      name: 'Relational Cardinality Ratio',
+      weight: 25,
+      score: tables > 0 ? (dbRelRatio >= 0.5 ? 94 : 80) : 82,
+      status: tables > 0 ? (dbRelRatio >= 0.5 ? 'optimal' : 'moderate') : 'moderate',
+      observation: tables > 0
+        ? `Cardinality ratio of ${dbRelRatio.toFixed(2)} relationships per declared table.`
+        : 'N/A: Stateless service.',
+      benchmark: 'Target: >= 0.50 relationship ratio in normalized relational schemas.',
+    },
+  ];
+
+  // Dynamic Sub-metrics for API Surface
+  const apiSubMetrics: SubMetricScore[] = [
+    {
+      id: 'api-breadth',
+      name: 'Endpoint Surface Breadth',
+      weight: 25,
+      score: routes > 0 ? (routes <= 50 ? 94 : 86) : 82,
+      status: routes > 0 ? 'optimal' : 'moderate',
+      observation: routes > 0
+        ? `Exposes ${routes} distinct API endpoints and request handlers.`
+        : 'Operates as a client interface or utility library without exposed REST handlers.',
+      benchmark: 'Target: Structured endpoint routing matching application domain.',
+    },
+    {
+      id: 'api-methods',
+      name: 'HTTP Verb & CRUD Coverage',
+      weight: 25,
+      score: routes > 0 ? (methods >= 3 ? 96 : methods >= 2 ? 88 : 78) : 82,
+      status: routes > 0 ? (methods >= 3 ? 'optimal' : 'moderate') : 'moderate',
+      observation: routes > 0
+        ? `Implements ${methods} HTTP verbs: ${repo.apiRoutes.methods.join(', ') || 'GET'}.`
+        : 'No HTTP routing declarations detected.',
+      benchmark: 'Target: Full CRUD coverage (GET, POST, PUT, DELETE) where applicable.',
+    },
+    {
+      id: 'api-modularity',
+      name: 'Routing Paradigm Modularity',
+      weight: 25,
+      score: routes > 0 ? 92 : 82,
+      status: 'optimal',
+      observation: routes > 0
+        ? `Organized according to ${repo.primaryFramework || 'Standard'} router paradigms.`
+        : 'Stateless client or library structure.',
+      benchmark: 'Target: Isolated route handlers with decoupled controller logic.',
+    },
+    {
+      id: 'api-separation',
+      name: 'Client/Server Boundary Clarity',
+      weight: 25,
+      score: 90,
+      status: 'optimal',
+      observation: routes > 0
+        ? 'Explicit boundary between public HTTP interface and backend business services.'
+        : 'Single-tier architecture without exposed API server layer.',
+      benchmark: 'Target: Clear delineation between transport layer and domain logic.',
+    },
+  ];
+
+  // Dynamic Sub-metrics for Security
+  const secSubMetrics: SubMetricScore[] = [
+    {
+      id: 'sec-critical',
+      name: 'Critical Vulnerability Isolation',
+      weight: 25,
+      score: repo.security.criticalCount === 0 ? 100 : Math.max(20, 100 - repo.security.criticalCount * 30),
+      status: repo.security.criticalCount === 0 ? 'optimal' : 'warning',
+      observation: repo.security.criticalCount === 0
+        ? 'Zero critical vulnerabilities discovered during static audit.'
+        : `${repo.security.criticalCount} critical vulnerability finding${repo.security.criticalCount === 1 ? '' : 's'} requiring immediate remediation.`,
+      benchmark: 'Target: 0 critical vulnerabilities in production codebase.',
+    },
+    {
+      id: 'sec-secrets',
+      name: 'Secret Leak & Token Entropy',
+      weight: 25,
+      score: repo.security.secretsCount === 0 ? 100 : Math.max(20, 100 - repo.security.secretsCount * 25),
+      status: repo.security.secretsCount === 0 ? 'optimal' : 'warning',
+      observation: repo.security.secretsCount === 0
+        ? 'Zero committed private keys, OAuth tokens, or API secrets detected.'
+        : `${repo.security.secretsCount} potential leaked credential${repo.security.secretsCount === 1 ? '' : 's'} detected in tracked source files.`,
+      benchmark: 'Target: Zero plaintext credentials or high-entropy secrets in repository.',
+    },
+    {
+      id: 'sec-high',
+      name: 'High-Risk Security Hygiene',
+      weight: 25,
+      score: repo.security.highCount === 0 ? 100 : Math.max(30, 100 - repo.security.highCount * 20),
+      status: repo.security.highCount === 0 ? 'optimal' : 'warning',
+      observation: repo.security.highCount === 0
+        ? 'Zero high-severity vulnerability flags identified.'
+        : `${repo.security.highCount} high-risk security issue${repo.security.highCount === 1 ? '' : 's'} identified.`,
+      benchmark: 'Target: 0 high-severity security issues.',
+    },
+    {
+      id: 'sec-posture',
+      name: 'Defensive Code Patterns',
+      weight: 25,
+      score: Math.max(40, 100 - (repo.security.findingsCount - repo.security.criticalCount - repo.security.highCount) * 5),
+      status: repo.security.findingsCount <= 2 ? 'optimal' : repo.security.findingsCount <= 6 ? 'moderate' : 'warning',
+      observation: `Total of ${repo.security.findingsCount} flagged security finding${repo.security.findingsCount === 1 ? '' : 's'} across audited files.`,
+      benchmark: 'Target: Strict sanitization, path verification, and encrypted storage.',
+    },
+  ];
+
+  // Specific Recommendations for each pillar
+  const archRecommendations: string[] = [];
+  if (entryCount === 0) archRecommendations.push('Declare explicit application entry points (e.g. index.ts or main.ts) in project root or src/.');
+  if (archDensity > 5.0) archRecommendations.push('Refactor high-coupling module clusters to reduce circular dependency risks.');
+  if (fileToDirRatio > 25) archRecommendations.push('Subdivide top-level directories to group related components into cohesive feature folders.');
+  if (archRecommendations.length === 0) archRecommendations.push('Maintain clean folder modularity and enforce unidirectional data flow.');
+
+  const scaleRecommendations: string[] = [];
+  if (avgLinesPerFile > 350) scaleRecommendations.push(`Split oversized files (averaging ${avgLinesPerFile} LOC) into smaller, single-responsibility units.`);
+  if (repo.dependencies.direct > 35) scaleRecommendations.push('Audit direct dependencies and eliminate unused or duplicate packages.');
+  if (scaleRecommendations.length === 0) scaleRecommendations.push('Preserve balanced file sizing and keep dependencies up to date.');
+
+  const dbRecommendations: string[] = [];
+  if (tables > 0 && rels === 0) dbRecommendations.push('Add explicit foreign key constraints and relations to prevent orphaned data records.');
+  if (tables > 0 && repo.database.detectedTypes.length === 0) dbRecommendations.push('Adopt a typed ORM (such as Prisma or TypeORM) for compile-time schema safety.');
+  if (dbRecommendations.length === 0) dbRecommendations.push('Continue maintaining structured database migrations and index optimization.');
+
+  const apiRecommendations: string[] = [];
+  if (routes > 0 && methods < 3) apiRecommendations.push('Expand HTTP verb coverage to provide standard RESTful operations.');
+  if (routes > 20) apiRecommendations.push('Implement automated OpenAPI/Swagger route schema generation for developer documentation.');
+  if (apiRecommendations.length === 0) apiRecommendations.push('Keep endpoint definitions decoupled from underlying business logic.');
+
+  const secRecommendations: string[] = [];
+  if (repo.security.secretsCount > 0) secRecommendations.push('Immediately revoke leaked credentials and remove secrets from git history using environment variables.');
+  if (repo.security.criticalCount > 0) secRecommendations.push(`Patch ${repo.security.criticalCount} critical security finding${repo.security.criticalCount === 1 ? '' : 's'} identified in the static audit.`);
+  if (secRecommendations.length === 0) secRecommendations.push('Maintain automated dependency vulnerability scanning in your CI/CD pipeline.');
+
   return {
     overallScore: overall,
     letterGrade: calculateLetterGrade(overall),
@@ -276,30 +589,72 @@ export function gradeRepository(repo: ComparableRepoInput): RepoGrade {
         label: 'Architecture & Modularity',
         grade: calculateLetterGrade(archScore),
         details: archDetails,
+        subMetrics: archSubMetrics,
+        telemetry: {
+          nodes,
+          edges,
+          density: `${archDensity.toFixed(2)} edges/node`,
+          entryPoints: entryCount,
+          pattern: detectedStyle,
+        },
+        recommendations: archRecommendations,
       },
       scale: {
         score: scaleScore,
         label: 'Code Scale & Maintainability',
         grade: calculateLetterGrade(scaleScore),
         details: scaleDetails,
+        subMetrics: scaleSubMetrics,
+        telemetry: {
+          avgLinesPerFile,
+          fileToDirRatio: `${fileToDirRatio.toFixed(1)} files/dir`,
+          totalFiles: repo.stats.totalFiles,
+          totalLines: repo.stats.totalLines,
+          dependencies: repo.dependencies.total,
+        },
+        recommendations: scaleRecommendations,
       },
       database: {
         score: dbScore,
         label: 'Database & Data Models',
         grade: calculateLetterGrade(dbScore),
         details: dbDetails,
+        subMetrics: dbSubMetrics,
+        telemetry: {
+          tablesCount: tables,
+          relationshipsCount: rels,
+          relationalRatio: `${dbRelRatio.toFixed(2)} rels/table`,
+          ecosystem: repo.database.detectedTypes.join(', ') || 'Domain Entities',
+        },
+        recommendations: dbRecommendations,
       },
       apiSurface: {
         score: apiScore,
         label: 'API Surface & Connectivity',
         grade: calculateLetterGrade(apiScore),
         details: apiDetails,
+        subMetrics: apiSubMetrics,
+        telemetry: {
+          routesCount: routes,
+          methodsCount: methods,
+          httpMethods: repo.apiRoutes.methods.join(', ') || 'None',
+          routingStyle: routes > 10 ? 'Extensive API Layer' : routes > 0 ? 'Targeted Handlers' : 'Client / Library',
+        },
+        recommendations: apiRecommendations,
       },
       security: {
         score: secScore,
         label: 'Security & Secret Hygiene',
         grade: calculateLetterGrade(secScore),
         details: secDetails,
+        subMetrics: secSubMetrics,
+        telemetry: {
+          critical: repo.security.criticalCount,
+          high: repo.security.highCount,
+          secrets: repo.security.secretsCount,
+          totalFindings: repo.security.findingsCount,
+        },
+        recommendations: secRecommendations,
       },
     },
     rebuildReadiness: {
@@ -436,6 +791,254 @@ function generateTakeaways(
 }
 
 /**
+ * Builds side-by-side Score Quality pillar comparisons across the 5 dimensions
+ */
+export function buildPillarComparisons(
+  repoA: ComparableRepoInput,
+  repoB: ComparableRepoInput,
+  gradeA: RepoGrade,
+  gradeB: RepoGrade
+): PillarComparison[] {
+  const configs: Array<{
+    key: 'architecture' | 'scale' | 'database' | 'apiSurface' | 'security';
+    title: string;
+    weight: number;
+  }> = [
+    { key: 'architecture', title: 'Architecture & Modularity', weight: 25 },
+    { key: 'scale', title: 'Code Scale & Maintainability', weight: 20 },
+    { key: 'database', title: 'Database Architecture', weight: 20 },
+    { key: 'apiSurface', title: 'API Connectivity & Routing', weight: 15 },
+    { key: 'security', title: 'Security & Secret Hygiene', weight: 20 },
+  ];
+
+  return configs.map(({ key, title, weight }) => {
+    const dimA = gradeA.breakdown[key];
+    const dimB = gradeB.breakdown[key];
+    const deltaScore = Math.abs(dimA.score - dimB.score);
+    const winner: 'base' | 'compare' | 'tie' =
+      dimA.score > dimB.score ? 'base' : dimB.score > dimA.score ? 'compare' : 'tie';
+
+    let verdict = 'Both repositories are evenly matched in this dimension.';
+    if (winner === 'base') {
+      verdict = `${repoA.name} leads in ${title} by +${deltaScore} points (${dimA.grade} vs ${dimB.grade}).`;
+    } else if (winner === 'compare') {
+      verdict = `${repoB.name} leads in ${title} by +${deltaScore} points (${dimB.grade} vs ${dimA.grade}).`;
+    }
+
+    const comparativeObservations: string[] = [];
+    if (key === 'architecture') {
+      const nodesA = repoA.architecture?.nodesCount ?? repoA.stats.totalFiles;
+      const nodesB = repoB.architecture?.nodesCount ?? repoB.stats.totalFiles;
+      comparativeObservations.push(
+        `${repoA.name} contains ${nodesA} graph nodes vs ${nodesB} in ${repoB.name}.`
+      );
+      comparativeObservations.push(
+        `Architectural style: ${repoA.architecture?.detectedStyle || 'Modular'} vs ${repoB.architecture?.detectedStyle || 'Modular'}.`
+      );
+    } else if (key === 'scale') {
+      const locA = repoA.stats.totalLines;
+      const locB = repoB.stats.totalLines;
+      const avgA = repoA.stats.totalFiles > 0 ? Math.round(locA / repoA.stats.totalFiles) : 0;
+      const avgB = repoB.stats.totalFiles > 0 ? Math.round(locB / repoB.stats.totalFiles) : 0;
+      comparativeObservations.push(
+        `Average file size: ${avgA} LOC/file (${repoA.name}) vs ${avgB} LOC/file (${repoB.name}).`
+      );
+      comparativeObservations.push(
+        `Total code volume: ${locA.toLocaleString()} lines vs ${locB.toLocaleString()} lines.`
+      );
+    } else if (key === 'database') {
+      comparativeObservations.push(
+        `${repoA.name} maps ${repoA.database.tablesCount} tables with ${repoA.database.relationshipsCount} relations (${repoA.database.detectedTypes.join(', ') || 'Custom'}).`
+      );
+      comparativeObservations.push(
+        `${repoB.name} maps ${repoB.database.tablesCount} tables with ${repoB.database.relationshipsCount} relations (${repoB.database.detectedTypes.join(', ') || 'Custom'}).`
+      );
+    } else if (key === 'apiSurface') {
+      comparativeObservations.push(
+        `${repoA.name} implements ${repoA.apiRoutes.totalCount} routes (${repoA.apiRoutes.methods.join(', ') || 'None'}).`
+      );
+      comparativeObservations.push(
+        `${repoB.name} implements ${repoB.apiRoutes.totalCount} routes (${repoB.apiRoutes.methods.join(', ') || 'None'}).`
+      );
+    } else if (key === 'security') {
+      comparativeObservations.push(
+        `${repoA.name}: ${repoA.security.criticalCount} critical, ${repoA.security.secretsCount} secrets, ${repoA.security.findingsCount} total flags.`
+      );
+      comparativeObservations.push(
+        `${repoB.name}: ${repoB.security.criticalCount} critical, ${repoB.security.secretsCount} secrets, ${repoB.security.findingsCount} total flags.`
+      );
+    }
+
+    return {
+      key,
+      title,
+      weight,
+      dimA,
+      dimB,
+      deltaScore,
+      winner,
+      verdict,
+      comparativeObservations,
+    };
+  });
+}
+
+/**
+ * Autonomous AI Score Quality & Architectural Synthesis
+ */
+export function generateAiQualityReview(
+  repoA: ComparableRepoInput,
+  repoB: ComparableRepoInput,
+  gradeA: RepoGrade,
+  gradeB: RepoGrade,
+  metrics: Record<string, MetricComparison<number>>
+): AiQualityReview {
+  const fwA = repoA.primaryFramework || repoA.primaryLanguage || 'Generic Application';
+  const fwB = repoB.primaryFramework || repoB.primaryLanguage || 'Generic Application';
+
+  const leader = gradeA.overallScore >= gradeB.overallScore ? repoA.name : repoB.name;
+  const runnerUp = gradeA.overallScore >= gradeB.overallScore ? repoB.name : repoA.name;
+  const leadScore = Math.max(gradeA.overallScore, gradeB.overallScore);
+  const trailScore = Math.min(gradeA.overallScore, gradeB.overallScore);
+
+  const headline =
+    leadScore === trailScore
+      ? `Architectural parity: Both ${repoA.name} and ${repoB.name} demonstrate equivalent overall engineering quality (${leadScore}/100).`
+      : `${leader} (${leadScore}/100) holds an architectural edge over ${runnerUp} (${trailScore}/100) with a +${leadScore - trailScore} score differential.`;
+
+  const executiveSummary =
+    `Comparative analysis indicates distinct design priorities. ${repoA.name} leverages ${fwA} with an emphasis on ${
+      repoA.database.tablesCount > 0 ? 'relational schema modeling' : 'lean modularity'
+    }, whereas ${repoB.name} utilizes ${fwB} with ${
+      repoB.stats.totalLines > repoA.stats.totalLines ? 'broader codebase scope' : 'streamlined execution'
+    }. Rebuilding or synchronizing these platforms requires accommodating their divergent state management and routing abstractions.`;
+
+  const architecturalTradeoffs: AiQualityTradeoff[] = [
+    {
+      title: 'Framework & Runtime Paradigm',
+      description: `${repoA.name} adopts ${fwA} patterns, while ${repoB.name} is built around ${fwB}. This directly impacts bundle size, cold start performance, and concurrency handling.`,
+      recommendation: `Align on standard contracts or shared TypeScript interfaces if interoperability is desired between the two codebases.`,
+    },
+    {
+      title: 'State & Persistence Strategy',
+      description: `${repoA.name} defines ${repoA.database.tablesCount} data models with ${repoA.database.relationshipsCount} associations vs ${repoB.database.tablesCount} models in ${repoB.name}.`,
+      recommendation: repoA.database.tablesCount > repoB.database.tablesCount
+        ? `Adopt ${repoA.name}'s explicit relational model in ${repoB.name} to enforce foreign key integrity.`
+        : `Consider migrating data models to a unified schema definition like Prisma or SQL DDL.`,
+    },
+    {
+      title: 'API Breadth & Transport Layer',
+      description: `${repoA.name} provides ${repoA.apiRoutes.totalCount} API endpoints compared to ${repoB.apiRoutes.totalCount} in ${repoB.name}.`,
+      recommendation: `Ensure client-facing routes follow uniform RESTful conventions with centralized input validation schemas.`,
+    },
+  ];
+
+  const avgA = repoA.stats.totalFiles > 0 ? Math.round(repoA.stats.totalLines / repoA.stats.totalFiles) : 0;
+  const avgB = repoB.stats.totalFiles > 0 ? Math.round(repoB.stats.totalLines / repoB.stats.totalFiles) : 0;
+  const maintainabilityDebtAssessment =
+    `Maintainability audit shows ${repoA.name} averages ${avgA} lines/file across ${repoA.stats.totalFiles} files with ${repoA.dependencies.direct} direct dependencies, while ${repoB.name} averages ${avgB} lines/file across ${repoB.stats.totalFiles} files with ${repoB.dependencies.direct} direct dependencies. ${
+      avgA < avgB ? repoA.name : repoB.name
+    } exhibits superior granular decomposition with lower cognitive refactoring overhead.`;
+
+  const databaseIntegrityComparison =
+    repoA.database.tablesCount > 0 || repoB.database.tablesCount > 0
+      ? `Data layer inspection: ${repoA.name} has ${repoA.database.tablesCount} tables (${repoA.database.relationshipsCount} relationships), and ${repoB.name} has ${repoB.database.tablesCount} tables (${repoB.database.relationshipsCount} relationships). Relational constraints are ${
+          repoA.database.relationshipsCount > 0 && repoB.database.relationshipsCount > 0
+            ? 'well-modeled across both repositories'
+            : 'partially defined and would benefit from explicit foreign keys'
+        }.`
+      : 'Both repositories are designed as stateless service layers without local database definitions.';
+
+  const apiSurfaceCritique =
+    repoA.apiRoutes.totalCount > 0 || repoB.apiRoutes.totalCount > 0
+      ? `API surface inspection: ${repoA.name} exposes ${repoA.apiRoutes.totalCount} endpoints using ${repoA.apiRoutes.methods.join(', ') || 'GET'}, whereas ${repoB.name} implements ${repoB.apiRoutes.totalCount} endpoints using ${repoB.apiRoutes.methods.join(', ') || 'GET'}.`
+      : 'Neither repository declares public HTTP API routes.';
+
+  const securityHygieneVerdict =
+    repoA.security.findingsCount === 0 && repoB.security.findingsCount === 0
+      ? 'Security audit confirms zero leaked credentials, tokens, or critical vulnerabilities across both codebases.'
+      : `Security audit highlights disparities: ${repoA.name} has ${repoA.security.criticalCount} critical and ${repoA.security.secretsCount} secret flags, while ${repoB.name} has ${repoB.security.criticalCount} critical and ${repoB.security.secretsCount} secret flags. Prompt remediation of exposed keys is strongly advised.`;
+
+  const fasterRebuildRepo = gradeA.rebuildReadiness.estimatedPhases <= gradeB.rebuildReadiness.estimatedPhases ? repoA.name : repoB.name;
+  const agentPrompt =
+    `Act as a Principal Software Architect. Given the architectural analysis of ${repoA.name} (${fwA}, ${repoA.stats.totalLines} LOC) and ${repoB.name} (${fwB}, ${repoB.stats.totalLines} LOC), develop an autonomous implementation plan to port the core capabilities of ${repoB.name} into ${repoA.name}, maintaining strict modularity, schema integrity (${repoA.database.tablesCount} tables), and zero security regressions.`;
+
+  const keyActionItems: AiActionItem[] = [];
+  if (repoA.security.criticalCount > 0 || repoA.security.secretsCount > 0) {
+    keyActionItems.push({
+      priority: 'high',
+      targetRepo: repoA.name,
+      action: `Remediate ${repoA.security.criticalCount} critical vulnerabilities and revoke ${repoA.security.secretsCount} exposed credentials.`,
+      expectedImpact: 'Eliminates immediate exploit risks and elevates Security Score to 95+.',
+    });
+  }
+  if (repoB.security.criticalCount > 0 || repoB.security.secretsCount > 0) {
+    keyActionItems.push({
+      priority: 'high',
+      targetRepo: repoB.name,
+      action: `Remediate ${repoB.security.criticalCount} critical vulnerabilities and revoke ${repoB.security.secretsCount} exposed credentials.`,
+      expectedImpact: 'Hardens perimeter and elevates Security Score to 95+.',
+    });
+  }
+  if (avgA > 350) {
+    keyActionItems.push({
+      priority: 'medium',
+      targetRepo: repoA.name,
+      action: `Decompose oversized files (averaging ${avgA} lines/file) into targeted sub-components.`,
+      expectedImpact: 'Improves Code Scale score and speeds up unit testing.',
+    });
+  }
+  if (avgB > 350) {
+    keyActionItems.push({
+      priority: 'medium',
+      targetRepo: repoB.name,
+      action: `Decompose oversized files (averaging ${avgB} lines/file) into targeted sub-components.`,
+      expectedImpact: 'Improves Code Scale score and speeds up unit testing.',
+    });
+  }
+  if (repoA.database.tablesCount > 0 && repoA.database.relationshipsCount === 0) {
+    keyActionItems.push({
+      priority: 'medium',
+      targetRepo: repoA.name,
+      action: 'Declare explicit foreign key relations between database tables.',
+      expectedImpact: 'Enables deterministic ERD mapping and prevents orphaned data.',
+    });
+  }
+  if (repoB.database.tablesCount > 0 && repoB.database.relationshipsCount === 0) {
+    keyActionItems.push({
+      priority: 'medium',
+      targetRepo: repoB.name,
+      action: 'Declare explicit foreign key relations between database tables.',
+      expectedImpact: 'Enables deterministic ERD mapping and prevents orphaned data.',
+    });
+  }
+  keyActionItems.push({
+    priority: 'low',
+    targetRepo: 'Both Projects',
+    action: 'Standardize API route schemas and maintain automated regression tests.',
+    expectedImpact: 'Ensures long-term architectural stability during agentic refactoring.',
+  });
+
+  return {
+    headline,
+    executiveSummary,
+    architecturalTradeoffs,
+    maintainabilityDebtAssessment,
+    databaseIntegrityComparison,
+    apiSurfaceCritique,
+    securityHygieneVerdict,
+    agentRebuildFeasibility: {
+      recommendedStrategy: `Prioritize rebuilding ${fasterRebuildRepo} first due to lower dependency coupling and fewer implementation phases.`,
+      complexityEstimate: `${gradeA.rebuildReadiness.complexity} vs ${gradeB.rebuildReadiness.complexity}`,
+      estimatedPhasesCount: Math.max(gradeA.rebuildReadiness.estimatedPhases, gradeB.rebuildReadiness.estimatedPhases),
+      agentTaskDelegationPrompt: agentPrompt,
+    },
+    keyActionItems,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+/**
  * Main Comparison Function: Accepts two repositories and produces side-by-side analysis
  */
 export function compareRepositories(
@@ -445,19 +1048,26 @@ export function compareRepositories(
   const gradeA = gradeRepository(repoA);
   const gradeB = gradeRepository(repoB);
 
+  const metrics = {
+    linesOfCode: compareMetric(repoA.stats.totalLines, repoB.stats.totalLines, false), // less LOC often leaner
+    filesCount: compareMetric(repoA.stats.totalFiles, repoB.stats.totalFiles, false),
+    directoriesCount: compareMetric(repoA.stats.totalDirs, repoB.stats.totalDirs, false),
+    dependenciesCount: compareMetric(repoA.dependencies.total, repoB.dependencies.total, false),
+    databaseTablesCount: compareMetric(repoA.database.tablesCount, repoB.database.tablesCount, true),
+    apiRoutesCount: compareMetric(repoA.apiRoutes.totalCount, repoB.apiRoutes.totalCount, true),
+    securityRisksCount: compareMetric(repoA.security.findingsCount, repoB.security.findingsCount, false),
+    healthScore: compareMetric(gradeA.overallScore, gradeB.overallScore, true),
+  };
+
+  const pillars = buildPillarComparisons(repoA, repoB, gradeA, gradeB);
+  const aiReview = generateAiQualityReview(repoA, repoB, gradeA, gradeB, metrics);
+
   return {
     repoA: { summary: repoA, grade: gradeA },
     repoB: { summary: repoB, grade: gradeB },
-    metrics: {
-      linesOfCode: compareMetric(repoA.stats.totalLines, repoB.stats.totalLines, false), // less LOC often leaner
-      filesCount: compareMetric(repoA.stats.totalFiles, repoB.stats.totalFiles, false),
-      directoriesCount: compareMetric(repoA.stats.totalDirs, repoB.stats.totalDirs, false),
-      dependenciesCount: compareMetric(repoA.dependencies.total, repoB.dependencies.total, false),
-      databaseTablesCount: compareMetric(repoA.database.tablesCount, repoB.database.tablesCount, true),
-      apiRoutesCount: compareMetric(repoA.apiRoutes.totalCount, repoB.apiRoutes.totalCount, true),
-      securityRisksCount: compareMetric(repoA.security.findingsCount, repoB.security.findingsCount, false),
-      healthScore: compareMetric(gradeA.overallScore, gradeB.overallScore, true),
-    },
+    metrics,
+    pillars,
+    aiReview,
     takeaways: generateTakeaways(repoA, repoB, gradeA, gradeB),
     generatedAt: new Date().toISOString(),
   };
@@ -513,6 +1123,59 @@ ${takeaways.map((t) => `- **${t.title}**: ${t.description}`).join('\n')}
 | Database Architecture | ${repoA.grade.breakdown.database.grade} (${repoA.grade.breakdown.database.score}/100) | ${repoB.grade.breakdown.database.grade} (${repoB.grade.breakdown.database.score}/100) |
 | API Connectivity | ${repoA.grade.breakdown.apiSurface.grade} (${repoA.grade.breakdown.apiSurface.score}/100) | ${repoB.grade.breakdown.apiSurface.grade} (${repoB.grade.breakdown.apiSurface.score}/100) |
 | Security & Secret Hygiene | ${repoA.grade.breakdown.security.grade} (${repoA.grade.breakdown.security.score}/100) | ${repoB.grade.breakdown.security.grade} (${repoB.grade.breakdown.security.score}/100) |
+
+---
+
+## 5. Score Quality Diagnostic Rubric
+
+${result.pillars.map((p) => `### ${p.title} (${p.weight}% Weight)
+* **Verdict**: ${p.verdict}
+* **${repoA.summary.name} Score**: ${p.dimA.score}/100 (${p.dimA.grade})
+* **${repoB.summary.name} Score**: ${p.dimB.score}/100 (${p.dimB.grade})
+
+| Sub-Metric Criterion | ${repoA.summary.name} | ${repoB.summary.name} | Benchmark Standard |
+|---|---|---|---|
+${p.dimA.subMetrics.map((smA, i) => {
+  const smB = p.dimB.subMetrics[i] || smA;
+  return `| ${smA.name} | ${smA.score}/100 (${smA.status.toUpperCase()}) | ${smB.score}/100 (${smB.status.toUpperCase()}) | ${smA.benchmark} |`;
+}).join('\n')}
+
+**Observations:**
+${p.comparativeObservations.map((obs) => `- ${obs}`).join('\n')}
+`).join('\n---\n\n')}
+
+---
+
+## 6. AI Score Quality & Architectural Synthesis
+
+### Executive Assessment
+${result.aiReview.headline}
+
+${result.aiReview.executiveSummary}
+
+### Architectural Tradeoffs
+${result.aiReview.architecturalTradeoffs.map((t) => `* **${t.title}**: ${t.description}
+  - _Recommendation_: ${t.recommendation}`).join('\n')}
+
+### Maintainability & Tech Debt Critique
+${result.aiReview.maintainabilityDebtAssessment}
+
+### Security Hygiene Verdict
+${result.aiReview.securityHygieneVerdict}
+
+### Autonomous AI Agent Rebuild Feasibility
+* **Rebuild Complexity**: ${result.aiReview.agentRebuildFeasibility.complexityEstimate}
+* **Estimated Implementation Phases**: ${result.aiReview.agentRebuildFeasibility.estimatedPhasesCount}
+* **Rebuild Strategy**: ${result.aiReview.agentRebuildFeasibility.recommendedStrategy}
+
+\`\`\`
+${result.aiReview.agentRebuildFeasibility.agentTaskDelegationPrompt}
+\`\`\`
+
+### Recommended Action Items
+| Priority | Target Repository | Recommended Action | Expected Impact |
+|---|---|---|---|
+${result.aiReview.keyActionItems.map((item) => `| [${item.priority.toUpperCase()}] | ${item.targetRepo} | ${item.action} | ${item.expectedImpact} |`).join('\n')}
 `;
 }
 

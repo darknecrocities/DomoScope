@@ -172,6 +172,33 @@ describe('Repository Comparison & Dynamic Grading Engine', () => {
     });
   });
 
+  describe('Score Quality Diagnostic Rubric & AI Review', () => {
+    it('generates 5 detailed pillars with dynamic sub-metrics and benchmarks', () => {
+      const result = compareRepositories(mockRepoA, mockRepoB);
+      expect(result.pillars).toHaveLength(5);
+
+      const archPillar = result.pillars.find((p) => p.key === 'architecture');
+      expect(archPillar).toBeDefined();
+      expect(archPillar?.dimA.subMetrics.length).toBe(4);
+      expect(archPillar?.dimA.telemetry.nodes).toBe(42);
+      expect(archPillar?.verdict).toBeTruthy();
+
+      const secPillar = result.pillars.find((p) => p.key === 'security');
+      expect(secPillar?.winner).toBe('base');
+      expect(secPillar?.dimA.subMetrics.find((s) => s.id === 'sec-critical')?.score).toBe(100);
+      expect(secPillar?.dimB.subMetrics.find((s) => s.id === 'sec-critical')?.score).toBeLessThan(100);
+    });
+
+    it('generates comprehensive AI quality review with tradeoffs, agent prompts, and action items', () => {
+      const result = compareRepositories(mockRepoA, mockRepoB);
+      expect(result.aiReview).toBeDefined();
+      expect(result.aiReview.headline).toContain('acme/frontend');
+      expect(result.aiReview.architecturalTradeoffs.length).toBeGreaterThanOrEqual(3);
+      expect(result.aiReview.agentRebuildFeasibility.agentTaskDelegationPrompt).toContain('Principal Software Architect');
+      expect(result.aiReview.keyActionItems.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   describe('State Adapters', () => {
     it('converts workspace analysis state into comparable input', () => {
       const input = fromWorkspaceAnalysis(
