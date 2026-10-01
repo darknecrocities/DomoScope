@@ -1258,29 +1258,8 @@ export function AskPanel({
 
       {/* Input Form Bar */}
       <div className="p-3 border-t border-zinc-200 bg-white shrink-0">
-        {/* Permanent Active Model & Scope Selector Bar */}
-        <div className="relative flex items-center justify-between gap-1.5 mb-2 px-0.5 text-[11px] font-mono select-none">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-zinc-400 font-medium shrink-0">Active Model:</span>
-            <button
-              type="button"
-              onClick={() => {
-                setIsDownloadPopoverOpen(false);
-                setIsFilePickerOpen(false);
-                setIsModelDropdownOpen((prev) => !prev);
-              }}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200 text-zinc-900 font-bold transition-all cursor-pointer min-w-0 max-w-[145px] sm:max-w-[210px] shadow-2xs group"
-              title="Click to switch active AI model"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-              <span className="truncate">{activeModel.name}</span>
-              <ChevronDown className="w-3 h-3 text-zinc-400 group-hover:text-zinc-700 shrink-0" />
-            </button>
-            <span className="text-[10px] text-zinc-400 font-normal hidden sm:inline shrink-0">
-              ({activeModel.provider === 'local' ? (activeModel.id === 'local-grounded' ? 'Client Engine' : 'WebGPU') : `${activeModel.provider.toUpperCase()} Cloud`})
-            </span>
-          </div>
-
+        {/* Context Scope / File Selector Bar */}
+        <div className="relative flex items-center justify-end gap-1.5 mb-2 px-0.5 text-[11px] font-mono select-none">
           {/* Context Scope / File Selector */}
           <div ref={filePickerRef} className="relative flex items-center gap-1 shrink-0">
             {activeFileContext ? (
