@@ -8,10 +8,22 @@ describe('SEO & Sitemap Validation', () => {
     const htmlPath = path.resolve('index.html');
     const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
 
-    it('contains exact Google site verification tag requested by user', () => {
+    it('contains exact Google site verification tags requested by user', () => {
       expect(htmlContent).toContain(
         '<meta\n      name="google-site-verification"\n      content="g2PXfPnR7hBDwA13CGRFTyYkjLklpskUVTGVpMGUed0"\n    />'
       );
+      expect(htmlContent).toContain(
+        '<meta\n      name="google-site-verification"\n      content="265fea273f067470"\n    />'
+      );
+    });
+
+    it('contains valid static Google verification files in public/ with secure content', () => {
+      const fileA = path.resolve('public/google265fea273f067470.html');
+      const fileB = path.resolve('public/googleg2PXfPnR7hBDwA13CGRFTyYkjLklpskUVTGVpMGUed0.html');
+      expect(fs.existsSync(fileA)).toBe(true);
+      expect(fs.existsSync(fileB)).toBe(true);
+      expect(fs.readFileSync(fileA, 'utf-8').trim()).toBe('google-site-verification: google265fea273f067470.html');
+      expect(fs.readFileSync(fileB, 'utf-8').trim()).toBe('google-site-verification: googleg2PXfPnR7hBDwA13CGRFTyYkjLklpskUVTGVpMGUed0.html');
     });
 
     it('contains search crawler directives and canonical link', () => {
