@@ -1,0 +1,10 @@
+{
+  "name": "DomoScope",
+  "slug": "domoscope",
+  "category": "developer-tools",
+  "tagline": "Autonomous GitHub repository visualizer, architecture mapper & AST code intelligence.",
+  "description": "DomoScope transforms any GitHub repository or local codebase into an interactive, multi-dimensional architectural blueprint. Inspect AST dependency graphs, polyglot database ERDs, API catalogs, and security audits with full Model Context Protocol (MCP) support for AI agents.",
+  "homepage_url": "https://domoscope.vercel.app",
+  "support_url": "mailto:parejasarronkian@gmail.com",
+  "privacy_url": "https://domoscope.vercel.app/privacy-policy"
+}
