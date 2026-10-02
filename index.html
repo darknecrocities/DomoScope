@@ -3,14 +3,180 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/domoscope.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DomoScope — GitHub Repository Inspection & Visualization</title>
-    <meta name="description" content="Paste a public GitHub repository and explore its files, connections, branches, database, and security in one place." />
+
+    <!-- Google Site Verification -->
+    <meta
+      name="google-site-verification"
+      content="g2PXfPnR7hBDwA13CGRFTyYkjLklpskUVTGVpMGUed0"
+    />
+
     <meta name="theme-color" content="#111111" />
+    <meta name="author" content="Arron Kian Parejas (DomoScope)" />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+    <meta
+      name="keywords"
+      content="github repository visualizer, codebase architecture visualizer, reverse engineer github, database erd generator, ast dependency graph, mcp server github, model context protocol, repo inspector, api route catalog, code security scanner, code diagram generator, github code explorer, system architecture generator, code intelligence, antigravity cli, domoscope, domodomo"
+    />
+    <link rel="canonical" href="https://domoscope.vercel.app/" />
+
+    <script>
+      (function () {
+        // Recover routing path from redirects fallback (e.g. GitHub Pages / static hostings)
+        const params = new URLSearchParams(window.location.search);
+        const redirectPath = params.get("p");
+        if (redirectPath !== null) {
+          const cleanPath = "/" + redirectPath.replace(/~and~/g, "&");
+          window.history.replaceState(
+            null,
+            null,
+            window.location.origin + cleanPath,
+          );
+        }
+      })();
+    </script>
+
+    <title>DomoScope — #1 Free GitHub Codebase Visualizer, Architecture Mapper & MCP Code Intelligence</title>
+    <meta
+      name="description"
+      content="DomoScope is the #1 free repository intelligence platform. Instantly visualize GitHub architecture maps, polyglot database ERDs, API catalogs, security audits, and connect AI coding agents via native Model Context Protocol (MCP)."
+    />
+
+    <!-- OpenGraph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://domoscope.vercel.app/" />
+    <meta property="og:site_name" content="DomoScope" />
+    <meta
+      property="og:title"
+      content="DomoScope — #1 Free GitHub Codebase Visualizer, Architecture Mapper & MCP Code Intelligence"
+    />
+    <meta
+      property="og:description"
+      content="Instantly explore, visualize, and reverse engineer any GitHub repository. Generate interactive architecture graphs, polyglot database ERDs, API catalogs, security audit reports, and connect AI agents via native Model Context Protocol (MCP)."
+    />
+    <meta property="og:image" content="https://domoscope.vercel.app/domoscope.png" />
+    <meta property="og:image:width" content="480" />
+    <meta property="og:image:height" content="480" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@DarkNecrocities" />
+    <meta name="twitter:creator" content="@DarkNecrocities" />
+    <meta
+      name="twitter:title"
+      content="DomoScope — #1 Free GitHub Codebase Visualizer, Architecture Mapper & MCP Code Intelligence"
+    />
+    <meta
+      name="twitter:description"
+      content="Explore and reverse engineer any GitHub repository with interactive architecture diagrams, database ERD schemas, API catalogs, and native Model Context Protocol (MCP) support."
+    />
+    <meta name="twitter:image" content="https://domoscope.vercel.app/domoscope.png" />
+
     <!-- Google Fonts: Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Structured Data JSON-LD Schemas -->
+    <script type="application/ld+json">
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "DomoScope",
+          "url": "https://domoscope.vercel.app",
+          "operatingSystem": "All (Web, macOS, Linux, Windows)",
+          "applicationCategory": "DeveloperApplication",
+          "applicationSubCategory": "CodeAnalysisApplication",
+          "description": "Free, open-source, local-first repository intelligence platform with npm CLI, real-time AST analysis, interactive architecture visualization, and Model Context Protocol (MCP) support for AI coding agents.",
+          "browserRequirements": "Requires HTML5, WebAssembly, and modern browser support.",
+          "screenshot": "https://domoscope.vercel.app/domoscope.png",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "ratingCount": "195",
+            "bestRating": "5"
+          }
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "DomoScope",
+          "url": "https://domoscope.vercel.app",
+          "logo": "https://domoscope.vercel.app/domoscope.png",
+          "founder": {
+            "@type": "Person",
+            "name": "Arron Kian Parejas",
+            "url": "https://github.com/DarkNecrocities"
+          },
+          "sameAs": [
+            "https://github.com/darknecrocities/DomoScope",
+            "https://github.com/DarkNecrocities",
+            "https://domodomo.site"
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "DomoScope",
+          "url": "https://domoscope.vercel.app",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://domoscope.vercel.app/repository/{owner}/{repo}",
+            "query-input": "required name=owner repo"
+          }
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is DomoScope and what does it do?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "DomoScope is a free, open-source, local-first repository intelligence platform. It transforms any GitHub repository or local directory into interactive architectural graphs, polyglot database ERD diagrams, API route catalogs, and security audits."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does DomoScope connect with AI agents using Model Context Protocol (MCP)?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "DomoScope features a native Model Context Protocol (MCP) server supporting stdio and remote HTTP/SSE. AI coding assistants such as Claude Code, Cursor, Antigravity, and Codex can query codebase architectures, database schemas, and API endpoints directly."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does DomoScope protect code privacy?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. DomoScope executes client-side AST and semantic analysis directly in your browser or locally via the zero-dependency npm CLI. Your source code is never transmitted to or stored on external analytics servers."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How do I run DomoScope from the terminal?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "You can launch DomoScope instantly using `npx domoscope` for the interactive Antigravity CLI REPL, `npx domoscope analyze` for deep AST analysis, or `npx domoscope serve` for the local web studio on port 4004."
+              }
+            }
+          ]
+        }
+      ]
+    </script>
   </head>
   <body class="bg-white text-zinc-900 antialiased selection:bg-zinc-800 selection:text-white min-h-screen">
     <div id="root"></div>

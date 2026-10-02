@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { runLocalAnalysis, getLocalGitBranch } from './localAnalysisEngine';
 import { LocalCacheManager } from './localCacheManager';
 import { LocalWatcher } from './localWatcher';
@@ -13,6 +14,8 @@ import {
   generateComparisonMarkdown,
   formatComparisonTerminal,
 } from '../repoComparison';
+import { getAsciiBanner } from './asciiBanner';
+import { DomoScopeInteractiveCli } from './localInteractiveCli';
 
 export interface CliCommandContext {
   cwd: string;
@@ -26,7 +29,7 @@ export function parseCliArgs(args: string[]): {
 } {
   const options: Record<string, string | boolean> = {};
   const positionals: string[] = [];
-  let command = 'help';
+  let command = (process.stdin && process.stdin.isTTY) ? 'interactive' : 'help';
 
   let i = 0;
   while (i < args.length) {
@@ -61,6 +64,10 @@ export function parseCliArgs(args: string[]): {
     i++;
   }
 
+  if (options.interactive || options.i) {
+    command = 'interactive';
+  }
+
   return { command, options, positionals };
 }
 
@@ -69,7 +76,7 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
   const cwd = (options.cwd as string) || (options.dir as string) || positionals[0] || process.cwd();
   const rootDir = path.resolve(cwd);
 
-  if (options.help || options.h || command === 'help') {
+  if (options.help || options.h || (command === 'help' && argv.length > 0)) {
     printHelp();
     return 0;
   }
@@ -80,6 +87,14 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
   }
 
   switch (command) {
+    case 'interactive':
+    case 'repl':
+    case 'tui':
+    case 'chat':
+      return handleInteractive(rootDir, options);
+    case 'ascii':
+    case 'banner':
+      return handleBanner(rootDir, options);
     case 'init':
       return handleInit(rootDir, options);
     case 'analyze':
@@ -101,6 +116,13 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
       return handleMcp(rootDir, options);
     case 'doctor':
       return handleDoctor(rootDir, options);
+    case 'install':
+      return handleInstall(rootDir, options);
+    case 'uninstall':
+      return handleUninstall(rootDir, options);
+    case 'help':
+      printHelp();
+      return 0;
     default:
       console.error(`\x1b[31m[DomoScope]\x1b[0m Unknown command: "${command}"\n`);
       printHelp();
@@ -109,41 +131,150 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
 }
 
 function printHelp() {
-  console.log(`
-\x1b[1m\x1b[37mDomoScope — Local-First Repository Intelligence & Developer Platform\x1b[0m
+  console.log(getAsciiBanner({ compact: true, showBox: false }));
+  console.log(`\x1b[1m\x1b[37mDomoScope — Autonomous Repository Intelligence & Developer Platform\x1b[0m
 
 \x1b[33mUSAGE:\x1b[0m
-  $ npx domoscope <command> [options]
+  $ npx domoscope [command] [options]
+  $ npx domoscope               # Launches Antigravity CLI interactive mode
 
 \x1b[33mCOMMANDS:\x1b[0m
-  \x1b[32minit\x1b[0m       Inspect current project and create recommended .domoscope.json config
-  \x1b[32manalyze\x1b[0m    Execute static analysis and output structured architectural summary
-  \x1b[32mgraph\x1b[0m      Export module dependency and architecture graph (JSON or Mermaid)
-  \x1b[32mdocs\x1b[0m       Generate complete markdown documentation suite in .domoscope/docs/
-  \x1b[32mskill\x1b[0m      Generate exportable SKILL.md pack for Claude, Cursor, and Antigravity
-  \x1b[32mcompare\x1b[0m    Compare two projects side-by-side with dynamic architectural grading
-  \x1b[32mserve\x1b[0m      Launch local interactive DomoScope dashboard on localhost:4004
-  \x1b[32mwatch\x1b[0m      Run live terminal file watcher with incremental re-analysis
-  \x1b[32mmcp\x1b[0m        Launch local Model Context Protocol (MCP) server for AI coding agents
-  \x1b[32mdoctor\x1b[0m     Run system and repository diagnostic health checks
+  \x1b[32minteractive\x1b[0m (or -i)  Launch Antigravity-style interactive terminal REPL (default in TTY)
+  \x1b[32mascii\x1b[0m (or banner)    Display full DomoScope ASCII art banner & terminal badges
+  \x1b[32minstall\x1b[0m              Install domoscope globally onto system PATH (~/.local/bin and npm)
+  \x1b[32muninstall\x1b[0m            Remove domoscope global symlinks from system
+  \x1b[32minit\x1b[0m                 Inspect current project and create recommended .domoscope.json config
+  \x1b[32manalyze\x1b[0m              Execute static analysis and output structured architectural summary
+  \x1b[32mgraph\x1b[0m                Export module dependency and architecture graph (JSON or Mermaid)
+  \x1b[32mdocs\x1b[0m                 Generate complete markdown documentation suite in .domoscope/docs/
+  \x1b[32mskill\x1b[0m                Generate exportable SKILL.md pack for Claude, Cursor, and Antigravity
+  \x1b[32mcompare\x1b[0m              Compare two projects side-by-side with dynamic architectural grading
+  \x1b[32mserve\x1b[0m                Launch local interactive DomoScope dashboard on localhost:4004
+  \x1b[32mwatch\x1b[0m                Run live terminal file watcher with incremental re-analysis
+  \x1b[32mmcp\x1b[0m                  Launch local Model Context Protocol (MCP) server for AI coding agents
+  \x1b[32mdoctor\x1b[0m               Run system and repository diagnostic health checks
+
+\x1b[33mINTERACTIVE SLASH COMMANDS:\x1b[0m
+  /help, /analyze, /graph, /db, /routes, /security, /reverse, /skill, /docs, /compare, /doctor, /serve, /watch, /mcp, /status, /install, /clear, /exit
 
 \x1b[33mGLOBAL OPTIONS:\x1b[0m
   -d, --dir <path>       Target project directory (default: current working directory)
+  -i, --interactive      Launch interactive Antigravity CLI terminal session
   --no-cache             Bypass local cache and force clean re-analysis
   --verbose              Print detailed diagnostic logs
   -h, --help             Show this help message
   -v, --version          Show version
 
 \x1b[33mEXAMPLES:\x1b[0m
-  $ npx domoscope analyze
-  $ npx domoscope analyze --json --output analysis.json
-  $ npx domoscope graph --format mermaid
-  $ npx domoscope docs --output ./docs/architecture
-  $ npx domoscope compare ../other-repo
-  $ npx domoscope compare ./repoA ./repoB --format markdown
-  $ npx domoscope serve --port 4004
-  $ npx domoscope doctor
+  $ npx domoscope                          # Open interactive Antigravity TUI
+  $ npx domoscope ascii                    # Display custom DomoScope ASCII art
+  $ npx domoscope analyze                  # Run AST analysis
+  $ npx domoscope analyze --json           # Output JSON to stdout
+  $ npx domoscope graph --format mermaid   # Output Mermaid diagram
+  $ npx domoscope docs --output ./docs     # Generate documentation
+  $ npx domoscope compare ../other-repo    # Compare projects
+  $ npx domoscope serve --port 4004        # Run local web dashboard
+  $ npx domoscope doctor                   # Diagnostics
 `);
+}
+
+async function handleInteractive(rootDir: string, options: Record<string, any>): Promise<number> {
+  const cli = new DomoScopeInteractiveCli({
+    rootDir,
+    verbose: Boolean(options.verbose),
+    noColor: Boolean(options.noColor || options['no-color']),
+  });
+  return cli.start();
+}
+
+async function handleBanner(rootDir: string, options: Record<string, any>): Promise<number> {
+  const banner = getAsciiBanner({
+    rootDir,
+    compact: Boolean(options.compact),
+    noColor: Boolean(options.noColor || options['no-color']),
+  });
+  console.log(banner);
+  return 0;
+}
+
+async function handleInstall(rootDir: string, options: Record<string, any>): Promise<number> {
+  console.log(`\x1b[1m\x1b[37m[DomoScope Install]\x1b[0m Installing DomoScope CLI globally onto your system...\n`);
+
+  const homeDir = os.homedir();
+  const localBin = path.join(homeDir, '.local', 'bin');
+  
+  // Find bin scripts
+  let binDomoscope = path.resolve(__dirname, '../../../bin/domoscope.js');
+  let binMcp = path.resolve(__dirname, '../../../bin/domoscope-mcp.js');
+  if (!fs.existsSync(binDomoscope)) {
+    binDomoscope = path.resolve(rootDir, 'bin', 'domoscope.js');
+    binMcp = path.resolve(rootDir, 'bin', 'domoscope-mcp.js');
+  }
+
+  let symlinked = false;
+  try {
+    await fsp.mkdir(localBin, { recursive: true });
+    const targetCli = path.join(localBin, 'domoscope');
+    const targetMcp = path.join(localBin, 'domoscope-mcp');
+
+    try { await fsp.unlink(targetCli); } catch {}
+    try { await fsp.unlink(targetMcp); } catch {}
+
+    if (fs.existsSync(binDomoscope)) {
+      await fsp.symlink(binDomoscope, targetCli);
+      await fsp.symlink(binMcp, targetMcp);
+      symlinked = true;
+      console.log(`  \x1b[32m✓ Symlinked:\x1b[0m ${targetCli} -> ${binDomoscope}`);
+      console.log(`  \x1b[32m✓ Symlinked:\x1b[0m ${targetMcp} -> ${binMcp}`);
+    }
+  } catch (err: any) {
+    console.log(`  \x1b[33mℹ Symlink notice:\x1b[0m ~/.local/bin: ${err.message}`);
+  }
+
+  // Also register with npm link
+  try {
+    const { execSync } = await import('node:child_process');
+    const projectRoot = path.dirname(path.dirname(binDomoscope));
+    execSync('npm link', { cwd: projectRoot, stdio: 'ignore' });
+    console.log(`  \x1b[32m✓ NPM Linked:\x1b[0m \`domoscope\` registered in global npm binaries`);
+  } catch {}
+
+  const pathEnv = process.env.PATH || '';
+  const inPath = pathEnv.includes(localBin) || pathEnv.includes('.nvm') || pathEnv.includes('npm');
+
+  console.log(`\n\x1b[1m\x1b[32m✓ Installation Complete!\x1b[0m`);
+  console.log(`You can now use DomoScope in any terminal tab just like \x1b[36magy\x1b[0m:`);
+  console.log(`  \x1b[36m$ domoscope\x1b[0m            # Opens interactive Antigravity CLI`);
+  console.log(`  \x1b[36m$ domoscope ascii\x1b[0m      # Displays custom ASCII art`);
+  console.log(`  \x1b[36m$ domoscope analyze\x1b[0m    # Runs architectural AST analysis`);
+  console.log(`  \x1b[36m$ domoscope doctor\x1b[0m     # Runs diagnostic health checks\n`);
+
+  if (!inPath) {
+    console.log(`\x1b[33mTip:\x1b[0m Ensure \`~/.local/bin\` is in your PATH. Add to ~/.zshrc or ~/.bashrc:`);
+    console.log(`  export PATH="$HOME/.local/bin:$PATH"\n`);
+  }
+
+  return 0;
+}
+
+async function handleUninstall(rootDir: string, options: Record<string, any>): Promise<number> {
+  console.log(`\x1b[1m\x1b[37m[DomoScope Uninstall]\x1b[0m Removing DomoScope global links...\n`);
+  const homeDir = os.homedir();
+  const localBin = path.join(homeDir, '.local', 'bin');
+  try {
+    await fsp.unlink(path.join(localBin, 'domoscope'));
+    await fsp.unlink(path.join(localBin, 'domoscope-mcp'));
+    console.log(`  \x1b[32m✓ Removed symlinks from ~/.local/bin\x1b[0m`);
+  } catch {}
+
+  try {
+    const { execSync } = await import('node:child_process');
+    execSync('npm unlink -g domoscope', { stdio: 'ignore' });
+    console.log(`  \x1b[32m✓ Unlinked from npm\x1b[0m`);
+  } catch {}
+
+  console.log(`\n\x1b[32m✓ DomoScope uninstalled from global PATH.\x1b[0m\n`);
+  return 0;
 }
 
 async function handleInit(rootDir: string, options: Record<string, any>): Promise<number> {

@@ -46,6 +46,7 @@ import { DOMOSCOPE_MCP_TOOLS } from '../services/mcpCore';
 import { isFileSystemAccessSupported, openLocalDirectoryInBrowser } from '../services/browserLocalScanner';
 import { BackgroundCanvas } from '../components/common/BackgroundCanvas';
 import { SettingsModal } from '../components/common/SettingsModal';
+import { useSeoMeta } from '../hooks/useSeoMeta';
 
 type SetupTab = 'mcp' | 'cli' | 'local' | 'auth' | 'diagnostics' | 'cicd';
 
@@ -71,6 +72,12 @@ interface DiagnosticResult {
 export function SetupPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SetupTab>('mcp');
+
+  useSeoMeta({
+    title: 'Setup & Antigravity CLI Guide — DomoScope MCP Server for AI Agents',
+    description: 'Connect Claude Code, Cursor, Antigravity, and Codex to DomoScope Model Context Protocol (MCP) server. Run local AST analysis, terminal TUI, and automated docs generation.',
+    canonical: 'https://domoscope.vercel.app/setup',
+  });
   const [packageManager, setPackageManager] = useState<'npx' | 'npm' | 'pnpm' | 'yarn' | 'bun'>('npx');
   const [mcpClient, setMcpClient] = useState<AgentClientType>('codex');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);

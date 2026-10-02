@@ -43,6 +43,7 @@ import { RepoTabsBar } from '../components/workspace/RepoTabsBar';
 import { AddRepoModal } from '../components/workspace/AddRepoModal';
 import { RepoLoadingProgress } from '../components/workspace/RepoLoadingProgress';
 import { sanitizeRepoSlug } from '../services/github';
+import { useSeoMeta } from '../hooks/useSeoMeta';
 
 export function WorkspacePage() {
   const { owner: rawOwner = '', repo: rawRepo = '', tab = 'overview' } = useParams<{
@@ -71,6 +72,39 @@ export function WorkspacePage() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(
     (tab as WorkspaceTab) || 'overview'
   );
+
+  const currentTabName = useMemo(() => {
+    const tabDisplayNames: Record<string, string> = {
+      overview: 'Overview',
+      architecture: 'Architecture Graph',
+      files: 'File Explorer',
+      database: 'Database ERD',
+      api_catalog: 'API Route Catalog',
+      dependencies: 'Dependencies',
+      branches: 'Branches & Diff',
+      security: 'Security & Patches',
+      audit_report: 'Audit Report',
+      reverse_engineer: 'Reverse Engineering Spec',
+      compare: 'Compare Repositories',
+      suggestions: 'AI Suggestions',
+      ask: 'AI Assistant',
+    };
+    return tabDisplayNames[activeTab] || 'Overview';
+  }, [activeTab]);
+
+  const repoTitle = owner && repo ? `${owner}/${repo} (${currentTabName}) — DomoScope GitHub Visualizer` : 'Workspace — DomoScope';
+  const repoDesc = owner && repo
+    ? `Explore ${owner}/${repo} ${currentTabName} in DomoScope. Interactive architecture graph, polyglot database ERD, API routes, and code intelligence.`
+    : 'Explore GitHub repositories with DomoScope.';
+  const canonicalUrl = owner && repo
+    ? `https://domoscope.vercel.app/repository/${owner}/${repo}${activeTab !== 'overview' ? `/${activeTab}` : ''}`
+    : 'https://domoscope.vercel.app/';
+
+  useSeoMeta({
+    title: repoTitle,
+    description: repoDesc,
+    canonical: canonicalUrl,
+  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try {
       const saved = localStorage.getItem('domoscope_sidebar_collapsed');

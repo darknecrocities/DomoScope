@@ -19,11 +19,18 @@ import { SettingsModal } from '../components/common/SettingsModal';
 import { BackgroundCanvas } from '../components/common/BackgroundCanvas';
 import { GitHubAuthService, GitHubUserProfile } from '../services/githubAuth';
 import { GitHubAuthModal } from '../components/common/GitHubAuthModal';
+import { useSeoMeta } from '../hooks/useSeoMeta';
 
 export function LandingPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<GitHubUserProfile | null>(null);
+
+  useSeoMeta({
+    title: 'DomoScope — #1 Free GitHub Codebase Visualizer, Architecture Mapper & MCP Code Intelligence',
+    description: 'DomoScope is the #1 free repository intelligence platform. Instantly visualize GitHub architecture maps, polyglot database ERDs, API catalogs, security audits, and connect AI coding agents via native Model Context Protocol (MCP).',
+    canonical: 'https://domoscope.vercel.app/',
+  });
 
   useEffect(() => {
     GitHubAuthService.getUserProfile().then(setUserProfile);

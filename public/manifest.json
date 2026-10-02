@@ -1,0 +1,17 @@
+{
+  "name": "DomoScope — GitHub Repository Inspection & Architecture Visualization",
+  "short_name": "DomoScope",
+  "description": "Visualize GitHub repository architecture, polyglot database ERDs, API catalogs, and connect AI agents via Model Context Protocol (MCP).",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "/domoscope.png",
+      "sizes": "480x480",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

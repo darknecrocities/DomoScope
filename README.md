@@ -23,39 +23,94 @@
 
 ---
 
+## Antigravity CLI Interactive Experience & Terminal ASCII Studio
+
+DomoScope provides a full-featured, interactive terminal REPL inspired by **Google Antigravity CLI (`agy`)** and **Claude Code**:
+
+```
+ ██████╗   ██████╗  ███╗   ███╗  ██████╗  ███████╗  ██████╗  ██████╗  ██████╗  ███████╗
+ ██╔══██╗ ██╔═══██╗ ████╗ ████║ ██╔═══██╗ ██╔════╝ ██╔════╝ ██╔═══██╗ ██╔══██╗ ██╔════╝
+ ██║  ██║ ██║   ██║ ██╔████╔██║ ██║   ██║ ███████╗ ██║      ██║   ██║ ██████╔╝ █████╗  
+ ██║  ██║ ██║   ██║ ██║╚██╔╝██║ ██║   ██║ ╚════██║ ██║      ██║   ██║ ██╔═══╝  ██╔══╝  
+ ██████╔╝ ╚██████╔╝ ██║ ╚═╝ ██║ ╚██████╔╝ ███████║ ╚██████╗ ╚██████╔╝ ██║      ███████╗
+ ╚═════╝   ╚═════╝  ╚═╝     ╚═╝  ╚═════╝  ╚══════╝  ╚═════╝  ╚═════╝  ╚═╝      ╚══════╝
+
+  ╭──────────────────────────────────────────────────────────────────────────╮
+  │ 🔭 DomoScope v1.0.0 — Autonomous Repository Intelligence & Studio        │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Project: your-project    Branch: main (15d5dd6)                          │
+  │ Engine:  AST + Polyglot ERD    Protocol: MCP 2024-11-05 (16 Tools)       │
+  │ Mode:    Antigravity CLI REPL  Status:   ● Ready                         │
+  ╰──────────────────────────────────────────────────────────────────────────╯
+```
+
+```bash
+# 1. Launch Antigravity-style interactive terminal TUI (default in TTY)
+npx domoscope
+
+# 2. Display custom DomoScope ASCII art banner & terminal badges
+npx domoscope ascii
+```
+
+### Interactive Slash Commands (`/`)
+Inside the interactive session, use slash commands or ask natural language questions:
+- `/analyze`: Run deep AST repository analysis with live visual summary.
+- `/status`: View LoC metrics, file counts, detected frameworks & cache stats.
+- `/graph`: Inspect module hub nodes, import fan-out, and export Mermaid/JSON.
+- `/db`: Inspect discovered database tables, columns, relations & ORM schemas.
+- `/routes`: Browse and filter discovered API route catalog.
+- `/security`: Run security audit for hardcoded tokens & vulnerabilities.
+- `/reverse`: View autonomous reverse-engineering blueprint & rebuild recipe.
+- `/skill`: Export autonomous AI Agent `SKILL.md` for Antigravity, Cursor, and Claude.
+- `/docs`: Generate full 7-file markdown documentation suite in `.domoscope/docs/`.
+- `/compare <dir>`: Compare current project side-by-side with another repo.
+- `/serve`: Toggle local DomoScope web studio dashboard (`http://localhost:4004`).
+- `/watch`: Toggle live file watcher with incremental re-analysis.
+- `/mcp`: Display Model Context Protocol configuration snippets.
+- `/doctor`: Run system and repository diagnostic health checks.
+- **Natural Language Queries**: Ask questions directly in terminal (`what does this project do?`, `show api routes`, `find auth`).
+
+---
+
 ## CLI Quickstart
 
 DomoScope provides a zero-dependency npm CLI package for instant terminal analysis, live file watching, documentation generation, and agentic workflows:
 
 ```bash
-# 1. Inspect repository health & diagnostic checks
+# 1. Launch Antigravity interactive terminal session
+npx domoscope
+
+# 2. Display DomoScope ASCII art banner
+npx domoscope ascii
+
+# 3. Inspect repository health & diagnostic checks
 npx domoscope doctor
 
-# 2. Run baseline project initialization
+# 4. Run baseline project initialization
 npx domoscope init
 
-# 3. Analyze codebase architecture with structured output
+# 5. Analyze codebase architecture with structured output
 npx domoscope analyze
 
-# 4. Export architectural dependency graph (Mermaid or JSON)
+# 6. Export architectural dependency graph (Mermaid or JSON)
 npx domoscope graph --format mermaid --output architecture.mmd
 
-# 5. Generate complete 7-file markdown documentation suite
+# 7. Generate complete 7-file markdown documentation suite
 npx domoscope docs --output ./docs/architecture
 
-# 6. Generate autonomous AI agent SKILL.md specification
+# 8. Generate autonomous AI agent SKILL.md specification
 npx domoscope skill --output SKILL.md
 
-# 7. Compare two repositories side-by-side with dynamic grading
+# 9. Compare two repositories side-by-side with dynamic grading
 npx domoscope compare ./repoA ./repoB --format markdown
 
-# 8. Launch local interactive studio dashboard on localhost:4004
+# 10. Launch local interactive studio dashboard on localhost:4004
 npx domoscope serve --port 4004
 
-# 9. Start live file watcher with incremental re-analysis
+# 11. Start live file watcher with incremental re-analysis
 npx domoscope watch
 
-# 10. Run local Model Context Protocol (MCP) server for AI agents
+# 12. Run local Model Context Protocol (MCP) server for AI agents
 npx domoscope mcp
 ```
 
@@ -63,6 +118,8 @@ npx domoscope mcp
 
 | Command | Description | Key Options |
 |---|---|---|
+| `domoscope` (or `-i`) | Launches Antigravity-style interactive terminal REPL (default in TTY) | `-d, --dir`, `--verbose` |
+| `domoscope ascii` | Displays custom DomoScope ASCII art banner & terminal badges | `--compact`, `--no-color` |
 | `domoscope init` | Inspects current project and creates `.domoscope.json` configuration | `-d, --dir`, `--force` |
 | `domoscope analyze` | Executes unified static analysis and outputs structured summary | `--json`, `--output <file>`, `--no-cache` |
 | `domoscope graph` | Exports module dependency and architectural graph | `--format <mermaid\|json>`, `--output <file>` |

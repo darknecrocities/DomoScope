@@ -31,6 +31,34 @@ describe('Local CLI', () => {
       expect(parsed.command).toBe('analyze');
       expect(parsed.options.cache).toBe(false);
     });
+
+    it('parses interactive flags (-i, --interactive)', () => {
+      const parsedA = parseCliArgs(['-i']);
+      expect(parsedA.command).toBe('interactive');
+
+      const parsedB = parseCliArgs(['--interactive']);
+      expect(parsedB.command).toBe('interactive');
+    });
+
+    it('parses ascii and banner commands', () => {
+      const parsedA = parseCliArgs(['ascii']);
+      expect(parsedA.command).toBe('ascii');
+
+      const parsedB = parseCliArgs(['banner']);
+      expect(parsedB.command).toBe('banner');
+    });
+  });
+
+  describe('Banner Command Execution', () => {
+    it('runs ascii banner command without error', async () => {
+      const exitCode = await runCli(['ascii', '--dir', tempDir]);
+      expect(exitCode).toBe(0);
+    });
+
+    it('runs banner command with compact flag', async () => {
+      const exitCode = await runCli(['banner', '--compact', '--dir', tempDir]);
+      expect(exitCode).toBe(0);
+    });
   });
 
   describe('CLI Command Execution', () => {
