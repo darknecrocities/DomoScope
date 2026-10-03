@@ -28,7 +28,7 @@ export function VideoDemo() {
         className="w-full rounded-2xl border border-zinc-200/90 bg-white shadow-2xl shadow-zinc-900/10 overflow-hidden ring-1 ring-black/5"
       >
         {/* macOS Title Bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200/80 bg-zinc-100/90 backdrop-blur-md select-none">
+        <div className="flex items-center px-4 py-3 border-b border-zinc-200/80 bg-zinc-100/90 backdrop-blur-md select-none">
           {/* macOS Traffic Light Buttons */}
           <div className="flex items-center gap-2">
             <span
@@ -44,14 +44,6 @@ export function VideoDemo() {
               aria-hidden="true"
             />
           </div>
-
-          {/* Centered Window Title */}
-          <div className="flex items-center gap-2 px-3 py-1 bg-white/90 border border-zinc-200/80 rounded-lg text-xs font-mono text-zinc-600 shadow-2xs">
-            <span>domoscope-walkthrough.mp4</span>
-          </div>
-
-          {/* Right Spacer for Center Balance */}
-          <div className="w-14 hidden sm:block" />
         </div>
 
         {/* Video Player Display */}
