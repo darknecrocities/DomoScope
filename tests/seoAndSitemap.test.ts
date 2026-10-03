@@ -73,6 +73,44 @@ describe('SEO & Sitemap Validation', () => {
     });
   });
 
+  describe('Favicon & Search Engine Snippet Icons (Google Favicon Guidelines)', () => {
+    it('ensures root favicon.ico exists and has valid multi-resolution ICO header', () => {
+      const icoPath = path.resolve('public/favicon.ico');
+      expect(fs.existsSync(icoPath)).toBe(true);
+      const icoBuffer = fs.readFileSync(icoPath);
+      // ICO header check: reserved 0, type 1 (icon)
+      expect(icoBuffer[0]).toBe(0);
+      expect(icoBuffer[1]).toBe(0);
+      expect(icoBuffer[2]).toBe(1);
+      expect(icoBuffer[3]).toBe(0);
+    });
+
+    it('ensures Google Favicon 48px square requirement is met with favicon-48x48.png and domoscope.png', () => {
+      const icon48Path = path.resolve('public/favicon-48x48.png');
+      const iconPngPath = path.resolve('public/domoscope.png');
+      expect(fs.existsSync(icon48Path)).toBe(true);
+      expect(fs.existsSync(iconPngPath)).toBe(true);
+    });
+
+    it('ensures favicon.svg renders official mascot and does not contain legacy crosshairs', () => {
+      const svgPath = path.resolve('public/favicon.svg');
+      expect(fs.existsSync(svgPath)).toBe(true);
+      const svgContent = fs.readFileSync(svgPath, 'utf-8');
+      expect(svgContent).not.toContain('stroke-width="2"');
+      expect(svgContent).not.toContain('r="7" stroke="#FFFFFF"');
+      expect(svgContent).toContain('<image href="data:image/png;base64,');
+    });
+
+    it('ensures index.html includes links to favicon.ico, multi-size PNGs, and mascot image', () => {
+      const htmlPath = path.resolve('index.html');
+      const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
+      expect(htmlContent).toContain('<link rel="icon" href="/favicon.ico"');
+      expect(htmlContent).toContain('href="/favicon-48x48.png"');
+      expect(htmlContent).toContain('href="/domoscope.png"');
+      expect(htmlContent).toContain('href="/apple-touch-icon.png"');
+    });
+  });
+
   describe('Sitemap Generator & Synchronization', () => {
     it('generates public/sitemap.xml with static routes and deep repository tabs', () => {
       const sitemapPath = path.resolve('public/sitemap.xml');
