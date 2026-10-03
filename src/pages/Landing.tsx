@@ -5,6 +5,7 @@ import { GitHubIcon } from '../components/common/Icons';
 import { Hero } from '../components/landing/Hero';
 import { TechBelt } from '../components/landing/TechBelt';
 import { InteractiveDemo } from '../components/landing/InteractiveDemo';
+import { VideoDemo } from '../components/landing/VideoDemo';
 import { ScrapingSimulator } from '../components/landing/ScrapingSimulator';
 import { VerticalCarousel } from '../components/landing/VerticalCarousel';
 import { ArchitectureLens } from '../components/landing/ArchitectureLens';
@@ -125,11 +126,14 @@ export function LandingPage() {
         <Hero />
 
         {/* 2. Interactive Workspace Demo */}
-        <div className="px-4 pb-20 max-w-6xl mx-auto">
+        <div className="px-4 pb-12 max-w-6xl mx-auto">
           <InteractiveDemo />
         </div>
 
-        {/* 3. Real-Time Scraping & Ingestion Simulator with Progress Bar */}
+        {/* 3. Walkthrough Video Demo */}
+        <VideoDemo />
+
+        {/* 4. Real-Time Scraping & Ingestion Simulator with Progress Bar */}
         <ScrapingSimulator />
 
         {/* 4. Continuous Technology Belt */}
