@@ -19,7 +19,7 @@
     "cli": "node bin/domoscope.js",
     "mcp": "node bin/domoscope-mcp.js",
     "test": "vitest run",
-    "build:anna": "npm run build && node -e \"const fs = require('fs'); fs.rmSync('bundle', { recursive: true, force: true }); fs.cpSync('dist', 'bundle', { recursive: true }); console.log('✅ Prepared bundle/ directory for anna-app push.');\"",
+    "build:anna": "ANNA=1 vite build && node -e \"const fs = require('fs'); fs.rmSync('bundle', { recursive: true, force: true }); fs.cpSync('dist', 'bundle', { recursive: true }); console.log('✅ Prepared bundle/ directory for anna-app push.');\"",
     "docker:build": "docker build -t domoscope:latest .",
     "docker:package": "docker build -t domoscope:latest -t domoscope:v1.0.0 .",
     "docker:up": "docker compose up -d",

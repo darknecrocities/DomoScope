@@ -3,7 +3,14 @@
   "slug": "domoscope",
   "category": "developer-tools",
   "tagline": "Autonomous GitHub repository visualizer, architecture mapper & AST code intelligence.",
-  "description": "DomoScope transforms any GitHub repository or local codebase into an interactive, multi-dimensional architectural blueprint. Inspect AST dependency graphs, polyglot database ERDs, API catalogs, and security audits with full Model Context Protocol (MCP) support for AI agents.",
+  "logo_file": "public/domoscope.png",
+  "screenshots": [
+    "store/screenshots/01-landing.png",
+    "store/screenshots/02-setup.png",
+    "store/screenshots/03-workspace.png",
+    "store/screenshots/04-architecture.png"
+  ],
+  "description": "DomoScope is an autonomous codebase intelligence platform that transforms any GitHub repository or local directory into an interactive, multi-dimensional architectural blueprint.\n\n### What It Does\nDomoScope deep-scans source repositories to reveal high-level architectures, component relationships, data layer entity-relationship diagrams (ERDs), API catalogs, security posture audits, and execution flow charts—all rendered directly in an interactive web studio.\n\n### Key Features\n- **Interactive Architecture Graphs**: Inspect AST dependency networks, component hierarchies, and module couplings rendered via fluid graph layouts.\n- **Polyglot Database ERDs**: Automatically reverse-engineers database schemas from Prisma, Drizzle, TypeORM, Supabase, and SQL migration files into interactive entity-relationship diagrams.\n- **REST & GraphQL API Catalogs**: Automatically discovers endpoints, route parameters, payload schemas, and HTTP methods across modern web frameworks.\n- **Security Posture & Quality Audits**: Surfaces potential vulnerability vectors, dependency health alerts, and structural complexity metrics.\n- **Model Context Protocol (MCP) Server**: Exposes rich codebase indexing, AST queries, and symbol lookups to AI coding agents in real-time.\n- **Zero-Config GitHub & Local Inspection**: Inspect public repositories instantly, or analyze local enterprise codebases with complete data privacy.\n\n### Who It's For\n- **Software Engineers & Architects**: Quickly understand unfamiliar codebases, plan refactors, and document system boundaries.\n- **Technical Leads & Reviewers**: Conduct architectural reviews, onboarding sessions, and security sanity checks with visual clarity.\n- **AI Agent Operators**: Provide structured codebase maps to agentic AI workflows (Antigravity, Claude Code, Cursor) via MCP.\n\n### How to Get Started\n1. Launch the DomoScope Studio from Anna.\n2. Enter any public GitHub repository (e.g. `facebook/react` or `expressjs/express`) into the search bar, or select from the curated explore catalog.\n3. Explore the Architecture tab to trace dependencies, or switch to Database ERD and API Reference for deep domain inspection.\n4. Optionally, connect AI agents via the built-in MCP server for automated code intelligence.",
   "homepage_url": "https://domoscope.vercel.app",
   "support_url": "mailto:parejasarronkian@gmail.com",
   "privacy_url": "https://domoscope.vercel.app/privacy-policy"
