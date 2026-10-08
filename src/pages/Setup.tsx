@@ -388,7 +388,7 @@ export function SetupPage() {
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center gap-2.5 group">
               <img
-                src="/domoscope.png"
+                src="./domoscope.png"
                 alt="DomoScope"
                 className="w-8 h-8 rounded-xl object-contain bg-zinc-950 p-0.5 border border-zinc-200 group-hover:scale-105 transition-transform shadow-xs"
               />

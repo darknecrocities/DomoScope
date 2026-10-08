@@ -206,7 +206,7 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
                 {/* App Brand Header */}
                 <div className="flex items-center gap-3">
                   <img
-                    src="/domoscope.png"
+                    src="./domoscope.png"
                     alt="DomoScope Logo"
                     className="w-10 h-10 rounded-xl object-contain bg-zinc-950 p-1 border border-zinc-300 shadow-sm"
                   />
@@ -502,7 +502,7 @@ export const GitHubAuthModal: React.FC<GitHubAuthModalProps> = ({
             <div className="p-6 space-y-4 overflow-y-auto text-xs text-zinc-700 leading-relaxed font-sans">
               <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-2xl flex items-center gap-3">
                 <img
-                  src="/domoscope.png"
+                  src="./domoscope.png"
                   alt="DomoScope"
                   className="w-10 h-10 rounded-xl object-contain bg-zinc-950 p-1 border border-zinc-300 shrink-0"
                 />

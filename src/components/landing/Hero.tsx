@@ -118,7 +118,7 @@ export function Hero() {
         className="inline-flex items-center gap-3 mb-8"
       >
         <img
-          src="/domoscope.png"
+          src="./domoscope.png"
           alt="DomoScope Logo"
           className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-contain bg-zinc-950 p-1 border border-zinc-200/80 shadow-xs"
         />

@@ -786,7 +786,7 @@ export const MarkdownSpecGenerator = {
       lines.push(`  </head>`);
       lines.push(`  <body class="bg-zinc-50 text-zinc-900 antialiased selection:bg-zinc-900 selection:text-white">`);
       lines.push(`    <div id="root"></div>`);
-      lines.push(`    <script type="module" src="/src/main.tsx"></script>`);
+      lines.push(`    <script type="module" src="./src/main.tsx"></script>`);
       lines.push(`  </body>`);
       lines.push(`</html>`);
       lines.push(`\`\`\``);

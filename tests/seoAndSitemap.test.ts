@@ -104,10 +104,10 @@ describe('SEO & Sitemap Validation', () => {
     it('ensures index.html includes links to favicon.ico, multi-size PNGs, and mascot image', () => {
       const htmlPath = path.resolve('index.html');
       const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
-      expect(htmlContent).toContain('<link rel="icon" href="/favicon.ico"');
-      expect(htmlContent).toContain('href="/favicon-48x48.png"');
-      expect(htmlContent).toContain('href="/domoscope.png"');
-      expect(htmlContent).toContain('href="/apple-touch-icon.png"');
+      expect(htmlContent).toMatch(/href=["'](?:\.\/|\/)favicon\.ico["']/);
+      expect(htmlContent).toMatch(/href=["'](?:\.\/|\/)favicon-48x48\.png["']/);
+      expect(htmlContent).toMatch(/href=["'](?:\.\/|\/)domoscope\.png["']/);
+      expect(htmlContent).toMatch(/href=["'](?:\.\/|\/)apple-touch-icon\.png["']/);
     });
   });
 

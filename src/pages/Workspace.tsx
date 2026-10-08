@@ -44,6 +44,7 @@ import { AddRepoModal } from '../components/workspace/AddRepoModal';
 import { RepoLoadingProgress } from '../components/workspace/RepoLoadingProgress';
 import { sanitizeRepoSlug } from '../services/github';
 import { useSeoMeta } from '../hooks/useSeoMeta';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 export function WorkspacePage() {
   const { owner: rawOwner = '', repo: rawRepo = '', tab = 'overview' } = useParams<{
@@ -500,199 +501,227 @@ export function WorkspacePage() {
           )}
 
           {isProceedReady && status === 'success' && (
-            <>
+            <ErrorBoundary fallbackTitle="Workspace Content Error" fallbackMessage="An error occurred while loading this workspace view.">
               {activeTab === 'overview' && analysis && (
-                <OverviewTab
-                  analysis={analysis}
-                  databaseSchema={databaseSchema}
-                  dependencies={dependencies}
-                  branches={branches}
-                  securityFindings={securityFindings}
-                  onNavigateTab={handleTabChange}
-                  files={files}
-                  fileContents={fileContents}
-                  onOpenFile={(path) => {
-                    setSelectedFile(path);
-                    handleTabChange('files');
-                  }}
-                />
+                <ErrorBoundary fallbackTitle="Overview Error">
+                  <OverviewTab
+                    analysis={analysis}
+                    databaseSchema={databaseSchema}
+                    dependencies={dependencies}
+                    branches={branches}
+                    securityFindings={securityFindings}
+                    onNavigateTab={handleTabChange}
+                    files={files}
+                    fileContents={fileContents}
+                    onOpenFile={(path) => {
+                      setSelectedFile(path);
+                      handleTabChange('files');
+                    }}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'architecture' && (
-                <ArchitectureGraph
-                  files={files}
-                  fileContents={fileContents}
-                  selectedNodeId={selectedNode}
-                  onSelectNode={setSelectedNode}
-                  onOpenFile={(path) => {
-                    setSelectedFile(path);
-                    handleTabChange('files');
-                  }}
-                  onAskExplain={handleAskExplain}
-                  rankDirection={graphDirection}
-                  databaseSchema={databaseSchema}
-                />
+                <ErrorBoundary fallbackTitle="Architecture Graph Render Error" fallbackMessage="An unexpected error occurred while constructing the AST dependency graph.">
+                  <ArchitectureGraph
+                    files={files}
+                    fileContents={fileContents}
+                    selectedNodeId={selectedNode}
+                    onSelectNode={setSelectedNode}
+                    onOpenFile={(path) => {
+                      setSelectedFile(path);
+                      handleTabChange('files');
+                    }}
+                    onAskExplain={handleAskExplain}
+                    rankDirection={graphDirection}
+                    databaseSchema={databaseSchema}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'files' && (
                 <div className="flex-1 flex flex-col md:flex-row overflow-hidden p-4 gap-4 bg-zinc-50">
                   <div className="w-full md:w-72 h-64 md:h-full shrink-0">
-                    <FileExplorer
-                      files={files}
-                      selectedFile={selectedFile}
-                      onSelectFile={(path) => {
-                        setSelectedFile(path);
-                        loadFileContent(path);
-                      }}
-                    />
+                    <ErrorBoundary fallbackTitle="File Explorer Error">
+                      <FileExplorer
+                        files={files}
+                        selectedFile={selectedFile}
+                        onSelectFile={(path) => {
+                          setSelectedFile(path);
+                          loadFileContent(path);
+                        }}
+                      />
+                    </ErrorBoundary>
                   </div>
                   <div className="flex-1 h-full min-w-0">
-                    <SourceViewer
-                      filePath={selectedFile || ''}
-                      content={activeFileContent}
-                      onAskExplain={handleAskExplain}
-                    />
+                    <ErrorBoundary fallbackTitle="Monaco Editor Viewer Error" fallbackMessage="An error occurred while loading Monaco Editor for this file.">
+                      <SourceViewer
+                        filePath={selectedFile || ''}
+                        content={activeFileContent}
+                        onAskExplain={handleAskExplain}
+                      />
+                    </ErrorBoundary>
                   </div>
                 </div>
               )}
 
               {activeTab === 'database' && (
-                <DatabaseERD
-                  schema={databaseSchema}
-                  onOpenFile={(path) => {
-                    setSelectedFile(path);
-                    handleTabChange('files');
-                  }}
-                />
+                <ErrorBoundary fallbackTitle="Database ERD Error" fallbackMessage="An error occurred while generating the database ERD diagram.">
+                  <DatabaseERD
+                    schema={databaseSchema}
+                    onOpenFile={(path) => {
+                      setSelectedFile(path);
+                      handleTabChange('files');
+                    }}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'dependencies' && (
-                <DependenciesTab
-                  dependencies={dependencies}
-                  onOpenFile={(path) => {
-                    setSelectedFile(path);
-                    handleTabChange('files');
-                  }}
-                />
+                <ErrorBoundary fallbackTitle="Dependencies Error">
+                  <DependenciesTab
+                    dependencies={dependencies}
+                    onOpenFile={(path) => {
+                      setSelectedFile(path);
+                      handleTabChange('files');
+                    }}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'branches' && (
-                <BranchesTab
-                  owner={owner}
-                  repo={repo}
-                  currentBranch={currentBranch}
-                  branches={branches}
-                  onSelectBranch={handleSelectBranch}
-                />
+                <ErrorBoundary fallbackTitle="Branches & Diff Error">
+                  <BranchesTab
+                    owner={owner}
+                    repo={repo}
+                    currentBranch={currentBranch}
+                    branches={branches}
+                    onSelectBranch={handleSelectBranch}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'security' && (
-                <SecurityTab
-                  findings={securityFindings}
-                  onOpenFile={(path) => {
-                    setSelectedFile(path);
-                    handleTabChange('files');
-                  }}
-                />
+                <ErrorBoundary fallbackTitle="Security Tab Error">
+                  <SecurityTab
+                    findings={securityFindings}
+                    onOpenFile={(path) => {
+                      setSelectedFile(path);
+                      handleTabChange('files');
+                    }}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'api_catalog' && (
-                <ApiCatalogTab
-                  fileContents={fileContents}
-                  files={files}
-                  onOpenFile={(path) => {
-                    setSelectedFile(path);
-                    handleTabChange('files');
-                  }}
-                />
+                <ErrorBoundary fallbackTitle="API Catalog Error">
+                  <ApiCatalogTab
+                    fileContents={fileContents}
+                    files={files}
+                    onOpenFile={(path) => {
+                      setSelectedFile(path);
+                      handleTabChange('files');
+                    }}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'audit_report' && (
-                <AuditReportTab
-                  owner={owner}
-                  repo={repo}
-                  analysis={analysis}
-                  files={files}
-                  databaseSchema={databaseSchema}
-                  securityFindings={securityFindings}
-                />
+                <ErrorBoundary fallbackTitle="Audit Report Error">
+                  <AuditReportTab
+                    owner={owner}
+                    repo={repo}
+                    analysis={analysis}
+                    files={files}
+                    databaseSchema={databaseSchema}
+                    securityFindings={securityFindings}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'reverse_engineer' && (
-                <ReverseEngineerTab
-                  repoName={`${owner}/${repo}`}
-                  analysis={analysis}
-                  files={files}
-                  fileContents={fileContents}
-                  databaseSchema={databaseSchema}
-                  dependencies={dependencies}
-                  onOpenFile={(path) => {
-                    setSelectedFile(path);
-                    handleTabChange('files');
-                  }}
-                />
+                <ErrorBoundary fallbackTitle="Reverse Engineer Spec Error">
+                  <ReverseEngineerTab
+                    repoName={`${owner}/${repo}`}
+                    analysis={analysis}
+                    files={files}
+                    fileContents={fileContents}
+                    databaseSchema={databaseSchema}
+                    dependencies={dependencies}
+                    onOpenFile={(path) => {
+                      setSelectedFile(path);
+                      handleTabChange('files');
+                    }}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'compare' && (
-                <CompareTab
-                  currentOwner={owner || ''}
-                  currentRepo={repo || ''}
-                  currentAnalysis={analysis}
-                  currentDatabaseSchema={databaseSchema}
-                  currentDependencies={dependencies}
-                  currentSecurityFindings={securityFindings}
-                  currentApiRoutes={analysis ? parseApiEndpoints(files.map((f) => ({ path: f.path, content: fileContents.get(f.path) }))) : []}
-                  openRepositories={openRepos}
-                  onSelectRepo={(o, r) => switchRepository(o, r)}
-                  onAskAi={(prompt) => {
-                    setExplainPrompt(prompt);
-                    setIsAskPanelOpen(true);
-                  }}
-                />
+                <ErrorBoundary fallbackTitle="Compare Error">
+                  <CompareTab
+                    currentOwner={owner || ''}
+                    currentRepo={repo || ''}
+                    currentAnalysis={analysis}
+                    currentDatabaseSchema={databaseSchema}
+                    currentDependencies={dependencies}
+                    currentSecurityFindings={securityFindings}
+                    currentApiRoutes={analysis ? parseApiEndpoints(files.map((f) => ({ path: f.path, content: fileContents.get(f.path) }))) : []}
+                    openRepositories={openRepos}
+                    onSelectRepo={(o, r) => switchRepository(o, r)}
+                    onAskAi={(prompt) => {
+                      setExplainPrompt(prompt);
+                      setIsAskPanelOpen(true);
+                    }}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'suggestions' && analysis && (
-                <SuggestionsTab
-                  analysis={analysis}
-                  files={files}
-                  fileContents={fileContents}
-                  databaseSchema={databaseSchema}
-                  securityFindings={securityFindings}
-                  dependencies={dependencies}
-                  onOpenFile={(path) => {
-                    setSelectedFile(path);
-                    handleTabChange('files');
-                  }}
-                  onSelectTab={(t) => handleTabChange(t as WorkspaceTab)}
-                />
+                <ErrorBoundary fallbackTitle="AI Suggestions Error">
+                  <SuggestionsTab
+                    analysis={analysis}
+                    files={files}
+                    fileContents={fileContents}
+                    databaseSchema={databaseSchema}
+                    securityFindings={securityFindings}
+                    dependencies={dependencies}
+                    onOpenFile={(path) => {
+                      setSelectedFile(path);
+                      handleTabChange('files');
+                    }}
+                    onSelectTab={(t) => handleTabChange(t as WorkspaceTab)}
+                  />
+                </ErrorBoundary>
               )}
 
               {activeTab === 'ask' && analysis && (
-                <div className="flex-1 p-3 sm:p-5 bg-zinc-50 flex items-center justify-center overflow-hidden">
-                  <div className="w-full max-w-5xl h-full bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
-                    <AskPanel
-                      key={analysis.metadata.fullName}
-                      analysis={analysis}
-                      files={files}
-                      fileContents={fileContents}
-                      selectedFile={selectedFile}
-                      onSelectFile={(path) => setSelectedFile(path)}
-                      onOpenFile={(path) => {
-                        setSelectedFile(path);
-                        handleTabChange('files');
-                      }}
-                      onClose={() => handleTabChange('overview')}
-                      onOpenSettings={() => setIsSettingsOpen(true)}
-                      initialPrompt={explainPrompt}
-                      onClearInitialPrompt={() => setExplainPrompt(null)}
-                      dependencies={dependencies}
-                      databaseSchema={databaseSchema}
-                      securityFindings={securityFindings}
-                    />
+                <ErrorBoundary fallbackTitle="Ask AI Panel Error">
+                  <div className="flex-1 p-3 sm:p-5 bg-zinc-50 flex items-center justify-center overflow-hidden">
+                    <div className="w-full max-w-5xl h-full bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
+                      <AskPanel
+                        key={analysis.metadata.fullName}
+                        analysis={analysis}
+                        files={files}
+                        fileContents={fileContents}
+                        selectedFile={selectedFile}
+                        onSelectFile={(path) => setSelectedFile(path)}
+                        onOpenFile={(path) => {
+                          setSelectedFile(path);
+                          handleTabChange('files');
+                        }}
+                        onClose={() => handleTabChange('overview')}
+                        onOpenSettings={() => setIsSettingsOpen(true)}
+                        initialPrompt={explainPrompt}
+                        onClearInitialPrompt={() => setExplainPrompt(null)}
+                        dependencies={dependencies}
+                        databaseSchema={databaseSchema}
+                        securityFindings={securityFindings}
+                      />
+                    </div>
                   </div>
-                </div>
+                </ErrorBoundary>
               )}
-            </>
+            </ErrorBoundary>
           )}
         </main>
 

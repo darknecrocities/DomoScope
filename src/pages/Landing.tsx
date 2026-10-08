@@ -47,7 +47,7 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img
-              src="/domoscope.png"
+              src="./domoscope.png"
               alt="DomoScope"
               className="w-8 h-8 rounded-xl object-contain bg-slate-950 p-0.5 border border-slate-200 shadow-xs"
             />

@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Play } from 'lucide-react';
 
 export function VideoDemo() {
+  const [hasVideoError, setHasVideoError] = useState(false);
+
   return (
     <section className="py-12 sm:py-16 px-4 max-w-5xl mx-auto">
       {/* Section Header: Simple, meaningful, no badge, no technical jargon */}
@@ -48,18 +52,38 @@ export function VideoDemo() {
 
         {/* Video Player Display */}
         <div className="relative aspect-video w-full bg-zinc-950 flex items-center justify-center overflow-hidden">
-          <video
-            src="/demo.mp4"
-            controls
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            className="w-full h-full object-cover block"
-          >
-            Your browser does not support the video tag.
-          </video>
+          {!hasVideoError ? (
+            <video
+              src="./demo.mp4"
+              poster="./demo-poster.webp"
+              controls
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              onError={() => setHasVideoError(true)}
+              className="w-full h-full object-cover block"
+            >
+              Your browser does not support the video tag.
+            </video>
+          ) : (
+            <div className="relative w-full h-full flex items-center justify-center bg-zinc-900 group">
+              <img
+                src="./demo-poster.webp"
+                alt="DomoScope Interactive Walkthrough Preview"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-white/90 text-zinc-900 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+                  <Play className="w-6 h-6 fill-current ml-0.5" />
+                </div>
+                <span className="text-xs font-medium text-white/90 tracking-wide font-sans">
+                  Interactive Preview
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </section>

@@ -2,21 +2,17 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import './index.css';
-import App from './App';
+import App, { isIframeOrAnna } from './App';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
-// When running inside Anna (sub-path host) or file/relative environment, use HashRouter
-const isSubpathOrAnna =
-  typeof window !== 'undefined' &&
-  (window.location.pathname.includes('/anna-apps/') ||
-   window.location.protocol === 'file:' ||
-   import.meta.env.BASE_URL === './');
-
-const Router = isSubpathOrAnna ? HashRouter : BrowserRouter;
+const Router = isIframeOrAnna ? HashRouter : BrowserRouter;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Router>
-      <App />
-    </Router>
+    <ErrorBoundary fallbackTitle="DomoScope Application Error">
+      <Router>
+        <App />
+      </Router>
+    </ErrorBoundary>
   </StrictMode>
 );
