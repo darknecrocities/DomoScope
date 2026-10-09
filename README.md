@@ -308,6 +308,20 @@ npx vitest
 
 ---
 
+## Known Issues & Next Steps
+
+### Known Issues
+1. **Large Monorepo In-Memory Spikes**: AST parsing and dependency graph generation for repositories with >10,000 files currently load source modules directly in Node.js process memory. Mitigated via 2MB per-file cutoff and `.gitignore` pruning, but full streaming AST ingestion is planned.
+2. **Deeply Nested Dynamic Routes**: Complex, dynamically evaluated Express router factories (e.g. `app.use(createRouter(cfg))`) require runtime evaluation and fallback to static regex parsing.
+3. **MCP Stdio Transport Strictness**: All diagnostic and debug logs must be routed strictly to `stderr`; accidental `stdout` writes from third-party libraries will corrupt the JSON-RPC packet stream.
+
+### Next Steps (Week 3 Roadmap)
+1. **Docker Containerization**: Finalize `Dockerfile` and `docker-compose.yml` for zero-configuration self-hosted deployment.
+2. **WebAssembly Parsing**: Introduce Tree-sitter WebAssembly bindings to offload syntax parsing to web workers.
+3. **Interactive ERD Schema Editing**: Allow bidirectional visual schema modifications with instant SQL migration export.
+
+---
+
 ## Security & Privacy
 
 1. **Local-First Processing**: Repository analysis, token parsing, and AST generation occur directly in your browser or local MCP process.
