@@ -6,6 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
 [![Creator: Arron Kian Parejas](https://img.shields.io/badge/Creator-Arron%20Kian%20Parejas-black.svg)](https://github.com/DarkNecrocities)
+[![Made with AI](https://img.shields.io/badge/Made_with-AI_assistance-blue)](AI-USAGE.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-black.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-black.svg)](https://react.dev/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Protocol%202024--11--05-black.svg)](https://modelcontextprotocol.io/)
@@ -314,6 +315,16 @@ npx vitest
 3. **Sensitive File Protection**: API keys, credentials, and `.env` secrets are automatically redacted in audit outputs.
 4. **Zero Arbitrary Execution**: DomoScope never executes repository binaries, shell scripts, or untrusted package hooks.
 5. **Encrypted Credentials**: In-app GitHub tokens are stored locally in IndexedDB using AES-GCM encryption.
+
+---
+
+## AI Usage
+
+[![Made with AI](https://img.shields.io/badge/Made_with-AI_assistance-blue)](AI-USAGE.md)
+
+DomoScope was developed with AI assistance from **Google Antigravity** and **Claude 3.5 Sonnet** (~40% AI assistance for boilerplate scaffolding, regex exploration, and AST heuristics; ~60% manually designed and written for safe local scanners, polyglot database/API parsers, and SOT specifications, strictly exceeding the >=20% self-authored requirement).
+
+See [AI-USAGE.md](AI-USAGE.md) for full disclosure, commit evidence, and breakdown of self-written vs. AI-generated code.
 
 ---
 
